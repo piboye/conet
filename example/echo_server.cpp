@@ -42,6 +42,7 @@ int proc_echo(conn_info_t *conn)
         ret = ::write(conn->fd, buff, ret);
         if (ret <=0) break; 
     } while(1);
+    free(buff);
     close(conn->fd);
     delete conn;
     return 0;
