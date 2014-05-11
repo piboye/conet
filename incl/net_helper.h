@@ -263,14 +263,19 @@ int read_one_pack(int fd, std::string *result,
 }
 
 static inline 
-int set_none_block(int fd)
+int set_none_block(int fd, bool enable=true)
 {
     int ret =0;
     int flags=0;
 
     flags = fcntl(fd, F_GETFL, 0);
-    flags |= O_NONBLOCK;
-    flags |= O_NDELAY;
+    if ( enable)  {
+        flags |= O_NONBLOCK;
+        flags |= O_NDELAY;
+    } else {
+        flags &= ~O_NONBLOCK;
+        flags &= ~O_NDELAY;
+    }
     ret = fcntl(fd, F_SETFL, flags);
 
     return ret;

@@ -29,6 +29,7 @@ void * resume(coroutine_t * co, void *val=NULL);
 coroutine_env_t * get_coroutine_env();
 
 void set_coroutine_desc(coroutine_t *co, char const *desc);
+void set_auto_delete(coroutine_t *co);
 
 int is_enable_sys_hook();
 void disable_sys_hook();

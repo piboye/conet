@@ -35,12 +35,16 @@ using conet::fd_ctx_t;
 #define HOOK_SYS_FUNC_DEF(ret_type, name, proto) \
     typedef ret_type (* name##_pfn_t) proto; \
     name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name); \
-    ret_type name proto \
+extern "C"  ret_type name proto \
+
+
+#define HOOK_SYS_FUNC(name) if( !_(name)) { _(name) = (name##_pfn_t)dlsym(RTLD_NEXT,#name); }
 
 HOOK_SYS_FUNC_DEF(
 int, socket, (int domain, int type, int protocol) 
 )
 {
+    HOOK_SYS_FUNC(socket);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(socket)(domain, type, protocol);
@@ -62,6 +66,7 @@ HOOK_SYS_FUNC_DEF(
 int , accept, ( int fd, struct sockaddr *addr, socklen_t *len)
 )
 {
+    HOOK_SYS_FUNC(accept);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(accept)(fd, addr, len);
@@ -89,6 +94,7 @@ HOOK_SYS_FUNC_DEF(
 int , accept4, ( int fd, struct sockaddr *addr, socklen_t *len, int flags)
 )
 {
+    HOOK_SYS_FUNC(accept4);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(accept4)(fd, addr, len, flags);
@@ -116,7 +122,7 @@ HOOK_SYS_FUNC_DEF(
 int ,connect, (int fd, const struct sockaddr *address, socklen_t address_len) 
 )
 {
-
+    HOOK_SYS_FUNC(connect);
 	if ( !conet::is_enable_sys_hook() )
 	{
 		return _(connect)(fd,address,address_len);
@@ -168,6 +174,7 @@ HOOK_SYS_FUNC_DEF(
 int, close, (int fd)
 )
 {
+    HOOK_SYS_FUNC(close);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return SYS_FUNC(close)( fd );
@@ -183,6 +190,7 @@ ssize_t, read, ( int fd, void *buf, size_t nbyte )
 )
 {
 	
+    HOOK_SYS_FUNC(read);
 	if( !conet::is_enable_sys_hook() ) {
 		return _(read)(fd, buf, nbyte );
 	}
@@ -213,6 +221,7 @@ HOOK_SYS_FUNC_DEF(
 ssize_t, write, ( int fd, const void *buf, size_t nbyte )
 )
 {
+    HOOK_SYS_FUNC(write);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(write)( fd,buf,nbyte );
@@ -250,6 +259,7 @@ ssize_t, sendto, (int fd, const void *message, size_t length,
 					               socklen_t dest_len)
 )
 {
+    HOOK_SYS_FUNC(sendto);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(sendto)(fd, message, length, flags, dest_addr, dest_len);
@@ -279,6 +289,7 @@ ssize_t, recvfrom, (int fd, void *buffer, size_t length,
 					               socklen_t *address_len)
 )
 {
+    HOOK_SYS_FUNC(recvfrom);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(recvfrom)(fd, buffer, length, flags, address, address_len);
@@ -303,6 +314,7 @@ ssize_t, send, (int fd, const void *buffer, size_t length, int flags)
 )
 {
 	
+    HOOK_SYS_FUNC(send);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(send)(fd, buffer, length, flags);
@@ -333,6 +345,7 @@ ssize_t, recv, ( int fd, void *buffer, size_t length, int flags )
 )
 {
 	
+    HOOK_SYS_FUNC(recv);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(recv)(fd, buffer, length, flags);
@@ -358,6 +371,7 @@ HOOK_SYS_FUNC_DEF(
 int, poll,(struct pollfd fds[], nfds_t nfds, int timeout)
 )
 {
+    HOOK_SYS_FUNC(poll);
 	if( !conet::is_enable_sys_hook() ) {
 		return _(poll)( fds,nfds,timeout );
 	}
@@ -375,6 +389,7 @@ int, ppoll, (struct pollfd *fds, nfds_t nfds,
                        const struct timespec *timeout_ts, const sigset_t *sigmask)
 )
 {
+    HOOK_SYS_FUNC(ppoll);
     if( !conet::is_enable_sys_hook() ) {
 		return _(ppoll)(fds, nfds, timeout_ts, sigmask);
 	}
@@ -395,6 +410,7 @@ int, setsockopt, (int fd, int level, int option_name,
 )
 {
 
+    HOOK_SYS_FUNC(setsockopt);
 	if( !conet::is_enable_sys_hook() )
 	{
 		return _(setsockopt)(fd, level, option_name, option_value, option_len);
@@ -422,6 +438,7 @@ int, fcntl, (int fd, int cmd, ...)
 )
 {
 
+    HOOK_SYS_FUNC(fcntl);
 	if( fd < 0 ) {
 		return -1;
 	}
@@ -508,6 +525,8 @@ int, fcntl, (int fd, int cmd, ...)
 
 HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
 {
+
+    HOOK_SYS_FUNC(usleep);
 	if( !conet::is_enable_sys_hook() )
 	{
         return g_sys_usleep_func(us);
@@ -520,6 +539,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     
 HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
 {
+    HOOK_SYS_FUNC(usleep);
 	if( !conet::is_enable_sys_hook() )
 	{
         return _(sleep)(s);

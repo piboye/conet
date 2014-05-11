@@ -12,6 +12,21 @@
 namespace conet
 {
 
+void co_return(void *val=NULL) {
+    coroutine_env_t *env = get_coroutine_env();
+    if (list_empty(&env->run_queue)) {
+        assert(!"co thread env run queue empty");
+        return ;
+    }
+
+    coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
+    list_del_init(&last->wait_to);
+    env->curr_co = last;
+    last->state = RUNNING;
+    last->yield_val = val;
+    setcontext(&last->ctx);
+}
+
 static
 void co_main_helper(int co_low, int co_high )
 {
@@ -20,15 +35,25 @@ void co_main_helper(int co_low, int co_high )
     p |= (uint32_t)co_low;
 
     coroutine_t *co = (coroutine_t *)p;
+
+    //run main proc
     co->ret_val = co->pfn(co->pfn_arg);
+
     co->state = STOP;
     list_del_init(&co->wait_to);
     coroutine_env_t *env = get_coroutine_env();
     assert(env->curr_co == co);
     env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
     list_del_init(&env->curr_co->wait_to);
+    
+    if (co->is_end_delete) {
+        //auto delete coroute object;
+        free_coroutine(co);
+    }
+    co_return(); 
     return ;    
 }
+
 
 
 int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
@@ -37,6 +62,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
     self->ret_val = 0;
     self->is_enable_sys_hook = 0;
+    self->is_end_delete = 0;
     self->is_main =0;
 
     self->stack = malloc(stack_size);
@@ -50,6 +76,12 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     INIT_LIST_HEAD(&self->wait_to);
     return 0;
 }
+
+void set_auto_delete(coroutine_t *co) 
+{
+    co->is_end_delete = 1;
+}
+
 void set_coroutine_desc(coroutine_t *co, char const *desc)
 {
     co->desc = desc;
@@ -78,13 +110,13 @@ void *resume(coroutine_t * co, void * val)
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
     assert(cur);
-    co->ctx.uc_link = &cur->ctx;
     if (CREATE == co->state) {
         uint64_t p = (uint64_t) co;
         getcontext(&co->ctx);
         makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
                 (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
     }
+    co->ctx.uc_link = &cur->ctx;
     co->state = RUNNING;
     list_del_init(&co->wait_to);
     env->curr_co = co;
@@ -104,9 +136,9 @@ void * yield(list_head *wait_to, void * val)
         return NULL;
     }
 
-    assert(cur->ctx.uc_link);
-    coroutine_t *last = container_of(cur->ctx.uc_link, coroutine_t, ctx);
-
+    //assert(cur->ctx.uc_link);
+    coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
+    
     list_del_init(&last->wait_to);
     list_del_init(&cur->wait_to);
 
@@ -114,9 +146,7 @@ void * yield(list_head *wait_to, void * val)
 
     if (wait_to) { 
         list_add_tail(&cur->wait_to, wait_to);
-    } else {
-        list_add_tail(&cur->wait_to, &env->run_queue);
-    }
+    } 
 
     cur->state = SUSPEND;
     last->state = RUNNING;
@@ -128,7 +158,7 @@ void * yield(list_head *wait_to, void * val)
 coroutine_t * current_coroutine() 
 {
     coroutine_env_t * env = get_coroutine_env();
-    coroutine_t *cur = env->curr_co;
+    coroutine_t *cur =  env->curr_co; //container_of(env->run_queue.prev, coroutine_t, wait_to);
     return cur;
 }
 
@@ -144,6 +174,7 @@ void init_coroutine_env(coroutine_env_t *self)
     makecontext(&self->main->ctx, NULL, 0);
     self->curr_co = self->main;
     INIT_LIST_HEAD(&self->run_queue);
+    list_add_tail(&self->main->wait_to, &self->run_queue);
     self->epoll_ctx = NULL;
 }
 

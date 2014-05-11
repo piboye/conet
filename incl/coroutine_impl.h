@@ -45,6 +45,7 @@ struct coroutine_t
     int state;
     char is_main;
     char is_enable_sys_hook;
+    char is_end_delete;
     int ret_val;
     void * stack;
     CO_MAIN_FUN *pfn;
