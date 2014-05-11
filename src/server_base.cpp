@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string>
+#include <netinet/tcp.h>
 #include "coroutine.h"
 #include "net_helper.h"
 #include "server_base.h"
@@ -59,6 +60,8 @@ int server_main(void *arg)
     set_none_block(listen_fd);
 
     server->listen_fd = listen_fd;
+    int waits = 5; // 5 seconds;
+    setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
 
     int ret = 0;
     while (server->state == 0) {

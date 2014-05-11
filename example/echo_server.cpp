@@ -62,7 +62,7 @@ int main(int argc, char const* argv[])
     server.proc = &proc_echo; 
     start_server(&server);
     while (conet::get_epoll_pend_task_num() >0) {
-        conet::epoll_once(1);
+        conet::epoll_once(-1);
     }
     return 0;
 }
