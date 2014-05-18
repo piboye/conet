@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <poll.h>
 #include "list.h"
+#include "gc.h"
 
 namespace conet
 {
@@ -38,6 +39,18 @@ int get_epoll_pend_task_num();
 int epoll_once(int timeout);
 int co_poll(struct pollfd fds[], nfds_t nfds, int timeout);
 
+// coroutine gc memory alloctor
+gc_mgr_t *get_gc_mgr();
+
+#define CO_NEW(type) gc_new<type>(1, get_gc_mgr())
+
+#define CO_NEW_ARRAY(type, num) gc_new<type>(num, get_gc_mgr())
+
+#define CO_ALLOC(type) gc_alloc<type>(1, get_gc_mgr())
+
+#define CO_ALLOC_ARRAY(type, num) gc_alloc<type>(num, get_gc_mgr())
+
+//
 template<typename T> 
 int co_mem_fun_helper(void * arg)
 {
@@ -65,10 +78,11 @@ public:
         conet::yield();
     }
 
-     ~Coroutine()
+     virtual ~Coroutine()
      {
          free_coroutine(m_co);
      }
+
      virtual int run()=0;
 };
 

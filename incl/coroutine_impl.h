@@ -19,9 +19,11 @@
 #define __COROUTINE_IMPL_H_INCL__
 #include "list.h"
 #include <ucontext.h>
+#include "gc.h"
 
 namespace conet 
 {
+
 struct coroutine_env_t
 {
     list_head run_queue;
@@ -53,6 +55,7 @@ struct coroutine_t
     list_head wait_to;
     void *yield_val;
     char const *desc;
+    gc_mgr_t * gc_mgr; // gc mem alloc manager
 };
 
 }

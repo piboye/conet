@@ -36,10 +36,23 @@ static fd_ctx_t **g_fd_ctxs = g_fd_ctxs_cache;
 
 static int g_fd_ctx_len = 2048000; 
 
-fd_ctx_t *get_fd_ctx(int fd) 
+fd_ctx_t *get_fd_ctx(int fd)
 {
     if (fd <0) return NULL;
+    if (fd >= g_fd_ctx_len ) {
+        assert("!too many fd");
+        exit(1);
+    }
+    return  g_fd_ctxs[fd];
+}
 
+fd_ctx_t *alloc_fd_ctx(int fd) 
+{
+    if (fd <0) {
+        assert(!"fd <0");
+        exit(1);
+        return NULL;
+    }
     
     if (fd >= g_fd_ctx_len ) {
         assert("!too many fd");
@@ -47,7 +60,8 @@ fd_ctx_t *get_fd_ctx(int fd)
     }
 
     fd_ctx_t * d = g_fd_ctxs[fd];
-    if (NULL == d) {
+    if (NULL == d) 
+    {
         HOOK_SYS_FUNC(fcntl);
         d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
         d->fd = fd;
@@ -66,7 +80,7 @@ fd_ctx_t *get_fd_ctx(int fd)
         //for multi thread access;
         if (!__sync_bool_compare_and_swap((g_fd_ctxs+fd), NULL, d))
         {
-            free(d);
+            if (d)  free(d);
         }
     }
     return g_fd_ctxs[fd];
@@ -76,6 +90,7 @@ int free_fd_ctx(int fd)
 {
     if (fd <0) return -1;
     fd_ctx_t * d = g_fd_ctxs[fd];
+    if (d == NULL) return 0;
 
     //for multi thread access;
     if (!__sync_bool_compare_and_swap((g_fd_ctxs+fd), d, NULL))

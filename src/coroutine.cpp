@@ -74,6 +74,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->state = CREATE;
     self->desc = NULL;
     INIT_LIST_HEAD(&self->wait_to);
+    self->gc_mgr = NULL;
     return 0;
 }
 
@@ -98,6 +99,11 @@ coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
 void free_coroutine(coroutine_t *co) 
 {
    assert(co);
+   if (co->gc_mgr) {
+       gc_free_all(co->gc_mgr);
+       free(co->gc_mgr);
+       co->gc_mgr = NULL;
+   }
    free(co->stack);
    free(co);
 }
@@ -212,13 +218,28 @@ int is_enable_sys_hook()
 
 void enable_sys_hook()
 {
+    if (NULL == g_env) return ;
     current_coroutine()->is_enable_sys_hook = 1;
 }
 
 void disable_sys_hook()
 {
+    if (NULL == g_env) return ;
     current_coroutine()->is_enable_sys_hook = 0;
 }
+
+gc_mgr_t *get_gc_mgr() 
+{
+    coroutine_t *cur = current_coroutine();
+    gc_mgr_t *mgr = cur->gc_mgr; 
+    if (!mgr) {
+        mgr = (gc_mgr_t *) malloc(sizeof(gc_mgr_t));
+        init_gc_mgr(mgr);
+        cur->gc_mgr = mgr;
+    }
+    return mgr;
+}
+
 
 }
 

@@ -17,9 +17,10 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
-#include "server_base.h"
+#include "incl/server_base.h"
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 using namespace conet;
 
@@ -30,19 +31,19 @@ int proc_echo(conn_info_t *conn)
     conet::enable_sys_hook();
     server_t * server= conn->server; 
     int size = server->max_packet_size;
-    char * buff = (char *)malloc(size);
+    char * buff = CO_ALLOC_ARRAY(char, size);
     int ret = 0;
     do
     {
-        ret = ::read(conn->fd,  buff, size);
+        ret = read(conn->fd,  buff, size);
         if (ret <=0) {
             break;
         }
 
-        ret = ::write(conn->fd, buff, ret);
+        ret = write(conn->fd, buff, ret);
         if (ret <=0) break; 
     } while(1);
-    free(buff);
+    //free(buff);
     close(conn->fd);
     delete conn;
     return 0;
@@ -63,7 +64,7 @@ int main(int argc, char const* argv[])
     server.proc = &proc_echo; 
     start_server(&server);
     while (conet::get_epoll_pend_task_num() >0) {
-        conet::epoll_once(-1);
+        conet::epoll_once(1);
     }
     return 0;
 }

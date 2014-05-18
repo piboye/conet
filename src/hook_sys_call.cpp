@@ -25,6 +25,7 @@
 
 #include <time.h>
 
+using conet::alloc_fd_ctx;
 using conet::get_fd_ctx;
 using conet::free_fd_ctx;
 using conet::fd_ctx_t;
@@ -56,7 +57,7 @@ int, socket, (int domain, int type, int protocol)
 		return fd;
 	}
 
-	fd_ctx_t *lp = get_fd_ctx( fd );
+	fd_ctx_t *lp = alloc_fd_ctx( fd );
 	lp->domain = domain;
 	
 	return fd;
@@ -72,22 +73,28 @@ int , accept, ( int fd, struct sockaddr *addr, socklen_t *len)
 		return _(accept)(fd, addr, len);
 	}
 
+
+    int client_fd = -1;
+
 	fd_ctx_t *lp = get_fd_ctx( fd );
 
 	if( !lp || ( O_NONBLOCK & lp->user_flag ) ) 
 	{
-	     return  _(accept)(fd, addr, len);
+	     client_fd =   _(accept)(fd, addr, len);
+    } else {
+        //block call 
+        
+        struct pollfd pf = {
+                    fd:fd, 
+                   events:POLLIN|POLLERR|POLLHUP
+        };
+        poll( &pf,1, -1);
+        client_fd =  _(accept)(fd, addr, len);
     }
-
-    //block call 
-    
-	struct pollfd pf = {
-                fd:fd, 
-               events:POLLIN|POLLERR|POLLHUP
-    };
-
-	poll( &pf,1, -1);
-    return _(accept)(fd, addr, len);
+    if (client_fd >=0) {
+        alloc_fd_ctx(client_fd);
+    }
+    return client_fd;
 }
 
 HOOK_SYS_FUNC_DEF(

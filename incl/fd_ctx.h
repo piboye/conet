@@ -39,6 +39,7 @@ struct fd_ctx_t
 	list_head poll_wait_queue;
 };
 
+fd_ctx_t * alloc_fd_ctx(int fd);
 fd_ctx_t * get_fd_ctx(int fd);
 
 int free_fd_ctx(int fd);
