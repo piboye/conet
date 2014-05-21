@@ -17,10 +17,10 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
-#include "incl/server_base.h"
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include "server/server_base.h"
 
 using namespace conet;
 
@@ -44,8 +44,6 @@ int proc_echo(conn_info_t *conn)
         if (ret <=0) break; 
     } while(1);
     //free(buff);
-    close(conn->fd);
-    delete conn;
     return 0;
 }
 
@@ -64,7 +62,7 @@ int main(int argc, char const* argv[])
     server.proc = &proc_echo; 
     start_server(&server);
     while (conet::get_epoll_pend_task_num() >0) {
-        conet::epoll_once(1);
+        conet::dispatch_one();
     }
     return 0;
 }

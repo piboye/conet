@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "incl/net_helper.h"
+#include "core/incl/net_helper.h"
 
 
 using namespace net_helper;
@@ -39,7 +39,8 @@ int main(int argc, char const* argv[])
     char *line= NULL;
     size_t len = 0;
     char rbuff[1024];
-    while( (ret = getline(&line, &len, stdin)) > 0) {
+    while( (ret = getline(&line, &len, stdin)) >= 0) {
+        if (ret == 0) continue;
         ret = write(fd, line, ret);
         if (ret <= 0) break;
         ret = read(fd, rbuff, 1024);

@@ -1,0 +1,19 @@
+cc_library(
+    name = 'conet',
+    srcs = [
+        "src/coroutine.cpp",
+        "src/coroutine_env.cpp",
+        "src/gc.cpp",
+        "src/network.cpp",
+        "src/fd_ctx.cpp",
+        "src/network_hook.cpp",
+        "src/pthread_hook.cpp",
+        "src/timewheel.cpp",
+        "src/dispatch.cpp",
+        "src/tls.cpp",
+    ],
+    incs= [ 
+        "incl/",
+    ],
+    link_all_symbols = True,
+);

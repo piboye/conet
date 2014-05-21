@@ -18,20 +18,19 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "incl/net_helper.h"
-#include "incl/coroutine.h"
+#include "core/incl/net_helper.h"
+#include "core/incl/conet_all.h"
 
 
 using namespace net_helper;
-using namespace conet;
-
+//using namespace conet;
 
 struct task_t
 {
     char const *file;
     char const * ip;
     int port;
-    coroutine_t *co;
+    conet::coroutine_t *co;
 };
 
 int proc_send(void *arg)
@@ -47,7 +46,8 @@ int proc_send(void *arg)
     size_t len = 0;
     char rbuff[1024];
     FILE *fp = fopen(task->file, "r");
-    while( (ret = getline(&line, &len, fp)) > 0) {
+    while( (ret = getline(&line, &len, fp)) >= 0) {
+        if (ret == 0) continue;
         ret = write(fd, line, ret);
         if (ret <= 0) break;
         ret = read(fd, rbuff, 1024);
@@ -72,12 +72,12 @@ int main(int argc, char const* argv[])
         tasks[i].ip = ip;
         tasks[i].port = port;
         tasks[i].file = data_file;
-        tasks[i].co = alloc_coroutine(proc_send, tasks+i);
+        tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
         resume(tasks[i].co);
     }
 
     while (conet::get_epoll_pend_task_num() >0) {
-        conet::epoll_once(1);
+        conet::dispatch_one();
     }
 
     return 0;
