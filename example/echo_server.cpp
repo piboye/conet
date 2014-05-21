@@ -55,7 +55,7 @@ int main(int argc, char const* argv[])
     }
     char const * ip = argv[1];
     int  port = atoi(argv[2]);
-    fprintf(stderr, "listen to %s:%d", ip, port);
+    fprintf(stderr, "listen to %s:%d\n", ip, port);
     server_t server;
     int ret = 0;
     ret = init_server(&server, ip, port);

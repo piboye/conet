@@ -104,7 +104,7 @@ bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
     int pos = obj->timeout % tw->slot_num;
     list_add(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
-    CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
+    //CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
     return true;
 }
 
@@ -133,8 +133,10 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         end_pos = cur_ms % slot_num;
     }
 
+    int pcnt= 0;
     do
     {
+        ++pcnt;
         list_head *it=NULL, *next=NULL;
         list_for_each_safe(it, next, slots+pos)
         {
@@ -142,7 +144,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
             if (time_after_eq(cur_ms, t1->timeout)) {
                 //timeout and call timeout callback;
                
-                CONET_LOG(DEBUG, "timeout, obj:%p, cur:%lu, timeout:%lu", t1, cur_ms, t1->timeout);
+                //CONET_LOG(DEBUG, "timeout, obj:%p, cur:%lu, timeout:%lu", t1, cur_ms, t1->timeout);
                 cancel_timeout(t1);
                 // cancel_timeout must call before t1-fn callbak
                 // because fn callback would coroutine swap
@@ -153,8 +155,10 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         if (pos == end_pos) break;
         pos = (pos+1) % slot_num;
     } while(1);
+    //CONET_LOG(DEBUG, "timewheel procc slots:%d", pcnt);
 
     tw->pos = cur_ms % slot_num;;
+    tw->prev_ms = cur_ms;
     return cnt;
 }
 

@@ -46,6 +46,10 @@ int proc_send(void *arg)
     size_t len = 0;
     char rbuff[1024];
     FILE *fp = fopen(task->file, "r");
+    if (!fp) {
+        fprintf(stderr, "open file:%s failed!", task->file);
+        return -1;
+    }
     while( (ret = getline(&line, &len, fp)) >= 0) {
         if (ret == 0) continue;
         ret = write(fd, line, ret);

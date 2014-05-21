@@ -84,7 +84,9 @@ int proc_pool(server_t *server, conn_info_t *conn_info)
            resume(conn_info->co, conn_info);
            return 0;
        } else {
-           while  (list_empty(&pool->free_list)) usleep(1000);
+           while  (list_empty(&pool->free_list)) {
+               usleep(1000);
+           }
        }
     } 
 
