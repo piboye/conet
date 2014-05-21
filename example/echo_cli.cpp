@@ -18,10 +18,8 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "core/incl/net_helper.h"
+#include "core/incl/net_tool.h"
 
-
-using namespace net_helper;
 
 int main(int argc, char const* argv[])
 {
@@ -47,6 +45,8 @@ int main(int argc, char const* argv[])
         if (ret <=0) break;
         write(1, rbuff, ret);
     }
+    close(fd);
+    free(line);
     return 0;
 }
 

@@ -15,8 +15,8 @@
  *
  * =====================================================================================
  */
-#ifndef __NET_HELPER_H_INC__
-#define __NET_HELPER_H_INC__
+#ifndef __NET_TOOL_H_INC__
+#define __NET_TOOL_H_INC__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,60 +38,7 @@
 #include <string>
 #include <vector>
 
-namespace net_helper
-{
-
-static inline
-uint64_t rdtscp(void)
-{
-	register uint32_t lo, hi;
-	register uint64_t o;
-    __asm__ __volatile__ (
-        "rdtscp" : "=a"(lo), "=d"(hi)
-        );
-	o = hi;
-	o <<= 32;
-	return (o | lo);
-}
-
-static inline
-uint64_t get_cpu_khz() 
-{
-	FILE *fp = fopen("/proc/cpuinfo","r");
-	if(!fp) return 1;
-	char buf[4096] = {0};
-	fread(buf,1,sizeof(buf),fp);
-	fclose(fp);
-
-	char *lp = strstr(buf,"cpu MHz");
-	if(!lp) return 1;
-	lp += strlen("cpu MHz");
-	while(*lp == ' ' || *lp == '\t' || *lp == ':')
-	{
-		++lp;
-	}
-
-	double mhz = atof(lp);
-	uint64_t u = (uint64_t)(mhz * 1000);
-	return u;
-}
-
-static inline 
-uint64_t get_now_ms() 
-{
-    struct timeval te;
-    gettimeofday(&te, NULL);
-    uint64_t ms = te.tv_sec*1000LL + te.tv_usec/1000;
-    return ms;
-}
-
-static inline 
-uint64_t get_tick_ms()
-{
-    //return get_now_ms();
-	static uint64_t khz = get_cpu_khz();
-	return rdtscp() / khz;
-}
+#include "time_helper.h"
 
 
 enum {
@@ -99,59 +46,30 @@ enum {
 };
 
 
-#define NET_HELPER_DECLAR_TIMETOUT() \
-    int rest_timeout = timeout; \
-    int used_timeout = 0; \
-    int use_timeout = rest_timeout\
-
-#define NET_HELPER_UPDATE_TIMEOUT() \
-    do { \
-        rest_timeout -= use_timeout; \
-        used_timeout += use_timeout; \
-        if (cost_timeout) *cost_timeout = used_timeout; \
-        if (rest_timeout < 0) { \
-            return ERR_TIMEOUT_NET_HELPER; \
-        } \
-    } while(0)
-
-
 static inline 
 int send_data(int fd, char const * buf, size_t len, int timeout=10, int * cost_timeout=NULL) 
 {
     int ret = 0;
     size_t cur_len = 0;
-    int rest_timeout = timeout;
     uint64_t start = get_tick_ms();
     uint64_t now = start;
-    while (1)
+    while (cur_len < len)
     {
         ret = ::write(fd, &buf[cur_len], len-cur_len);
         if (ret <0) {
-            if ( errno == EAGAIN || errno == EWOULDBLOCK) {
-                rest_timeout = timeout - (now -start);
-                if (rest_timeout <=0) {
-                    if (cost_timeout) *cost_timeout = (now-start); 
-                    return ERR_TIMEOUT_NET_HELPER;
-                }
-                struct pollfd pf = { 0 };
-                pf.fd = fd;
-                pf.events = (POLLOUT|POLLERR|POLLHUP);
-                poll(&pf, 1, rest_timeout);
-                now = get_tick_ms();
-            } else {
-                if (cost_timeout) *cost_timeout = (now-start); 
-                return -__LINE__;
-            }
+            break;
         }
         else if (ret == 0) {
-            if (cost_timeout) *cost_timeout = (now-start); 
-            return 0;
-        } else{
-            cur_len += ret;
-        }
-        if (cur_len >= len) break;
+            break;
+        } 
+        cur_len += ret;
+        now = get_tick_ms();
+        if (time_after(now, start + timeout)) break;
     }
+
     if (cost_timeout) *cost_timeout = (now-start); 
+
+    if (ret <0) return ret;
     return len;
 }
 
@@ -181,7 +99,6 @@ int send_data_pack(int fd, std::string data, int timeout=10, int *cost_timeout=N
     uint32_t len = 0;
     len = htonl(data.size());
     data.insert(0, (char *)(&len), sizeof(len));
-
     int ret = send_data(fd, data.c_str(), data.size(), timeout, cost_timeout);
     if (ret > 4) ret -=4 ;
     return ret;
@@ -198,38 +115,21 @@ int read_data(int fd, char *buff, size_t len, int timeout, int *cost_timeout=NUL
 {
     int ret = 0;
     size_t cur_len =0;
-    int rest_timeout = timeout;
     uint64_t start = get_tick_ms();
     uint64_t now = start;
-    while (1)
+    while (cur_len < len)
     {
         ret = read(fd, &buff[cur_len], len-cur_len);
-        if (ret < 0) {
-            if ( errno == EAGAIN || errno == EWOULDBLOCK) {
-                rest_timeout = timeout - (now -start);
-                if (rest_timeout <=0){
-                    if (cost_timeout) *cost_timeout = (now-start); 
-                    return ERR_TIMEOUT_NET_HELPER;
-                }  
-                struct pollfd pf = { 0 };
-                pf.fd = fd;
-                pf.events = (POLLIN|POLLERR|POLLHUP);
-                poll(&pf, 1, rest_timeout);
-                now = get_tick_ms();
-            } else {
-                if (cost_timeout) *cost_timeout = (now-start); 
-                return -__LINE__;
-            }
+        if (ret <= 0) {
+            break;
         }
-        else if (ret == 0) {
-            if (cost_timeout) *cost_timeout = (now-start); 
-            return 0;
-        } else {
-            cur_len += ret;
-        }
-        if (cur_len >= len) break;
+        cur_len += ret;
+        now = get_tick_ms();
+        if (time_after(now, start + timeout)) break;
     }
     if (cost_timeout) *cost_timeout = (now-start); 
+
+    if (ret <0) return ret;
     return len;
 }
 
@@ -241,12 +141,22 @@ int read_one_pack(int fd, std::string *result,
             int *cost_timeout = NULL
             ) 
 {
-    NET_HELPER_DECLAR_TIMETOUT();
+    int rest_timeout = timeout; 
+    int used_timeout = 0; 
+    int use_timeout = rest_timeout;
 
     uint32_t len = 0;
     int ret = 0;
     ret = read_data(fd, (char *)&len, sizeof(len), rest_timeout, &use_timeout);
-    NET_HELPER_UPDATE_TIMEOUT();
+
+    rest_timeout -= use_timeout; 
+    used_timeout += use_timeout; 
+    if (cost_timeout) *cost_timeout = used_timeout; 
+    if (rest_timeout < 0) { 
+        return ERR_TIMEOUT_NET_HELPER; 
+    } 
+
+
     if (ret != (int) sizeof(len)) {
         return -__LINE__;
     }
@@ -256,9 +166,18 @@ int read_one_pack(int fd, std::string *result,
 
     result->resize(len, '0');
     ret = read_data(fd, (char *)result->data(), len, rest_timeout, &use_timeout);
-    if (ret >0) result->resize(ret);
-    else result->clear();
-    NET_HELPER_UPDATE_TIMEOUT();
+    if (ret >0) {
+        result->resize(ret);
+    } else {
+        result->clear();
+    }
+
+    rest_timeout -= use_timeout; 
+    used_timeout += use_timeout; 
+    if (cost_timeout) *cost_timeout = used_timeout; 
+    if (rest_timeout < 0) { 
+        return ERR_TIMEOUT_NET_HELPER; 
+    } 
 
     return ret; 
 }
@@ -306,7 +225,7 @@ void set_addr(struct sockaddr_in *addr, const char *ip_txt,const unsigned short 
 }
 
 static inline 
-int create_tcp_socket(int port = 0, const char *ip_txt  = "*", int reuse = true)
+int create_tcp_socket(int port = 0, const char *ip_txt  = "*", int reuse = false)
 {
     int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
     if( fd >= 0 ) {
@@ -328,30 +247,16 @@ int create_tcp_socket(int port = 0, const char *ip_txt  = "*", int reuse = true)
 }
 
 static inline 
-int connect_to(char const *ip_txt, int port, int timeout=10, const char *client_ip=NULL, int client_port=0)
+int connect_to(char const *ip_txt, int port, const char *client_ip=NULL, int client_port=0)
 {
     int fd = create_tcp_socket(client_port, client_ip);
     struct sockaddr_in addr;
     set_addr(&addr, ip_txt, port);
     int ret = 0;
-    set_none_block( fd );
     ret = connect(fd, (struct sockaddr*)&addr,sizeof(addr)); 
-    if (ret<0) {
-        if (errno == EINPROGRESS) {
-            struct pollfd pf = { 0 };
-            pf.fd = fd;
-            pf.events = (POLLIN|POLLOUT|POLLERR|POLLHUP);
-            poll(&pf, 1, timeout);
-            ret = connect(fd, (struct sockaddr*)&addr,sizeof(addr)); 
-            if (ret) {
-                close(fd);
-                return -1;
-            }
-            return fd;
-        } else {
-            close(fd);
-            return -1;   
-        }
+    if (ret) {
+        close(fd);
+        return -1;
     }
     return fd;
 }
@@ -392,8 +297,6 @@ int connect_to(char const *ip_txt, int port, int timeout=10, const char *client_
      return NULL;
  }
 
-
-} // net_helper namespace end
 
 #endif 
 

@@ -117,12 +117,12 @@ fd_ctx_t *alloc_fd_ctx(int fd)
         d->rcv_timeout = 1000;
         d->snd_timeout = 1000;
         int flags = 0;
-        flags = g_sys_fcntl_func(fd, F_GETFL,0 );
+        flags = _(fcntl)(fd, F_GETFL, 0);
         d->user_flag = flags;
 
         // 设置 none block, 方便hook 系统调用
         // user_flag 只保存用户设置的标志。 
-	    g_sys_fcntl_func(fd, F_SETFL, flags | O_NONBLOCK); 
+	    _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK); 
         mgr->fds[fd] = d;
     }
     return mgr->fds[fd];

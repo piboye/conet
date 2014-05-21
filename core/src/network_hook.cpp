@@ -155,7 +155,7 @@ int ,connect, (int fd, const struct sockaddr *address, socklen_t address_len)
             events:POLLOUT|POLLERR|POLLHUP
     };
 
-    int poll_ret = poll( &pf,1, lp->snd_timeout);
+    int poll_ret = poll ( &pf,1, lp->snd_timeout);
     if (0 == poll_ret) {
         // timeout
         errno = ETIMEDOUT;

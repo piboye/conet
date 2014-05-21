@@ -18,11 +18,9 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "core/incl/net_helper.h"
+#include "core/incl/net_tool.h"
 #include "core/incl/conet_all.h"
 
-
-using namespace net_helper;
 //using namespace conet;
 
 struct task_t

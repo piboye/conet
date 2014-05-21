@@ -20,10 +20,9 @@
 #include <string>
 #include <netinet/tcp.h>
 #include "core/incl/conet_all.h"
-#include "core/incl/net_helper.h"
+#include "core/incl/net_tool.h"
 #include "server_base.h"
 
-using namespace net_helper;
 
 namespace conet
 {
@@ -125,7 +124,7 @@ int server_main(void *arg)
 
     conet::enable_sys_hook();
 
-    int listen_fd = net_helper::create_tcp_socket(server->port, server->ip.c_str());
+    int listen_fd = create_tcp_socket(server->port, server->ip.c_str());
     listen(listen_fd, 1024); 
     set_none_block(listen_fd);
 
