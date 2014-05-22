@@ -119,6 +119,7 @@ fd_ctx_t *alloc_fd_ctx(int fd)
         int flags = 0;
         flags = _(fcntl)(fd, F_GETFL, 0);
         d->user_flag = flags;
+        d->wait_events = 0;
 
         // 设置 none block, 方便hook 系统调用
         // user_flag 只保存用户设置的标志。 

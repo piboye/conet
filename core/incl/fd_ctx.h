@@ -36,6 +36,7 @@ struct fd_ctx_t
 
     int rcv_timeout;
     int snd_timeout;
+    uint32_t wait_events;
 	list_head poll_wait_queue;
 };
 

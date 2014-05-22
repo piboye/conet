@@ -92,9 +92,12 @@ void poll_ctx_timeout_proc(void *arg)
      return ;
 }
 
-void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *dispatch)
+void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *dispatch, int epoll_fd)
 {
     list_head *it=NULL, *next=NULL;
+
+    uint32_t rest_events  = 0;
+
     list_for_each_safe(it, next, &fd_ctx->poll_wait_queue)
     {
         assert(it);
@@ -112,10 +115,12 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         uint32_t mask = fds[pos].events;
         uint32_t revents = (mask & events); 
         if (revents) {
+            /*
             CONET_LOG(DEBUG, "fd:%d, need evets:%d, events:%d, mask:%u, revents:%u", \
                 fd_ctx->fd, 
                 fds[pos].events,
                 events, mask, revents);
+            */
             fds[pos].revents |= revents;
             // add to dispatch
             list_del_init(&poll_ctx->to_dispatch);
@@ -123,9 +128,20 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
 	        ++poll_ctx->num_raise;
             cancel_timeout(&poll_ctx->timeout_ctl); 
             list_del_init(it);
-        } 
+        }  else {
+            // rest events in here
+            rest_events |= mask;
+        }
         // increase fd num
 	}
+    if (rest_events) {
+        epoll_event ev;
+        ev.events = rest_events;
+        ev.data.ptr = fd_ctx;
+        fd_ctx->wait_events = rest_events;
+        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd_ctx->fd,  &ev);
+    }
+
 }
 
 void  init_poll_ctx(poll_ctx_t *self, pollfd *fds, nfds_t nfds, epoll_ctx_t *epoll_ctx);
@@ -194,7 +210,15 @@ void  init_poll_ctx(poll_ctx_t *self,
                 epoll_event ev;
                 ev.events = poll_event2epoll( fds[i].events);
                 ev.data.ptr = item;
-                epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_ADD, fds[i].fd,  &ev);
+                if (item->wait_events == 0)  {
+                    item->wait_events = ev.events;
+                    epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_ADD, fds[i].fd,  &ev);
+                } else {
+                    // change events;
+                    ev.events |= item->wait_events;
+                    item->wait_events = ev.events;
+                    epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
+                }
             }	
         }
 	}
@@ -208,14 +232,18 @@ void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
 
         if(self->fds[i].fd > -1 )
         {
-            decr_ref_fd_ctx(self->wait_items[i].fd_ctx);
             list_del_init(&self->wait_items[i].to_fd);
 
-            epoll_event ev;
-            ev.events = poll_event2epoll(self->fds[i].events);
-            ev.data.ptr = 0;
-            ev.data.fd = self->fds[i].fd;
-            epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_DEL, self->fds[i].fd,  &ev);
+            fd_ctx_t *fd_ctx = self->wait_items[i].fd_ctx;
+            if (list_empty_careful(&fd_ctx->poll_wait_queue)) {
+                epoll_event ev;
+                ev.events = fd_ctx->wait_events;
+                ev.data.ptr = fd_ctx;
+                fd_ctx->wait_events = 0;
+                epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_DEL, self->fds[i].fd,  &ev);
+            }
+
+            decr_ref_fd_ctx(fd_ctx);
         }	
 	}
 
@@ -252,7 +280,7 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
         fd_ctx_t * fd_ctx = (fd_ctx_t *)epoll_ctx->m_epoll_events[i].data.ptr;
         int events = epoll_event2poll(epoll_ctx->m_epoll_events[i].events);
         if (fd_ctx) {
-            fd_notify_events_to_poll(fd_ctx, events, &dispatch);
+            fd_notify_events_to_poll(fd_ctx, events, &dispatch, epoll_ctx->m_epoll_fd);
         }
     }
 
