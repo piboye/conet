@@ -72,10 +72,15 @@ struct coroutine_t
     char const *desc;
     gc_mgr_t * gc_mgr; // gc mem alloc manager
 
+
     list_head wait_to;
+
+    list_head exit_notify_queue; // get notify on the co exit;
+
     std::map<void *, void*> *static_vars;
     std::map<uint64_t, void *> * spec;
     std::map<pthread_key_t, void *> * pthread_spec;
+
 };
 
 }

@@ -53,6 +53,17 @@ void co_main_helper(int co_low, int co_high )
     assert(env->curr_co == co);
     env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
     list_del_init(&env->curr_co->wait_to);
+
+    {
+    // notify exit wait queue
+        list_head *it=NULL, *next=NULL;
+        list_for_each_safe(it, next, &co->exit_notify_queue)
+        {
+            coroutine_t * co2 = container_of(it, coroutine_t, wait_to);
+            list_del_init(it);
+            resume(co2, (void *)(uint64_t)(co->ret_val));
+        }
+    }
     
     if (co->is_end_delete) {
         //auto delete coroute object;
@@ -88,6 +99,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->state = CREATE;
 
     INIT_LIST_HEAD(&self->wait_to);
+    INIT_LIST_HEAD(&self->exit_notify_queue);
 
     self->desc = NULL;
     self->gc_mgr = NULL;
@@ -190,7 +202,7 @@ void * yield(list_head *wait_to, void * val)
 coroutine_t * current_coroutine() 
 {
     coroutine_env_t * env = get_coroutine_env();
-    coroutine_t *cur =  env->curr_co; //container_of(env->run_queue.prev, coroutine_t, wait_to);
+    coroutine_t *cur =  env->curr_co; 
     return cur;
 }
 
@@ -263,6 +275,13 @@ int set_pthread_spec(pthread_key_t key, const void * val)
     }
     (*cur->pthread_spec)[key] = (void *)val;
     return 0;
+}
+
+
+int wait(coroutine_t *co)
+{
+    int ret = (uint64_t) (yield(&co->exit_notify_queue, NULL));
+    return ret;
 }
 
 }
