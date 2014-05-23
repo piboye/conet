@@ -88,7 +88,8 @@ events:
         client_fd =  _(accept)(fd, addr, len);
     }
     if (client_fd >=0) {
-        alloc_fd_ctx(client_fd);
+        fd_ctx_t *ctx = alloc_fd_ctx(client_fd);
+        ctx->domain = lp->domain;
     }
     return client_fd;
 }
@@ -625,6 +626,97 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     int ms = (us+999)/1000;
     return conet::co_poll(NULL, 0, ms);
 }
+
+HOOK_SYS_FUNC_DEF(int, dup, (int old))
+{
+
+    HOOK_SYS_FUNC( dup );
+
+    if( !conet::is_enable_sys_hook() )
+    {   
+        return _(dup)(old);
+    }   
+    int fd = _(dup)(old);
+    if( fd < 0 ) 
+    {   
+        return fd; 
+    }   
+    fd_ctx_t *lp0 = get_fd_ctx(old);
+
+    if (!lp0) return fd; 
+
+    fd_ctx_t *lp = alloc_fd_ctx( fd );
+    lp->domain = lp0->domain;
+    lp->rcv_timeout = lp0->rcv_timeout;
+    lp->snd_timeout = lp0->snd_timeout;
+    lp->user_flag = lp0->user_flag;
+    return fd; 
+}
+
+HOOK_SYS_FUNC_DEF(int, dup2, (int old, int newfd))
+{
+
+    HOOK_SYS_FUNC( dup2 );
+
+    if( !conet::is_enable_sys_hook() )
+    {   
+        return _(dup2)(old, newfd);
+    }   
+    int fd = _(dup2)(old, newfd);
+    if( fd < 0 ) 
+    {   
+        return fd; 
+    }   
+    fd_ctx_t *new_lp = get_fd_ctx(newfd);
+    if (new_lp) {
+        free_fd_ctx(newfd);
+    }
+
+    fd_ctx_t *lp0 = get_fd_ctx(old);
+
+    if (!lp0) return fd; 
+
+    fd_ctx_t *lp = alloc_fd_ctx( fd );
+    lp->domain = lp0->domain;
+    lp->rcv_timeout = lp0->rcv_timeout;
+    lp->snd_timeout = lp0->snd_timeout;
+    lp->user_flag = lp0->user_flag;
+
+    return fd; 
+}
+
+HOOK_SYS_FUNC_DEF(int, dup3, (int old, int newfd, int flags))
+{
+
+    HOOK_SYS_FUNC( dup3 );
+
+    if( !conet::is_enable_sys_hook() )
+    {   
+        return _(dup3)(old, newfd, flags);
+    }   
+    int fd = _(dup3)(old, newfd, flags);
+    if( fd < 0 ) 
+    {   
+        return fd; 
+    }   
+    fd_ctx_t *new_lp = get_fd_ctx(newfd);
+    if (new_lp) {
+        free_fd_ctx(newfd);
+    }
+
+    fd_ctx_t *lp0 = get_fd_ctx(old);
+
+    if (!lp0) return fd; 
+
+    fd_ctx_t *lp = alloc_fd_ctx( fd );
+    lp->domain = lp0->domain;
+    lp->rcv_timeout = lp0->rcv_timeout;
+    lp->snd_timeout = lp0->snd_timeout;
+    lp->user_flag = lp0->user_flag;
+
+    return fd; 
+}
+
 
 
 HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
