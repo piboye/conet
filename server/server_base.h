@@ -3,7 +3,7 @@
  *
  *       Filename:  server_base.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月11日 07时43分57秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -62,7 +62,7 @@ struct conn_info_t
     uint32_t ip;
     int port;
     int fd;
-    struct sockaddr_in addr; 
+    struct sockaddr_in addr;
     coroutine_t *co;
 };
 

@@ -3,15 +3,15 @@
  *
  *       Filename:  echo_server.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月11日 07时50分16秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -25,11 +25,11 @@
 using namespace conet;
 
 
-inline 
+inline
 int proc_echo(conn_info_t *conn)
 {
     conet::enable_sys_hook();
-    server_t * server= conn->server; 
+    server_t * server= conn->server;
     int size = server->max_packet_size;
     char * buff = CO_ALLOC_ARRAY(char, size);
     int ret = 0;
@@ -41,7 +41,7 @@ int proc_echo(conn_info_t *conn)
         }
 
         ret = write(conn->fd, buff, ret);
-        if (ret <=0) break; 
+        if (ret <=0) break;
     } while(1);
     //free(buff);
     return 0;
@@ -59,7 +59,7 @@ int main(int argc, char const* argv[])
     server_t server;
     int ret = 0;
     ret = init_server(&server, ip, port);
-    server.proc = &proc_echo; 
+    server.proc = &proc_echo;
     start_server(&server);
     while (conet::get_epoll_pend_task_num() >0) {
         conet::dispatch_one();

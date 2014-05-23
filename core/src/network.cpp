@@ -16,12 +16,12 @@
 #include "dispatch.h"
 
 HOOK_DECLARE(
-int, epoll_wait,(int epfd, struct epoll_event *events,
-                  int maxevents, int timeout)
+    int, epoll_wait,(int epfd, struct epoll_event *events,
+                     int maxevents, int timeout)
 );
 
 
-namespace conet 
+namespace conet
 {
 
 struct poll_ctx_t;
@@ -36,31 +36,31 @@ struct poll_wait_item_t
 
 struct poll_ctx_t
 {
-	struct pollfd *fds;
-	nfds_t nfds; 
+    struct pollfd *fds;
+    nfds_t nfds;
 
     poll_wait_item_t wait_items_cache[2];
     poll_wait_item_t *wait_items;
 
-	int all_event_detach;
+    int all_event_detach;
 
-	int num_raise;
+    int num_raise;
 
-	int is_timeout;
+    int is_timeout;
 
-	coroutine_t * coroutine;
+    coroutine_t * coroutine;
 
-	timeout_handle_t timeout_ctl;
-    
-	list_head to_dispatch; // fd 有事件的时候， 把这个poll加入到 分发中
+    timeout_handle_t timeout_ctl;
+
+    list_head to_dispatch; // fd 有事件的时候， 把这个poll加入到 分发中
 };
 
 struct epoll_ctx_t
 {
-	int m_epoll_fd;
-	int m_epoll_size;
+    int m_epoll_fd;
+    int m_epoll_size;
 
-	epoll_event *m_epoll_events;
+    epoll_event *m_epoll_events;
 
     int wait_num;
 };
@@ -80,16 +80,16 @@ void init_poll_wait_item(poll_wait_item_t *self, poll_ctx_t *ctx, int pos, fd_ct
 
 void poll_ctx_timeout_proc(void *arg)
 {
-     poll_ctx_t *self = (poll_ctx_t *)(arg);
-     int nfds = (int) self->nfds;
-     for(int i=0; i< (int)nfds; ++i) {
-         list_del_init(&self->wait_items[i].to_fd);
-     }
-     self->is_timeout = 1;
-     if (self->coroutine) {
-         resume(self->coroutine);
-     }
-     return ;
+    poll_ctx_t *self = (poll_ctx_t *)(arg);
+    int nfds = (int) self->nfds;
+    for(int i=0; i< (int)nfds; ++i) {
+        list_del_init(&self->wait_items[i].to_fd);
+    }
+    self->is_timeout = 1;
+    if (self->coroutine) {
+        resume(self->coroutine);
+    }
+    return ;
 }
 
 void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *dispatch, int epoll_fd)
@@ -109,15 +109,15 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
             assert(!"error fd ctx pos");
             continue;
         }
-        
+
         struct pollfd * fds = poll_ctx->fds;
         // set reachable events
         uint32_t mask = fds[pos].events;
-        uint32_t revents = (mask & events); 
+        uint32_t revents = (mask & events);
         if (revents) {
             /*
             CONET_LOG(DEBUG, "fd:%d, need evets:%d, events:%d, mask:%u, revents:%u", \
-                fd_ctx->fd, 
+                fd_ctx->fd,
                 fds[pos].events,
                 events, mask, revents);
             */
@@ -125,15 +125,15 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
             // add to dispatch
             list_del_init(&poll_ctx->to_dispatch);
             list_add_tail(&poll_ctx->to_dispatch, dispatch);
-	        ++poll_ctx->num_raise;
-            cancel_timeout(&poll_ctx->timeout_ctl); 
+            ++poll_ctx->num_raise;
+            cancel_timeout(&poll_ctx->timeout_ctl);
             list_del_init(it);
         }  else {
             // rest events in here
             rest_events |= mask;
         }
         // increase fd num
-	}
+    }
     if (rest_events) {
         epoll_event ev;
         ev.events = rest_events;
@@ -151,22 +151,22 @@ epoll_ctx_t *create_epoll(int event_size);
 
 static uint32_t poll_event2epoll( short events )
 {
-	uint32_t e = 0;	
-	if( events & POLLIN ) 	e |= EPOLLIN;
-	if( events & POLLOUT )  e |= EPOLLOUT;
-	if( events & POLLHUP ) 	e |= EPOLLHUP;
-	if( events & POLLERR )	e |= EPOLLERR;
-	return e;
+    uint32_t e = 0;
+    if( events & POLLIN ) 	e |= EPOLLIN;
+    if( events & POLLOUT )  e |= EPOLLOUT;
+    if( events & POLLHUP ) 	e |= EPOLLHUP;
+    if( events & POLLERR )	e |= EPOLLERR;
+    return e;
 }
 
 static short epoll_event2poll( uint32_t events )
 {
-	short e = 0;	
-	if( events & EPOLLIN ) 	e |= POLLIN;
-	if( events & EPOLLOUT ) e |= POLLOUT;
-	if( events & EPOLLHUP ) e |= POLLHUP;
-	if( events & EPOLLERR ) e |= POLLERR;
-	return e;
+    short e = 0;
+    if( events & EPOLLIN ) 	e |= POLLIN;
+    if( events & EPOLLOUT ) e |= POLLOUT;
+    if( events & EPOLLHUP ) e |= POLLHUP;
+    if( events & EPOLLERR ) e |= POLLERR;
+    return e;
 }
 
 
@@ -177,28 +177,28 @@ void init_epoll_ctx(epoll_ctx_t *self, int size)
     self->m_epoll_events = (epoll_event *)malloc(sizeof(epoll_event)* size);
     self->m_epoll_fd = epoll_create(size);
     self->wait_num = 0;
-    return; 
+    return;
 }
 
-void  init_poll_ctx(poll_ctx_t *self, 
-        pollfd *fds, nfds_t nfds, epoll_ctx_t *epoll_ctx)
+void  init_poll_ctx(poll_ctx_t *self,
+                    pollfd *fds, nfds_t nfds, epoll_ctx_t *epoll_ctx)
 {
-	self->fds = fds;
-	self->nfds = nfds;
-	self->num_raise = 0;
-	self->all_event_detach = 0;
-	self->coroutine = NULL;
-	self->is_timeout = 0;
-    
+    self->fds = fds;
+    self->nfds = nfds;
+    self->num_raise = 0;
+    self->all_event_detach = 0;
+    self->coroutine = NULL;
+    self->is_timeout = 0;
+
     if (nfds > 2) {
         self->wait_items = (poll_wait_item_t *) malloc(sizeof (poll_wait_item_t) * nfds);
     } else {
         self->wait_items =  self->wait_items_cache;
     }
 
-	INIT_LIST_HEAD(&self->to_dispatch);
+    INIT_LIST_HEAD(&self->to_dispatch);
 
-	for(int i=0; i< (int)nfds; ++i) {
+    for(int i=0; i< (int)nfds; ++i) {
         if( fds[i].fd > -1 ) {
             fds[i].revents = 0;
             CONET_LOG(DEBUG, "poll wait fd:%d, events:%u", fds[i].fd, fds[i].events);
@@ -219,16 +219,16 @@ void  init_poll_ctx(poll_ctx_t *self,
                     item->wait_events = ev.events;
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
                 }
-            }	
+            }
         }
-	}
+    }
 
-	init_timeout_handle(&self->timeout_ctl, poll_ctx_timeout_proc, self);
+    init_timeout_handle(&self->timeout_ctl, poll_ctx_timeout_proc, self);
 }
 
 void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
 {
-	for(int i=0; i< (int)self->nfds; ++i) {
+    for(int i=0; i< (int)self->nfds; ++i) {
 
         if(self->fds[i].fd > -1 )
         {
@@ -244,8 +244,8 @@ void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
             }
 
             decr_ref_fd_ctx(fd_ctx);
-        }	
-	}
+        }
+    }
 
     if (self->nfds > 2)
     {
@@ -266,7 +266,7 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
     int ret = 0;
     int cnt = 0;
     ret = epoll_wait(epoll_ctx->m_epoll_fd, &epoll_ctx->m_epoll_events[0],
-            epoll_ctx->m_epoll_size, timeout);
+                     epoll_ctx->m_epoll_size, timeout);
     if (ret <0 ) return ret;
     if (ret ==0 ) {
         return ret;
@@ -299,7 +299,7 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
 
 int proc_netevent(int timeout)
 {
-	epoll_ctx_t * epoll_ctx =  get_epoll_ctx();
+    epoll_ctx_t * epoll_ctx =  get_epoll_ctx();
     return proc_netevent(epoll_ctx, timeout);
 }
 
@@ -310,18 +310,18 @@ int task_proc(void *arg)
 
 epoll_ctx_t *create_epoll(int event_size)
 {
-	epoll_ctx_t * p = (epoll_ctx_t *) malloc(sizeof(epoll_ctx_t));
-	init_epoll_ctx(p, event_size);
+    epoll_ctx_t * p = (epoll_ctx_t *) malloc(sizeof(epoll_ctx_t));
+    init_epoll_ctx(p, event_size);
     registry_task(task_proc, p);
-	return p;
+    return p;
 }
 
 int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 {
     epoll_ctx_t *epoll_ctx  = get_epoll_ctx();
-	{
-		poll_ctx_t poll_ctx;
-		init_poll_ctx(&poll_ctx, fds, nfds, epoll_ctx);
+    {
+        poll_ctx_t poll_ctx;
+        init_poll_ctx(&poll_ctx, fds, nfds, epoll_ctx);
 
         if (timeout >= 0) {
             set_timeout(&poll_ctx.timeout_ctl, timeout);
@@ -330,16 +330,16 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
         poll_ctx.coroutine = current_coroutine();
 
         ++ epoll_ctx->wait_num;
-	 	yield();	
+        yield();
         -- epoll_ctx->wait_num;
 
         destruct_poll_ctx(&poll_ctx, epoll_ctx);
 
-		if (poll_ctx.is_timeout) {
-			return 0;
-		}
-		return poll_ctx.num_raise;
-	}
+        if (poll_ctx.is_timeout) {
+            return 0;
+        }
+        return poll_ctx.num_raise;
+    }
 }
 
 
@@ -359,7 +359,7 @@ DEF_TLS_GET(g_epoll_ctx, create_epoll(1000), free_epoll)
 
 epoll_ctx_t * get_epoll_ctx()
 {
-    return tls_get(g_epoll_ctx); 
+    return tls_get(g_epoll_ctx);
 }
 
 

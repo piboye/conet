@@ -3,7 +3,7 @@
  *
  *       Filename:  timewheel.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 06时22分35秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -32,15 +32,15 @@ struct timewheel_t;
 
 struct timeout_handle_t
 {
-    list_head link_to;	
+    list_head link_to;
     uint64_t timeout;
-	void (*fn)(void *);
-	void * arg;
+    void (*fn)(void *);
+    void * arg;
     timewheel_t * tw;
 };
 
-void init_timeout_handle(timeout_handle_t * self, 
-        void (*fn)(void *), void *arg, int timeout=-1);
+void init_timeout_handle(timeout_handle_t * self,
+                         void (*fn)(void *), void *arg, int timeout=-1);
 
 #define DEFINE_TIMEOUT_HANDLE(name, func, arg1) \
         timeout_handle_t name; \
@@ -49,8 +49,8 @@ void init_timeout_handle(timeout_handle_t * self,
 
 struct timewheel_t
 {
-	uint64_t pos;
-	uint64_t prev_ms;
+    uint64_t pos;
+    uint64_t prev_ms;
     int task_num;
     int slot_num;
     list_head *slots;
@@ -72,4 +72,4 @@ int check_timewheel(timewheel_t *self, uint64_t cur_ms = 0);
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/);
 
 
-#endif 
+#endif

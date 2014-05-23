@@ -3,7 +3,7 @@
  *
  *       Filename:  network_hook.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月21日 17时09分00秒
@@ -11,14 +11,14 @@
  *       Compiler:  gcc
  *
  *         Author:  piboye
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
 #ifndef __NETWORK_HOOK_H__
 #define __NETWORK_HOOK_H__
 
-namespace conet 
+namespace conet
 {
 
 void disable_sys_hook();

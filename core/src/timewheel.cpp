@@ -3,7 +3,7 @@
  *
  *       Filename:  timewheel.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 06时26分36秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -23,14 +23,14 @@
 #include "tls.h"
 #include "dispatch.h"
 
-void init_timeout_handle(timeout_handle_t * self, 
-        void (*fn)(void *), void *arg, int timeout)
+void init_timeout_handle(timeout_handle_t * self,
+                         void (*fn)(void *), void *arg, int timeout)
 {
-		INIT_LIST_HEAD(&self->link_to);
-		self->timeout = timeout;
-		self->fn = fn;
-		self->arg = arg;
-        self->tw = NULL;
+    INIT_LIST_HEAD(&self->link_to);
+    self->timeout = timeout;
+    self->fn = fn;
+    self->arg = arg;
+    self->tw = NULL;
 }
 
 #define get_cur_ms get_sys_ms
@@ -58,7 +58,7 @@ void fini_timewheel(timewheel_t *self)
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
-int check_timewheel(void * arg) 
+int check_timewheel(void * arg)
 {
     return check_timewheel((timewheel_t *) arg, 0);
 }
@@ -89,7 +89,7 @@ void cancel_timeout(timeout_handle_t *obj) {
     obj->tw = NULL;
 }
 
-bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout) 
+bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
 {
     assert(list_empty(&obj->link_to));
     assert (timeout >=0);
@@ -126,7 +126,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
     list_head *slots = tw->slots;
     int pos = tw->pos;
 
-    if ((int64_t) elasp_ms >= slot_num) 
+    if ((int64_t) elasp_ms >= slot_num)
     {
         end_pos = (pos + slot_num -1) % slot_num;
     } else {
@@ -143,7 +143,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
             timeout_handle_t *t1 = container_of(it, timeout_handle_t, link_to);
             if (time_after_eq(cur_ms, t1->timeout)) {
                 //timeout and call timeout callback;
-               
+
                 //CONET_LOG(DEBUG, "timeout, obj:%p, cur:%lu, timeout:%lu", t1, cur_ms, t1->timeout);
                 cancel_timeout(t1);
                 // cancel_timeout must call before t1-fn callbak
@@ -162,7 +162,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
     return cnt;
 }
 
-static 
+static
 __thread timewheel_t * g_tw = NULL;
 
 static

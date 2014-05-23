@@ -3,7 +3,7 @@
  *
  *       Filename:  hook_helper.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月21日 03时44分00秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -19,14 +19,14 @@
 #define __HOOK_HELLPER_H__
 
 
-#define SYS_FUNC(name) g_sys_##name##_func 
+#define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
 
 #define HOOK_SYS_FUNC_DEF(ret_type, name, proto) \
     typedef ret_type (* name##_pfn_t) proto; \
     name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name); \
 extern "C"  ret_type name proto \
-
+ 
 
 #define HOOK_SYS_FUNC(name) if( !_(name)) { _(name) = (name##_pfn_t)dlsym(RTLD_NEXT,#name); }
 

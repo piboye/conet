@@ -3,7 +3,7 @@
  *
  *       Filename:  gc.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月14日 08时10分32秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include "gc.h"
 
-namespace conet 
+namespace conet
 {
 
 void gc_free_all(gc_mgr_t *mgr)

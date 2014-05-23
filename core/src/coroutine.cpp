@@ -55,7 +55,7 @@ void co_main_helper(int co_low, int co_high )
     list_del_init(&env->curr_co->wait_to);
 
     {
-    // notify exit wait queue
+        // notify exit wait queue
         list_head *it=NULL, *next=NULL;
         list_for_each_safe(it, next, &co->exit_notify_queue)
         {
@@ -64,7 +64,7 @@ void co_main_helper(int co_low, int co_high )
             resume(co2, (void *)(uint64_t)(co->ret_val));
         }
     }
-    
+
     if (co->is_end_delete) {
         //auto delete coroute object;
         //free_coroutine(co);
@@ -74,14 +74,14 @@ void co_main_helper(int co_low, int co_high )
         co_return();
         return;
     }
-    co_return(); 
-    return ;    
+    co_return();
+    return ;
 }
 
 
 
 int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
-        int stack_size, coroutine_env_t *a_env)
+                   int stack_size, coroutine_env_t *a_env)
 {
 
     self->ret_val = 0;
@@ -109,7 +109,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     return 0;
 }
 
-void set_auto_delete(coroutine_t *co) 
+void set_auto_delete(coroutine_t *co)
 {
     co->is_end_delete = 1;
 }
@@ -120,30 +120,30 @@ void set_coroutine_desc(coroutine_t *co, char const *desc)
 }
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-        int stack_size, coroutine_env_t * env)
+                              int stack_size, coroutine_env_t * env)
 {
     coroutine_t *co = ALLOC_VAR(coroutine_t);
-    init_coroutine(co, fn, arg, stack_size, env); 
+    init_coroutine(co, fn, arg, stack_size, env);
     return co;
 }
 
-void free_coroutine(coroutine_t *co) 
+void free_coroutine(coroutine_t *co)
 {
-   assert(co);
-   if (co->gc_mgr) {
-       gc_free_all(co->gc_mgr);
-       free(co->gc_mgr);
-       co->gc_mgr = NULL;
-   }
+    assert(co);
+    if (co->gc_mgr) {
+        gc_free_all(co->gc_mgr);
+        free(co->gc_mgr);
+        co->gc_mgr = NULL;
+    }
 
-   delete co->static_vars;
+    delete co->static_vars;
 
-   delete co->spec;
+    delete co->spec;
 
-   delete co->pthread_spec;
+    delete co->pthread_spec;
 
-   free(co->stack);
-   free(co);
+    free(co->stack);
+    free(co);
 }
 
 
@@ -158,7 +158,7 @@ void *resume(coroutine_t * co, void * val)
         uint64_t p = (uint64_t) co;
         getcontext(&co->ctx);
         makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
-                (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
+                    (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
     }
     co->ctx.uc_link = &cur->ctx;
     co->state = RUNNING;
@@ -170,7 +170,7 @@ void *resume(coroutine_t * co, void * val)
     return cur->yield_val;
 }
 
-void * yield(list_head *wait_to, void * val) 
+void * yield(list_head *wait_to, void * val)
 {
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
@@ -182,15 +182,15 @@ void * yield(list_head *wait_to, void * val)
 
     //assert(cur->ctx.uc_link);
     coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
-    
+
     list_del_init(&last->wait_to);
     list_del_init(&cur->wait_to);
 
     env->curr_co = last;
 
-    if (wait_to) { 
+    if (wait_to) {
         list_add_tail(&cur->wait_to, wait_to);
-    } 
+    }
 
     cur->state = SUSPEND;
     last->state = RUNNING;
@@ -199,20 +199,20 @@ void * yield(list_head *wait_to, void * val)
     return cur->yield_val;
 }
 
-coroutine_t * current_coroutine() 
+coroutine_t * current_coroutine()
 {
     coroutine_env_t * env = get_coroutine_env();
-    coroutine_t *cur =  env->curr_co; 
+    coroutine_t *cur =  env->curr_co;
     return cur;
 }
 
 
 
 
-gc_mgr_t *get_gc_mgr() 
+gc_mgr_t *get_gc_mgr()
 {
     coroutine_t *cur = current_coroutine();
-    gc_mgr_t *mgr = cur->gc_mgr; 
+    gc_mgr_t *mgr = cur->gc_mgr;
     if (!mgr) {
         mgr = (gc_mgr_t *) malloc(sizeof(gc_mgr_t));
         init_gc_mgr(mgr);
@@ -230,11 +230,11 @@ void * set_static_var(void * key, void *val)
     }
     void *old =  (*cur->static_vars)[key];
     (*cur->static_vars)[key] = val;
-    return old; 
+    return old;
 }
 
 
-void * get_static_var(void *key) 
+void * get_static_var(void *key)
 {
     coroutine_t *cur = current_coroutine();
     if (cur->static_vars == NULL) {

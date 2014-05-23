@@ -19,12 +19,12 @@ typedef int CO_MAIN_FUN(void *);
 
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-        int stack_size=128*1024, coroutine_env_t * env=NULL);
+                              int stack_size=128*1024, coroutine_env_t * env=NULL);
 
 void free_coroutine(coroutine_t *co);
 
 int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
-        int stack_size, coroutine_env_t *a_env);
+                   int stack_size, coroutine_env_t *a_env);
 
 coroutine_t * current_coroutine();
 
@@ -37,7 +37,7 @@ coroutine_env_t * get_coroutine_env();
 void set_coroutine_desc(coroutine_t *co, char const *desc);
 void set_auto_delete(coroutine_t *co);
 
-int get_epoll_pend_task_num(); 
+int get_epoll_pend_task_num();
 
 int co_poll(struct pollfd fds[], nfds_t nfds, int timeout);
 
@@ -75,7 +75,7 @@ void * set_static_var(void * key, void *val);
         co_static_var_p_ ## name = gc_new_with_init<type>(init_val, get_gc_mgr(), false); \
         set_static_var(&co_static_var_ct_ ## name, co_static_var_p_ ## name); \
     } \
-    type & name = * co_static_var_p_ ## name; 
+    type & name = * co_static_var_p_ ## name;
 
 #define CO_DEF_STATIC_PTR(type, name, init_val) \
     static int co_static_var_ct_ ## name = 0; \
@@ -84,7 +84,7 @@ void * set_static_var(void * key, void *val);
         name = init_val; \
         set_static_var(&co_static_var_ct_ ## name, name); \
     } \
-
+ 
 void * get_spec(uint64_t key);
 int set_spec(uint64_t key, void * val);
 uint64_t create_spec_key();
@@ -95,7 +95,7 @@ int set_pthread_spec(pthread_key_t key, const void * val);
 int wait(coroutine_t *co);
 
 //
-template<typename T> 
+template<typename T>
 int co_mem_fun_helper(void * arg)
 {
     T *self = (T *) arg;
@@ -122,12 +122,12 @@ public:
         conet::yield();
     }
 
-     virtual ~Coroutine()
-     {
-         free_coroutine(m_co);
-     }
+    virtual ~Coroutine()
+    {
+        free_coroutine(m_co);
+    }
 
-     virtual int run()=0;
+    virtual int run()=0;
 };
 
 }

@@ -3,15 +3,15 @@
  *
  *       Filename:  dispatch.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月21日 17时14分09秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -25,7 +25,7 @@ namespace conet
 
 static list_head * g_tasks = NULL;
 
-void free_task_list(list_head * list) 
+void free_task_list(list_head * list)
 {
     list_head *it=NULL, *next = NULL;
     list_for_each_safe(it, next, list) {
@@ -40,9 +40,9 @@ void free_task_list(list_head * list)
 
 list_head *alloc_task_list()
 {
-     list_head *n = (list_head *)malloc(sizeof(list_head));
-     INIT_LIST_HEAD(n);
-     return n;
+    list_head *n = (list_head *)malloc(sizeof(list_head));
+    INIT_LIST_HEAD(n);
+    return n;
 }
 
 DEF_TLS_GET(g_tasks, alloc_task_list(), free_task_list)
@@ -60,17 +60,17 @@ int proc_tasks(list_head *list)
 }
 
 
-int dispatch_one() 
+int dispatch_one()
 {
     return proc_tasks(tls_get(g_tasks));
 }
 
-void registry_task(task_t *task) 
+void registry_task(task_t *task)
 {
     list_add_tail(&task->link_to, tls_get(g_tasks));
 }
 
-void unregistry_task(task_t *task) 
+void unregistry_task(task_t *task)
 {
     list_del_init(&task->link_to);
 }
