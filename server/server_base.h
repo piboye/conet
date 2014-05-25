@@ -54,6 +54,7 @@ struct server_t
     int max_packet_size;
     int (*proc)(conn_info_t *conn);
     co_pool_t co_pool;
+    void *extend;
 };
 
 struct conn_info_t

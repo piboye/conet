@@ -37,6 +37,7 @@ void init_co_pool(co_pool_t *pool, int max_num)
 
 int client_proc(conn_info_t *info) 
 {
+    conet::enable_sys_hook();
     co_pool_item_t pool_item;   
     INIT_LIST_HEAD(&pool_item.link);
     pool_item.co = info->co; 
@@ -102,6 +103,7 @@ int init_server(server_t *server, const char *ip, int port, int max_packet_size)
     server->port = port;
     server->state = 0;
     server->co = NULL;
+    server->extend = NULL;
     server->max_packet_size = max_packet_size;
     init_co_pool(&server->co_pool, 10000);
     return 0;
@@ -125,8 +127,12 @@ int server_main(void *arg)
     conet::enable_sys_hook();
 
     int listen_fd = create_tcp_socket(server->port, server->ip.c_str());
+    if (listen_fd <0) 
+    {
+        return -1;
+    }
+
     listen(listen_fd, 1024); 
-    set_none_block(listen_fd);
 
     server->listen_fd = listen_fd;
     int waits = 5; // 5 seconds;

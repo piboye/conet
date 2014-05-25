@@ -85,7 +85,7 @@ void cancel_timeout(timeout_handle_t *obj) {
     if (tw)  {
         --tw->task_num;
     }
-    CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
+    //CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
     obj->tw = NULL;
 }
 

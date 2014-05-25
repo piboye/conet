@@ -39,6 +39,7 @@
 #include <vector>
 
 #include "time_helper.h"
+#include "log.h"
 
 
 enum {
@@ -129,13 +130,13 @@ int read_data(int fd, char *buff, size_t len, int timeout, int *cost_timeout=NUL
     }
     if (cost_timeout) *cost_timeout = (now-start); 
 
-    if (ret <0) return ret;
-    return len;
+    if (ret <=0) return ret;
+    return cur_len;
 }
 
 static
 inline
-int read_one_pack(int fd, std::string *result, 
+int read_one_pack(int fd, char *result, 
             int timeout = 10,  
             int max_len = 1024*1024, 
             int *cost_timeout = NULL
@@ -152,17 +153,73 @@ int read_one_pack(int fd, std::string *result,
     rest_timeout -= use_timeout; 
     used_timeout += use_timeout; 
     if (cost_timeout) *cost_timeout = used_timeout; 
+
+    if (ret == 0) {
+        return 0;
+    } 
+
+    if (rest_timeout < 0) { 
+        return ERR_TIMEOUT_NET_HELPER; 
+    }
+
+
+
+    if (ret != (int) sizeof(len)) {
+        return -3;
+    }
+
+    len = ntohl(len);
+    if ((int64_t) len >  max_len) return -4;
+
+    ret = read_data(fd, (char *)result, len, rest_timeout, &use_timeout);
+
+    rest_timeout -= use_timeout; 
+    used_timeout += use_timeout; 
+    if (cost_timeout) *cost_timeout = used_timeout; 
+    if (rest_timeout < 0) { 
+        return ERR_TIMEOUT_NET_HELPER; 
+    } 
+
+    return ret; 
+}
+
+static
+inline
+int read_one_pack(int fd, std::string *result, 
+            int timeout = 10,  
+            int max_len = 1024*1024, 
+            int *cost_timeout = NULL
+            ) 
+{
+    int rest_timeout = timeout; 
+    int used_timeout = 0; 
+    int use_timeout = rest_timeout;
+
+    uint32_t len = 0;
+    int ret = 0;
+ 
+
+    ret = read_data(fd, (char *)&len, sizeof(len), rest_timeout, &use_timeout);
+
+    rest_timeout -= use_timeout; 
+    used_timeout += use_timeout; 
+    if (cost_timeout) *cost_timeout = used_timeout; 
+
+    if (ret == 0) {
+        return 0;
+    }
+
     if (rest_timeout < 0) { 
         return ERR_TIMEOUT_NET_HELPER; 
     } 
 
 
     if (ret != (int) sizeof(len)) {
-        return -__LINE__;
+        return -3;
     }
 
     len = ntohl(len);
-    if ((int64_t) len >  max_len) return 0;
+    if ((int64_t) len >  max_len) return -4;
 
     result->resize(len, '0');
     ret = read_data(fd, (char *)result->data(), len, rest_timeout, &use_timeout);

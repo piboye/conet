@@ -73,7 +73,9 @@ void init_poll_wait_item(poll_wait_item_t *self, poll_ctx_t *ctx, int pos, fd_ct
     self->poll_ctx = ctx;
     self->pos = pos;
     self->fd_ctx = fd_ctx;
-    list_add_tail(&self->to_fd, &fd_ctx->poll_wait_queue);
+    if (fd_ctx) {
+        list_add_tail(&self->to_fd, &fd_ctx->poll_wait_queue);
+    } 
 }
 
 
@@ -201,7 +203,7 @@ void  init_poll_ctx(poll_ctx_t *self,
 	for(int i=0; i< (int)nfds; ++i) {
         if( fds[i].fd > -1 ) {
             fds[i].revents = 0;
-            CONET_LOG(DEBUG, "poll wait fd:%d, events:%u", fds[i].fd, fds[i].events);
+            //CONET_LOG(DEBUG, "poll wait fd:%d, events:%u", fds[i].fd, fds[i].events);
             fd_ctx_t *item = get_fd_ctx(fds[i].fd);
             if (item) {
                 incr_ref_fd_ctx(item);
@@ -220,6 +222,8 @@ void  init_poll_ctx(poll_ctx_t *self,
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
                 }
             }	
+        } else {
+            init_poll_wait_item(self->wait_items+i,  self, i,  NULL);
         }
 	}
 
