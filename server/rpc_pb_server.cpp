@@ -27,11 +27,22 @@ using namespace conet_rpc_pb;
 namespace conet
 {
 
-static std::map<std::string , std::map<std::string, rpc_pb_cmd_t> > g_server_cmd_maps;
+static std::map<std::string , std::map<std::string, rpc_pb_cmd_t> > *g_server_cmd_maps=NULL;
+
+static 
+void clear_g_server_maps(void)
+{
+    delete g_server_cmd_maps;
+    g_server_cmd_maps = NULL;
+}
 
 int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, void *arg )
 {
-    std::map<std::string, rpc_pb_cmd_t> & maps = g_server_cmd_maps[server_name];
+    if (NULL == g_server_cmd_maps) {
+        g_server_cmd_maps = new typeof(*g_server_cmd_maps);
+        atexit(clear_g_server_maps);
+    }
+    std::map<std::string, rpc_pb_cmd_t> & maps = (*g_server_cmd_maps)[server_name];
     rpc_pb_cmd_t item; 
     item.name = name;
     item.proc = proc;
@@ -77,7 +88,7 @@ rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 
 int get_global_server_cmd(rpc_pb_server_t * server) 
 {
-    server->cmd_maps = g_server_cmd_maps[server->server_name];
+    server->cmd_maps = (*g_server_cmd_maps)[server->server_name];
     return server->cmd_maps.size();
 }
 
