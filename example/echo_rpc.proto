@@ -1,0 +1,9 @@
+message EchoReq
+{
+    optional bytes msg = 1;
+}
+
+message EchoResp
+{
+    optional bytes msg = 1;
+}

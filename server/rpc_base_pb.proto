@@ -1,0 +1,28 @@
+package conet_rpc_pb;
+
+message CmdBase
+{
+    enum TYPE {
+        REQUEST_TYPE=1;
+        RESPONSE_TYPE=2;
+    }
+    optional int32 type=1;
+    optional bytes server_name=2;
+    optional bytes cmd_name=3;
+    optional uint64 seq_id=4;
+    optional bytes body=5;
+    enum ERROR {
+        ERR_UNSUPPORED_CMD = 1;
+        ERR_PARSE_REQ_BODY = 2;
+    };
+    optional int32 ret=6;
+    optional bytes errmsg=7;
+};
+
+message CmdBaseResp
+{
+    optional int64 retcode=1; 
+    optional bytes errmsg=2; 
+    optional bytes body=3;
+};
+
