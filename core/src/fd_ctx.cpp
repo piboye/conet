@@ -3,7 +3,7 @@
  *
  *       Filename:  fd_ctx.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 15时55分54秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -63,28 +63,28 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
 
 static __thread fd_ctx_mgr_t * g_fd_ctx_mgr = NULL;
 
-static inline 
+static inline
 void expand(fd_ctx_mgr_t *mgr, int need_size)
 {
     int size = mgr->size;
     while (size <= need_size) {
-        size +=10000;    
+        size +=10000;
     }
     mgr->fds = (fd_ctx_t **)realloc(mgr->fds, size+1);
     for (int i = mgr->size+1; i < size; i++) {
-       mgr->fds[i] = NULL;
-    } 
+        mgr->fds[i] = NULL;
+    }
 }
 
 DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(10000), free_fd_ctx_mgr)
-    
+
 
 fd_ctx_t *get_fd_ctx(int fd)
 {
     if (fd <0) return NULL;
 
-    fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr); 
-    
+    fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
+
     if (fd >  mgr->size) {
         assert("!too many fd");
         exit(1);
@@ -92,7 +92,7 @@ fd_ctx_t *get_fd_ctx(int fd)
     return  mgr->fds[fd];
 }
 
-fd_ctx_t *alloc_fd_ctx(int fd) 
+fd_ctx_t *alloc_fd_ctx(int fd)
 {
     if (fd <0) {
         assert(!"fd <0");
@@ -101,13 +101,13 @@ fd_ctx_t *alloc_fd_ctx(int fd)
     }
 
     fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
-    
+
     if (fd >= mgr->size ) {
         expand(mgr, fd);
     }
 
     fd_ctx_t * d = mgr->fds[fd];
-    if (NULL == d) 
+    if (NULL == d)
     {
         HOOK_SYS_FUNC(fcntl);
         d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
@@ -122,8 +122,8 @@ fd_ctx_t *alloc_fd_ctx(int fd)
         d->wait_events = 0;
 
         // 设置 none block, 方便hook 系统调用
-        // user_flag 只保存用户设置的标志。 
-	    _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK); 
+        // user_flag 只保存用户设置的标志。
+        _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
         mgr->fds[fd] = d;
     }
     return mgr->fds[fd];
@@ -134,7 +134,7 @@ int free_fd_ctx(int fd)
     if (fd <0) return -1;
 
     fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
-    
+
     if (fd > mgr->size ) {
         return -2;
     }

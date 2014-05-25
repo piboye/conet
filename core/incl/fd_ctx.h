@@ -3,15 +3,15 @@
  *
  *       Filename:  fd_ctx.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 15时53分39秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -28,16 +28,16 @@ namespace conet
 
 struct fd_ctx_t
 {
-	int fd;
+    int fd;
     int use_cnt;
-	int user_flag;
-	struct sockaddr_in dest; //maybe sockaddr_un;
-	int domain; //AF_LOCAL , AF_INET
+    int user_flag;
+    struct sockaddr_in dest; //maybe sockaddr_un;
+    int domain; //AF_LOCAL , AF_INET
 
     int rcv_timeout;
     int snd_timeout;
     uint32_t wait_events;
-	list_head poll_wait_queue;
+    list_head poll_wait_queue;
 };
 
 

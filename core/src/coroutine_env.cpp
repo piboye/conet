@@ -3,7 +3,7 @@
  *
  *       Filename:  coroutine_env.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月20日 03时20分07秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -30,7 +30,7 @@
 namespace conet
 {
 
-void init_coroutine_env(coroutine_env_t *self) 
+void init_coroutine_env(coroutine_env_t *self)
 {
     self->main = ALLOC_VAR(coroutine_t);
     init_coroutine(self->main, NULL, NULL, 128*1024, self);
@@ -48,7 +48,7 @@ void init_coroutine_env(coroutine_env_t *self)
     self->spec_key_seed = 10000;
 }
 
-static __thread coroutine_env_t * g_env=NULL; 
+static __thread coroutine_env_t * g_env=NULL;
 
 inline
 coroutine_env_t *alloc_coroutine_env()
@@ -70,7 +70,7 @@ DEF_TLS_GET(g_env, alloc_coroutine_env(), free_coroutine_env);
 
 coroutine_env_t * get_coroutine_env()
 {
-    return tls_get(g_env); 
+    return tls_get(g_env);
 }
 
 int proc_netevent(int timeout);
@@ -84,7 +84,7 @@ int dispatch_one(int timeout)
     proc_tasks(&env->tasks);
     proc_netevent(timeout);
     return 0;
-}  
+}
 */
 
 uint64_t create_spec_key()

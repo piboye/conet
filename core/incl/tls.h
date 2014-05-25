@@ -3,7 +3,7 @@
  *
  *       Filename:  tls.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  04/23/2014 05:32:38 PM
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -24,8 +24,8 @@
 int tls_onexit_add(void *arg, void (*free_fn)(void *));
 
 template<typename T>
-inline 
-void tls_destructor_fun(void * arg) 
+inline
+void tls_destructor_fun(void * arg)
 {
     T * obj = (T*)(arg);
     delete obj;
@@ -33,7 +33,7 @@ void tls_destructor_fun(void * arg)
 
 template<typename T>
 inline
-T * tls_get(pthread_key_t  key) 
+T * tls_get(pthread_key_t  key)
 {
     T * val= (T *) pthread_getspecific(key);
     if (NULL == val) {
@@ -43,7 +43,7 @@ T * tls_get(pthread_key_t  key)
     return val;
 }
 
-    
+
 template<typename T>
 inline
 T * tls_get(T * & val)
@@ -67,7 +67,7 @@ typeof(val) tls_get(typeof(val) &val) \
     }  \
     return val; \
 } \
-
+ 
 
 
 #endif

@@ -3,7 +3,7 @@
  *
  *       Filename:  gc.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月13日 16时42分43秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -25,7 +25,7 @@ namespace conet
 
 struct gc_mgr_t
 {
-    list_head alloc_list;    
+    list_head alloc_list;
 };
 
 struct gc_block_t
@@ -37,22 +37,22 @@ struct gc_block_t
 };
 
 template <typename T>
-void destructor_proxy(void * arg, int num) 
+void destructor_proxy(void * arg, int num)
 {
-   T * obj = (T*)(arg);
-   for (int i=0; i<num; ++i) {
-      ~T(obj+i);
-   }
+    T * obj = (T*)(arg);
+    for (int i=0; i<num; ++i) {
+        ~T(obj+i);
+    }
 }
 
 template <typename T>
-T*  gc_alloc(int num, gc_mgr_t *mgr, bool add_to_tail=true) 
+T*  gc_alloc(int num, gc_mgr_t *mgr, bool add_to_tail=true)
 {
     if (num <=0) return NULL;
 
     size_t len = sizeof(gc_block_t) + num * sizeof(T);
     gc_block_t * p = (gc_block_t *) malloc(len);
-    p-> destructor = NULL; 
+    p-> destructor = NULL;
     p-> num  = num ;
 
     INIT_LIST_HEAD(&p->link);
@@ -62,16 +62,16 @@ T*  gc_alloc(int num, gc_mgr_t *mgr, bool add_to_tail=true)
     else {
         list_add(&p->link, &mgr->alloc_list);
     }
-     
+
     return (T*)(p->data);
 }
 
 template <typename T, typename T1>
-T*  gc_new_with_init(T1 const & t1, gc_mgr_t *mgr, bool add_to_tail=true) 
+T*  gc_new_with_init(T1 const & t1, gc_mgr_t *mgr, bool add_to_tail=true)
 {
     size_t len = sizeof(gc_block_t) + sizeof(T);
     gc_block_t * p = (gc_block_t *) malloc(len);
-    p-> destructor = &destructor_proxy<T>; 
+    p-> destructor = &destructor_proxy<T>;
     p-> num  = 1 ;
     ::new (p->data) T(t1);
 
@@ -82,18 +82,18 @@ T*  gc_new_with_init(T1 const & t1, gc_mgr_t *mgr, bool add_to_tail=true)
     else {
         list_add(&p->link, &mgr->alloc_list);
     }
-     
+
     return (T*)(p->data);
 }
 
 template <typename T>
-T*  gc_new(int num, gc_mgr_t *mgr, bool add_to_tail = true) 
+T*  gc_new(int num, gc_mgr_t *mgr, bool add_to_tail = true)
 {
     if (num <=0) return NULL;
 
     size_t len = sizeof(gc_block_t) + num * sizeof(T);
     gc_block_t * p = (gc_block_t *) malloc(len);
-    p-> destructor = &destructor_proxy<T>; 
+    p-> destructor = &destructor_proxy<T>;
     p-> num  = num ;
     ::new (p->data) T[num];
 
@@ -104,7 +104,7 @@ T*  gc_new(int num, gc_mgr_t *mgr, bool add_to_tail = true)
     else {
         list_add(&p->link, &mgr->alloc_list);
     }
-     
+
     return (T*)(p->data);
 }
 
@@ -120,7 +120,7 @@ public:
     gc_block_t *m_block;
     gc_mgr_t * m_gc_mgr;
     explicit
-    ScopeGC(gc_mgr_t *mgr) 
+    ScopeGC(gc_mgr_t *mgr)
     {
         m_block = (gc_block_t *) malloc(sizeof(gc_block_t));
         m_block-> destructor = NULL;
@@ -133,15 +133,15 @@ public:
 
     ~ScopeGC()
     {
-       gc_mgr_t mgr;  
-       init_gc_mgr(&mgr);
+        gc_mgr_t mgr;
+        init_gc_mgr(&mgr);
 
-       list_cut_position(&mgr.alloc_list, 
-               &m_gc_mgr->alloc_list, 
-               &m_block->link
-               );
+        list_cut_position(&mgr.alloc_list,
+                          &m_gc_mgr->alloc_list,
+                          &m_block->link
+                         );
 
-       gc_free_all(&mgr);
+        gc_free_all(&mgr);
     }
 };
 

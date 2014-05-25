@@ -3,7 +3,7 @@
  *
  *       Filename:  tls.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  04/23/2014 05:33:42 PM
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboye
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -22,7 +22,7 @@
 #include "list.h"
 
 #define LOG(...)
- 
+
 #define gettid() syscall(__NR_gettid)
 #define TLS_OUT_OF_INDEXES          0xffffffff
 
@@ -32,15 +32,15 @@ struct pthread_atexit_t
     void   *arg;
     list_head link_to;
 };
- 
- 
-static 
+
+
+static
 pthread_key_t   g_pthread_atexit_key = TLS_OUT_OF_INDEXES;
 
-static 
+static
 pthread_once_t  g_pthread_atexit_control_once = PTHREAD_ONCE_INIT;
- 
-static 
+
+static
 void pthread_atexit_done(void *arg)
 {
     list_head *list = (list_head *) arg;
@@ -56,16 +56,16 @@ void pthread_atexit_done(void *arg)
         list_del(it);
         free(id_ptr);
     }
-    free(list); 
+    free(list);
 }
- 
-static 
+
+static
 void pthread_atexit_init(void)
 {
     pthread_key_create(&g_pthread_atexit_key, pthread_atexit_done);
 }
 
- 
+
 int tls_onexit_add(void *arg, void (*free_fn)(void *))
 {
     pthread_once(&g_pthread_atexit_control_once, pthread_atexit_init);
@@ -75,7 +75,7 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
         return (-1);
     }
 
-    list_head * list = (list_head *)pthread_getspecific(g_pthread_atexit_key); 
+    list_head * list = (list_head *)pthread_getspecific(g_pthread_atexit_key);
     if (NULL == list) {
         list = (list_head *)malloc(sizeof(list_head));
         INIT_LIST_HEAD(list);
@@ -83,7 +83,7 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
     }
 
     pthread_atexit_t *item = (pthread_atexit_t *)malloc(sizeof(pthread_atexit_t));
-    INIT_LIST_HEAD(&item->link_to); 
+    INIT_LIST_HEAD(&item->link_to);
     item->free_fn = free_fn;
     item->arg = arg;
     list_add(&item->link_to, list);

@@ -3,15 +3,15 @@
  *
  *       Filename:  coroutine_impl.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 07时21分13秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -24,7 +24,7 @@
 #include "coroutine.h"
 #include <map>
 
-namespace conet 
+namespace conet
 {
 
 struct epoll_ctx_t;
@@ -57,10 +57,10 @@ struct coroutine_t
     int state;
 
     struct {
-    unsigned int is_main:1;
-    unsigned int is_enable_sys_hook:1;
-    unsigned int is_end_delete:1;
-    unsigned int is_enable_pthread_hook:1;
+        unsigned int is_main:1;
+        unsigned int is_enable_sys_hook:1;
+        unsigned int is_end_delete:1;
+        unsigned int is_enable_pthread_hook:1;
     };
 
     int ret_val;
@@ -68,7 +68,7 @@ struct coroutine_t
 
     CO_MAIN_FUN *pfn;
     void *pfn_arg;
-    
+
     char const *desc;
     gc_mgr_t * gc_mgr; // gc mem alloc manager
 

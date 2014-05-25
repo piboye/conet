@@ -3,7 +3,7 @@
  *
  *       Filename:  mem_pool.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月11日 04时39分46秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboyeliu
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -20,11 +20,11 @@
 
 struct mempool_t
 {
-   uint64_t total_num;
-   uint64_t used_num;
-   uint64_t max_num;
-   uint64_t alloc_size;
-   list_head free_list;
+    uint64_t total_num;
+    uint64_t used_num;
+    uint64_t max_num;
+    uint64_t alloc_size;
+    list_head free_list;
 };
 
 int init_mempool(mempool_t *mgr, uint64_t alloc_size,  uint64_t max_num)

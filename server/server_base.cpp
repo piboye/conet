@@ -3,15 +3,15 @@
  *
  *       Filename:  server_base.cpp
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月10日 15时55分50秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -35,34 +35,34 @@ void init_co_pool(co_pool_t *pool, int max_num)
     pool->max_num = max_num;
 }
 
-int client_proc(conn_info_t *info) 
+int client_proc(conn_info_t *info)
 {
     conet::enable_sys_hook();
     co_pool_item_t pool_item;   
     INIT_LIST_HEAD(&pool_item.link);
-    pool_item.co = info->co; 
+    pool_item.co = info->co;
     server_t *server = info->server;
-    co_pool_t *pool = &server->co_pool; 
+    co_pool_t *pool = &server->co_pool;
     ++pool->total_num;
-    
-    while(server->state == 0) 
-    { //running;
 
-       list_add(&pool_item.link, &pool->used_list);
+    while(server->state == 0)
+    {   //running;
 
-       int ret = 0;
+        list_add(&pool_item.link, &pool->used_list);
 
-       ret = server->proc(info); 
-       close(info->fd);
-       delete info;
-       info = NULL;
+        int ret = 0;
 
-       if (ret) break;
-       list_del_init(&pool_item.link);
+        ret = server->proc(info);
+        close(info->fd);
+        delete info;
+        info = NULL;
 
-       if (pool->total_num > pool->max_num) break;
-       list_add(&pool_item.link, &pool->free_list);
-       info = (conn_info_t *) conet::yield(0);
+        if (ret) break;
+        list_del_init(&pool_item.link);
+
+        if (pool->total_num > pool->max_num) break;
+        list_add(&pool_item.link, &pool->free_list);
+        info = (conn_info_t *) conet::yield(0);
     }
 
     list_del_init(&pool_item.link);
@@ -74,21 +74,21 @@ int client_proc(conn_info_t *info)
 
 int proc_pool(server_t *server, conn_info_t *conn_info)
 {
-    co_pool_t *pool = &server->co_pool; 
-    
-    if (list_empty(&pool->free_list)) 
+    co_pool_t *pool = &server->co_pool;
+
+    if (list_empty(&pool->free_list))
     {
-       if (pool->total_num + 1 < pool->max_num) {
-           conn_info->co = alloc_coroutine((int (*)(void *))client_proc, conn_info);
-           set_auto_delete(conn_info->co);
-           resume(conn_info->co, conn_info);
-           return 0;
-       } else {
-           while  (list_empty(&pool->free_list)) {
-               usleep(1000);
-           }
-       }
-    } 
+        if (pool->total_num + 1 < pool->max_num) {
+            conn_info->co = alloc_coroutine((int (*)(void *))client_proc, conn_info);
+            set_auto_delete(conn_info->co);
+            resume(conn_info->co, conn_info);
+            return 0;
+        } else {
+            while  (list_empty(&pool->free_list)) {
+                usleep(1000);
+            }
+        }
+    }
 
     list_head * it = pool->free_list.next;
     list_del_init(it);
@@ -113,12 +113,12 @@ int server_main(void *arg);
 
 int start_server(server_t *server)
 {
-     server->co = alloc_coroutine(server_main, server); 
-     conet::resume(server->co);
-     return 0;
+    server->co = alloc_coroutine(server_main, server);
+    conet::resume(server->co);
+    return 0;
 }
 
- 
+
 
 int server_main(void *arg)
 {
@@ -144,9 +144,9 @@ int server_main(void *arg)
         pf.fd = listen_fd;
         pf.events = (POLLIN|POLLERR|POLLHUP);
         ret = poll(&pf, 1, 1000);
-        if (ret <=0) continue; 
+        if (ret <=0) continue;
 
-        struct sockaddr_in addr; 
+        struct sockaddr_in addr;
         memset( &addr,0,sizeof(addr) );
         socklen_t len = sizeof(addr);
 

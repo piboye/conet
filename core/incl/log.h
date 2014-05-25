@@ -3,15 +3,15 @@
  *
  *       Filename:  log.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年05月07日 17时02分45秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
- *   Organization:  
+ *         Author:  YOUR NAME (),
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -20,6 +20,6 @@
 #include <stdio.h>
 
 #define CONET_LOG(INFO, fmt,  ...) \
-    fprintf(stderr, "[%s:%d][%s][%s]" fmt "\n", __FILE__, __LINE__, #INFO, __func__, ##__VA_ARGS__) 
+    //fprintf(stderr, "[%s:%d][%s][%s]" fmt "\n", __FILE__, __LINE__, #INFO, __func__, ##__VA_ARGS__) 
 
 #endif  //__CO_LOG_H_INC__
