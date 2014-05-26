@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "core/incl/net_tool.h"
+#include "net_tool.h"
 #include "example/echo_rpc.pb.h"
 #include "server/rpc_pb_server.h"
 

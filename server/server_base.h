@@ -20,8 +20,8 @@
 #include <string>
 #include <stdint.h>
 #include <netinet/in.h>
-#include "core/incl/conet_all.h"
-#include "core/incl/list.h"
+#include "conet_all.h"
+#include "list.h"
 
 namespace conet
 {

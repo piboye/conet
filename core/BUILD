@@ -15,5 +15,6 @@ cc_library(
     incs= [ 
         "incl/",
     ],
+    export_incs=["incl/"],
     link_all_symbols = True,
 );

@@ -17,8 +17,8 @@
  */
 #include <stdlib.h>
 #include "rpc_pb_server.h"
-#include "core/incl/log.h"
-#include "core/incl/net_tool.h"
+#include "log.h"
+#include "net_tool.h"
 
 #define AUTO_VAR(a, op, val) typeof(val) a op val
 

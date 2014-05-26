@@ -19,8 +19,8 @@
 #include <stdint.h>
 #include <string>
 #include <netinet/tcp.h>
-#include "core/incl/conet_all.h"
-#include "core/incl/net_tool.h"
+#include "conet_all.h"
+#include "net_tool.h"
 #include "server_base.h"
 
 

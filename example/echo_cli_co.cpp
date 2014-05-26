@@ -18,8 +18,8 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "core/incl/net_tool.h"
-#include "core/incl/conet_all.h"
+#include "net_tool.h"
+#include "conet_all.h"
 
 //using namespace conet;
 

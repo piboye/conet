@@ -21,6 +21,7 @@ proto_library(
         srcs=[
             'echo_rpc.proto'
         ],
+        export_incs=["example"],
 )
 
 cc_binary(
