@@ -1,7 +1,8 @@
 cc_library(
     name = 'server_base',
     srcs = [
-        "server_base.cpp"
+        "server_base.cpp",
+        "sigsegv.cpp",
     ],
     deps =[
         "//core:conet"

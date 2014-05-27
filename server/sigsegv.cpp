@@ -27,6 +27,29 @@
 
 using __cxxabiv1::__cxa_demangle;
 
+static const char * g_regs_name[NGREG] =
+{
+    "GS",
+    "FS",
+    "ES",
+    "DS",
+    "EDI",
+    "ESI",
+    "EBP",
+    "ESP",
+    "EBX",
+    "EDX",
+    "ECX",
+    "EAX",
+    "TRAPNO",
+    "ERR",
+    "EIP",
+    "CS",
+    "EFL",
+    "UESP",
+    "SS"
+};
+
 #define REGFORMAT "%016lx"
 
 void print_ucontext(ucontext *uc, int fd)
@@ -43,7 +66,7 @@ void print_ucontext(ucontext *uc, int fd)
 	} while(0) \
 		
 	for(int i = 0; i < (int) NGREG; ++i) {
-        uc_out("reg[%02d]=\t0x" REGFORMAT, i, uc->uc_mcontext.gregs[i]);
+        uc_out("reg[%02d:%s]=\t0x" REGFORMAT, i, g_regs_name[i], uc->uc_mcontext.gregs[i]);
 	}
 
     void *ip = (void*)uc->uc_mcontext.gregs[REG_RIP];
@@ -105,6 +128,8 @@ void signal_handle(int signum, siginfo_t* info, void*ptr)
 
 static char s_sig_stack[1024000];
 
+static int s_catch_sig[] = {SIGILL, SIGBUS, SIGFPE, SIGABRT, SIGPIPE, SIGSEGV};
+
 static void __attribute__((constructor)) setup_sig() 
 {
     stack_t sigstack;
@@ -118,8 +143,11 @@ static void __attribute__((constructor)) setup_sig()
     memset(&action, 0, sizeof(action));
     action.sa_sigaction = signal_handle;
     action.sa_flags = SA_SIGINFO;
-    if(sigaction(SIGSEGV, &action, NULL) < 0)
-        perror("sigaction");
 
+    int len = sizeof(s_catch_sig)/ sizeof(s_catch_sig[0]);
+    for (int i=0; i<len; ++i) {
+        if(sigaction(s_catch_sig[i], &action, NULL) < 0)
+            perror("sigaction");
+    }
 }
 
