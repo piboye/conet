@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <pthread.h>
+#include <vector>
 
 #include <time.h>
 
