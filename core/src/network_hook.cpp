@@ -729,6 +729,95 @@ HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
     return conet::co_poll(NULL, 0, s*1000);
 }
 
+HOOK_SYS_FUNC_DEF(int,  select, 
+        (int nfds, fd_set *readfds, fd_set *writefds,
+        fd_set *exceptfds, struct timeval *timeout)
+)
+{
+	HOOK_SYS_FUNC( select );
+	if( !conet::is_enable_sys_hook() )
+	{
+		return _(select)(nfds, readfds, writefds, exceptfds, timeout);
+	}
+
+    std::vector<pollfd> pfs;
+    for (int i=0; i<nfds; ++i){
+        pollfd pf;
+        pf.fd = -1;
+        pf.events = 0;
+        pf.revents = 0;
+        if (readfds) {
+            if (FD_ISSET(i, readfds)) {
+                pf.fd = i;
+                pf.events |= POLLIN;
+            }
+        }
+        if (writefds) {
+            if (FD_ISSET(i, writefds)) {
+                pf.fd = i;
+                pf.events |= POLLOUT;
+            }
+        }
+        if (exceptfds) {
+            if (FD_ISSET(i, exceptfds)) {
+                pf.fd = i;
+                pf.events |= POLLERR;
+            }
+        }
+        if (pf.fd >=0) pfs.push_back(pf);
+    }
+	int to = 0;
+    if (timeout) {
+      to = ( timeout->tv_sec * 1000 ) 
+				+ ( timeout->tv_usec / 1000 );
+    }
+
+    if (pfs.empty()) {
+        return poll(NULL, 0, to);
+    }
+
+    int ret = poll(&pfs[0], pfs.size(), to);
+    if (ret == 0) return 0;
+
+    if (readfds) {
+        FD_ZERO(readfds);
+    }
+    if (writefds) {
+        FD_ZERO(writefds);
+    }
+    if (exceptfds) {
+        FD_ZERO(exceptfds);
+    }
+
+    int cnt = 0;
+    int len = pfs.size();
+    for (int i=0; i<len; ++i)
+    {
+        int set = 0;
+        pollfd pf=pfs[i];
+        if (readfds) {
+            if (pf.revents & POLLIN) {
+                FD_SET(pf.fd, readfds);
+                set = 1; 
+            }
+        }
+        if (writefds) {
+            if (pf.revents & POLLOUT) {
+                FD_SET(pf.fd, writefds);
+                set = 1; 
+            }
+        }
+        if (exceptfds) {
+            if (pf.revents & POLLERR) {
+                FD_SET(pf.fd, exceptfds);
+                set = 1; 
+            }
+        }
+        if (set) ++cnt;
+    }
+    return cnt;
+}
+
 namespace conet
 {
 
