@@ -23,7 +23,7 @@ namespace conet
 {
 
 
-static list_head * g_tasks = NULL;
+static __thread list_head * g_tasks = NULL;
 
 void free_task_list(list_head * list)
 {
@@ -65,6 +65,11 @@ int dispatch_one()
     return proc_tasks(tls_get(g_tasks));
 }
 
+void registry_task(list_head *list, task_t *task)
+{
+    list_add_tail(&task->link_to, list);
+}
+
 void registry_task(task_t *task)
 {
     list_add_tail(&task->link_to, tls_get(g_tasks));
@@ -82,12 +87,17 @@ void init_task(task_t *task, task_proc_fun_t proc, void *arg)
     task->auto_del = 0;
 }
 
-void registry_task(task_proc_fun_t proc, void *arg)
+void registry_task(list_head *list, task_proc_fun_t proc, void *arg)
 {
     task_t * t = (task_t *) malloc(sizeof(task_t));
     init_task(t, proc, arg);
     t->auto_del = 1;
-    registry_task(t);
+    registry_task(list, t);
+}
+
+void registry_task(task_proc_fun_t proc, void *arg)
+{
+    registry_task(tls_get(g_tasks), proc, arg);
 }
 
 }

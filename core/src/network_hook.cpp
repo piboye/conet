@@ -621,7 +621,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     HOOK_SYS_FUNC(usleep);
     if( !conet::is_enable_sys_hook() )
     {
-        return g_sys_usleep_func(us);
+        return _(usleep)(us);
     }
 
     int ms = (us+999)/1000;
@@ -722,7 +722,7 @@ HOOK_SYS_FUNC_DEF(int, dup3, (int old, int newfd, int flags))
 
 HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
 {
-    HOOK_SYS_FUNC(usleep);
+    HOOK_SYS_FUNC(sleep);
     if( !conet::is_enable_sys_hook() )
     {
         return _(sleep)(s);

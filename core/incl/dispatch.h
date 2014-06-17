@@ -33,13 +33,17 @@ struct task_t
 
 
 void init_task(task_t *task, task_proc_fun_t proc, void *arg);
-void registry_task(task_proc_fun_t proc, void *arg);
 
+void registry_task(list_head *list, task_proc_fun_t proc, void *arg);
+void registry_task(list_head *list, task_t *task);
+
+void registry_task(task_proc_fun_t proc, void *arg);
 void registry_task(task_t *task);
 
 void unregistry_task(task_t *task);
 
 
+int proc_tasks(list_head *list);
 int dispatch_one();
 
 }
