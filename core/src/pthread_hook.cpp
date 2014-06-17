@@ -82,8 +82,6 @@ HOOK_FUNC_DEF(
 }
 
 
-#define XTRACE(fmt,...)    
-//fprintf(stderr, "%s:%d\t" fmt "\n",__FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 static
 void tls_fin_mutex(void *arg)
@@ -152,7 +150,6 @@ int proc_mutex_schedule(void *arg)
 static
 list_head *get_mutex_schedule_queue() 
 {
-    XTRACE();
     if (NULL == g_mutex_schedule_queue) {
         g_mutex_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_mutex_schedule_queue);
@@ -273,10 +270,8 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 	HOOK_FUNC(pthread_cond_wait);
 	if(!conet::is_enable_pthread_hook())
 	{
-        XTRACE("cond:%p", cond);
         return _(pthread_cond_wait)(cond, mutex);
     }
-    XTRACE("coroutine cond:%p", cond);
 
     pcond_ctx_t wait_item;
     //pthread_mutex_init(&wait_item.mutex, NULL);
@@ -312,7 +307,6 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 static
 void proc_pthread_cond_timeout(void *arg)
 {
-    XTRACE();
     pcond_ctx_t *ctx = (pcond_ctx_t *) (arg);
     ctx->ret_timeout = 1;
     SCOPE_LOCK(&g_cond_mgr_mutex)
@@ -331,7 +325,6 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
             const struct timespec * __restrict abstime
             )) 
 {
-    XTRACE("cond:%p", cond);
 	HOOK_FUNC(pthread_cond_timedwait);
 	if(!conet::is_enable_pthread_hook())
 	{
@@ -381,11 +374,6 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
 HOOK_FUNC_DEF(int, pthread_cond_signal, (pthread_cond_t *cond))
 {
 	HOOK_FUNC(pthread_cond_signal);
-    if (!conet::is_enable_pthread_hook()) {
-        XTRACE("cond:%p", cond);
-    } else {
-        XTRACE("coroutine cond:%p", cond);
-    }
     int cnt = 0;
     pcond_mgr_t *mgr = NULL;
     SCOPE_LOCK(&g_cond_mgr_mutex)
@@ -420,7 +408,6 @@ HOOK_FUNC_DEF(int, pthread_cond_signal, (pthread_cond_t *cond))
 
 HOOK_FUNC_DEF(int, pthread_cond_broadcast,(pthread_cond_t *cond))
 {
-    XTRACE("cond:%p", cond);
 
 	HOOK_FUNC(pthread_cond_broadcast);
     pcond_mgr_t *mgr = NULL;
