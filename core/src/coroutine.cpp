@@ -6,6 +6,7 @@
 #include <sys/syscall.h>
 #include "tls.h"
 #include <stdint.h>
+#include <malloc.h>
 
 #define ALLOC_VAR(type) (type *) malloc(sizeof(type))
 
@@ -79,7 +80,7 @@ void co_main_helper(int co_low, int co_high )
 }
 
 
-
+#define CACHE_LINE_SIZE 64
 int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
                    int stack_size, coroutine_env_t *a_env)
 {
@@ -90,7 +91,8 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->is_enable_pthread_hook = 0;
     self->is_main =0;
 
-    self->stack = malloc(stack_size);
+    //self->stack = malloc(stack_size);
+    self->stack = memalign(CACHE_LINE_SIZE, (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE*CACHE_LINE_SIZE);
     self->ctx.uc_stack.ss_sp = self->stack;
     self->ctx.uc_stack.ss_size = stack_size;
     self->ctx.uc_link = NULL;
