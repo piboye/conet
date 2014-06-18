@@ -35,7 +35,12 @@
     ret_type name proto __THROW \
  
 
-#define HOOK_FUNC(name) if( !_(name)) { _(name) = (name##_pfn_t)dlsym(RTLD_NEXT,#name); }
+#define HOOK_FUNC(name) \
+    do { \
+        if( !_(name)) {  \
+            _(name) = (name##_pfn_t) dlsym(RTLD_NEXT,#name);  \
+        } \
+    } while(0) \
 
 
 namespace conet
@@ -274,7 +279,6 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
     }
 
     pcond_ctx_t wait_item;
-    //pthread_mutex_init(&wait_item.mutex, NULL);
     wait_item.ret_timeout = 0;
     init_timeout_handle(&wait_item.tm, NULL, NULL);
     wait_item.co = conet::current_coroutine();
