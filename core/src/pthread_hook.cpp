@@ -128,6 +128,8 @@ struct mutex_ctx_t
 static
 list_head *get_mutex_schedule_queue();
 
+static conet::task_t g_mutex_dipatch_task;
+
 static
 int proc_mutex_schedule(void *arg)
 {
@@ -144,6 +146,9 @@ int proc_mutex_schedule(void *arg)
             ++cnt;
         }
     }
+    if (list_empty(list)) {
+       unregistry_task(&g_mutex_dipatch_task);
+    }
     return cnt;
 }
 
@@ -153,8 +158,12 @@ list_head *get_mutex_schedule_queue()
     if (NULL == g_mutex_schedule_queue) {
         g_mutex_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_mutex_schedule_queue);
-        conet::registry_task(proc_mutex_schedule, g_mutex_schedule_queue); 
         tls_onexit_add(g_mutex_schedule_queue, tls_destructor_fun<list_head>);
+        conet::init_task(&g_mutex_dipatch_task, 
+                proc_mutex_schedule, g_mutex_schedule_queue);
+    }
+    if (list_empty(g_mutex_schedule_queue)) {
+        conet::registry_task(&g_mutex_dipatch_task);
     }
     return g_mutex_schedule_queue;
 }
@@ -199,6 +208,7 @@ struct rwlock_ctx_t
 static __thread list_head * g_rwlock_schedule_queue = NULL;
 static list_head * get_rdlock_schedule_queue();
 
+static conet::task_t g_rwlock_dipatch_task;
 static
 int proc_rwlock_schedule(void *arg)
 {
@@ -221,6 +231,10 @@ int proc_rwlock_schedule(void *arg)
             ++cnt;
         }
     }
+
+    if (list_empty(list)) {
+       unregistry_task(&g_rwlock_dipatch_task);
+    }
     return cnt;
 }
 
@@ -230,8 +244,12 @@ list_head *get_rwlock_schedule_queue()
     if (NULL == g_rwlock_schedule_queue) {
         g_rwlock_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_rwlock_schedule_queue);
-        conet::registry_task(proc_rwlock_schedule, g_rwlock_schedule_queue); 
         tls_onexit_add(g_rwlock_schedule_queue, tls_destructor_fun<list_head>);
+        conet::init_task(&g_rwlock_dipatch_task, 
+                proc_rwlock_schedule, g_rwlock_schedule_queue); 
+    }
+    if (list_empty(g_rwlock_schedule_queue)) {
+        conet::registry_task(&g_rwlock_dipatch_task);
     }
     return g_rwlock_schedule_queue;
 }
