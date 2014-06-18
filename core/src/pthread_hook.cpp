@@ -120,48 +120,98 @@ list_head *tls_get_list_head(list_head * &h)
 }
 
 
+namespace {
+enum {
+    MUTEX_TYPE = 1,
+    RDLOCK_TYPE = 2,
+    WRLOCK_TYPE = 3,
+    SPINLOCK_TYPE = 4,
+};
 
-static __thread list_head * g_mutex_schedule_queue = NULL;
-
-struct mutex_ctx_t
+struct lock_ctx_t
 {
     list_head wait_item;
     conet::coroutine_t *co;
-    pthread_mutex_t *mutex;
+    void *lock;
+    int type; // 1 mutex; 2 rdlock; 3 wdlock; 4 spinlock
 };
+}
+
+static __thread list_head * g_lock_schedule_queue = NULL;
+static
+list_head *get_lock_schedule_queue();
+
+static conet::task_t g_lock_dipatch_task;
+
+static int trylock(lock_ctx_t *ctx) 
+{
+    switch(ctx->type)
+    {
+        case MUTEX_TYPE:
+            {
+                pthread_mutex_t * mutex =  (pthread_mutex_t *)(ctx->lock);
+                return pthread_mutex_trylock(mutex);
+            }
+        case RDLOCK_TYPE:
+            {
+                pthread_rwlock_t * lock =  (pthread_rwlock_t *)(ctx->lock);
+                return pthread_rwlock_tryrdlock(lock);
+            }
+        case WRLOCK_TYPE:
+            {
+                pthread_rwlock_t * lock =  (pthread_rwlock_t *)(ctx->lock);
+                return pthread_rwlock_trywrlock(lock);
+            }
+        case SPINLOCK_TYPE:
+            {
+                pthread_spinlock_t * lock =  (pthread_spinlock_t *)(ctx->lock);
+                return pthread_spin_trylock(lock);
+            }
+        default:
+            fprintf(stderr, "error lock type:%d\n", ctx->type);
+            exit(-1);
+            return 0;
+
+    }
+    return 0;
+}
 
 static
-list_head *get_mutex_schedule_queue();
-
-static
-int proc_mutex_schedule(void *arg)
+int proc_lock_schedule(void *arg)
 {
     list_head *list = (list_head *)(arg);
     int cnt =0;
     list_head *it=NULL, *next=NULL;
     list_for_each_safe(it, next, list)
     {
-        mutex_ctx_t * ctx = container_of(it, mutex_ctx_t, wait_item);
-        int ret = pthread_mutex_trylock(ctx->mutex);     
+        lock_ctx_t * ctx = container_of(it, lock_ctx_t, wait_item);
+        int ret = trylock(ctx);
         if (ret == 0)  {
             list_del_init(it);
             conet::resume(ctx->co); 
             ++cnt;
         }
     }
+    if (list_empty(list)) {
+       unregistry_task(&g_lock_dipatch_task);
+    }
     return cnt;
 }
 
 static
-list_head *get_mutex_schedule_queue() 
+list_head *get_lock_schedule_queue() 
 {
-    if (NULL == g_mutex_schedule_queue) {
-        g_mutex_schedule_queue = new list_head();
-        INIT_LIST_HEAD(g_mutex_schedule_queue);
-        conet::registry_task(proc_mutex_schedule, g_mutex_schedule_queue); 
-        tls_onexit_add(g_mutex_schedule_queue, tls_destructor_fun<list_head>);
+    if (NULL == g_lock_schedule_queue) {
+        g_lock_schedule_queue = new list_head();
+        INIT_LIST_HEAD(g_lock_schedule_queue);
+        tls_onexit_add(g_lock_schedule_queue, tls_destructor_fun<list_head>);
+        conet::init_task(&g_lock_dipatch_task, 
+                proc_lock_schedule, g_lock_schedule_queue);
     }
-    return g_mutex_schedule_queue;
+    if (list_empty(g_lock_schedule_queue)) {
+        conet::registry_task(&g_lock_dipatch_task);
+    }
+    return g_lock_schedule_queue;
 }
 
 
@@ -179,12 +229,85 @@ HOOK_FUNC_DEF(int, pthread_mutex_lock,(pthread_mutex_t *mutex))
     if (0 == ret) return ret;
 
     // add to mutex schedule queue
-    mutex_ctx_t ctx;
+    lock_ctx_t ctx;
     INIT_LIST_HEAD(&ctx.wait_item);
     ctx.co = conet::current_coroutine();
-    ctx.mutex = mutex;
+    ctx.lock = mutex;
+    ctx.type = MUTEX_TYPE;
 
-    list_add_tail(&ctx.wait_item, get_mutex_schedule_queue());
+    list_add_tail(&ctx.wait_item, get_lock_schedule_queue());
+
+    conet::yield();
+    return 0;
+}
+
+HOOK_FUNC_DEF(int, pthread_rwlock_rdlock,(pthread_rwlock_t *rwlock))
+{
+    HOOK_FUNC(pthread_rwlock_rdlock);
+	if(!conet::is_enable_pthread_hook())
+	{
+        return _(pthread_rwlock_rdlock)(rwlock);
+    }
+    int ret = 0;
+    ret = pthread_rwlock_tryrdlock(rwlock);
+    if (0 == ret) return ret;
+
+    // add to rdlock schedule queue
+    lock_ctx_t ctx;
+    INIT_LIST_HEAD(&ctx.wait_item);
+    ctx.co = conet::current_coroutine();
+    ctx.lock = rwlock;
+    ctx.type = RDLOCK_TYPE; // read
+
+    list_add_tail(&ctx.wait_item, get_lock_schedule_queue());
+
+    conet::yield();
+    return 0;
+}
+
+HOOK_FUNC_DEF(int, pthread_rwlock_wrlock,(pthread_rwlock_t *rwlock))
+{
+    HOOK_FUNC(pthread_rwlock_wrlock);
+	if(!conet::is_enable_pthread_hook())
+	{
+        return _(pthread_rwlock_wrlock)(rwlock);
+    }
+    int ret = 0;
+    ret = pthread_rwlock_trywrlock(rwlock);
+    if (0 == ret) return ret;
+
+    // add to rdlock schedule queue
+    lock_ctx_t ctx;
+    INIT_LIST_HEAD(&ctx.wait_item);
+    ctx.co = conet::current_coroutine();
+    ctx.lock = rwlock;
+    ctx.type = WRLOCK_TYPE;
+
+    list_add_tail(&ctx.wait_item, get_lock_schedule_queue());
+
+    conet::yield();
+    return 0;
+}
+
+HOOK_FUNC_DEF(int, pthread_spin_lock,(pthread_spinlock_t *lock))
+{
+    HOOK_FUNC(pthread_spin_lock);
+	if(!conet::is_enable_pthread_hook())
+	{
+        return _(pthread_spin_lock)(lock);
+    }
+    int ret = 0;
+    ret = pthread_spin_trylock(lock);
+    if (0 == ret) return ret;
+
+    // add to rdlock schedule queue
+    lock_ctx_t ctx;
+    INIT_LIST_HEAD(&ctx.wait_item);
+    ctx.co = conet::current_coroutine();
+    ctx.lock = (void *) lock;
+    ctx.type = SPINLOCK_TYPE;
+
+    list_add_tail(&ctx.wait_item, get_lock_schedule_queue());
 
     conet::yield();
     return 0;
@@ -261,7 +384,7 @@ list_head *get_pcond_schedule_list() {
         g_pcond_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_pcond_schedule_queue);
         conet::registry_task(proc_pcond_schule, g_pcond_schedule_queue); 
-        tls_onexit_add(g_mutex_schedule_queue, tls_destructor_fun<list_head>);
+        tls_onexit_add(g_pcond_schedule_queue, tls_destructor_fun<list_head>);
     }
     return g_pcond_schedule_queue;
 }
@@ -442,4 +565,3 @@ HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
 	HOOK_FUNC(pthread_cond_destroy);
     return _(pthread_cond_destroy)(cond);
 }
-
