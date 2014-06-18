@@ -185,6 +185,105 @@ HOOK_FUNC_DEF(int, pthread_mutex_lock,(pthread_mutex_t *mutex))
     return 0;
 }
 
+
+namespace {
+struct rwlock_ctx_t 
+{
+    list_head wait_item;
+    conet::coroutine_t *co;
+    pthread_rwlock_t *rwlock;
+    int type;  // 1 read lock ; 2 write lock
+};
+}
+
+static __thread list_head * g_rwlock_schedule_queue = NULL;
+static list_head * get_rdlock_schedule_queue();
+
+static
+int proc_rwlock_schedule(void *arg)
+{
+    list_head *list = (list_head *)(arg);
+    int cnt =0;
+    list_head *it=NULL, *next=NULL;
+    list_for_each_safe(it, next, list)
+    {
+        rwlock_ctx_t * ctx = container_of(it, rwlock_ctx_t, wait_item);
+        int ret = 0; 
+        if (ctx->type == 1) {
+            ret = pthread_rwlock_tryrdlock(ctx->rwlock);     
+        } else {
+            ret = pthread_rwlock_trywrlock(ctx->rwlock);
+        }
+
+        if (ret == 0)  {
+            list_del_init(it);
+            conet::resume(ctx->co); 
+            ++cnt;
+        }
+    }
+    return cnt;
+}
+
+static
+list_head *get_rwlock_schedule_queue() 
+{
+    if (NULL == g_rwlock_schedule_queue) {
+        g_rwlock_schedule_queue = new list_head();
+        INIT_LIST_HEAD(g_rwlock_schedule_queue);
+        conet::registry_task(proc_rwlock_schedule, g_rwlock_schedule_queue); 
+        tls_onexit_add(g_rwlock_schedule_queue, tls_destructor_fun<list_head>);
+    }
+    return g_rwlock_schedule_queue;
+}
+
+HOOK_FUNC_DEF(int, pthread_rwlock_rdlock,(pthread_rwlock_t *rwlock))
+{
+    HOOK_FUNC(pthread_rwlock_rdlock);
+	if(!conet::is_enable_pthread_hook())
+	{
+        return _(pthread_rwlock_rdlock)(rwlock);
+    }
+    int ret = 0;
+    ret = pthread_rwlock_tryrdlock(rwlock);
+    if (0 == ret) return ret;
+
+    // add to rdlock schedule queue
+    rwlock_ctx_t ctx;
+    INIT_LIST_HEAD(&ctx.wait_item);
+    ctx.co = conet::current_coroutine();
+    ctx.rwlock = rwlock;
+    ctx.type = 1; // read
+
+    list_add_tail(&ctx.wait_item, get_rwlock_schedule_queue());
+
+    conet::yield();
+    return 0;
+}
+
+HOOK_FUNC_DEF(int, pthread_rwlock_wrlock,(pthread_rwlock_t *rwlock))
+{
+    HOOK_FUNC(pthread_rwlock_wrlock);
+	if(!conet::is_enable_pthread_hook())
+	{
+        return _(pthread_rwlock_wrlock)(rwlock);
+    }
+    int ret = 0;
+    ret = pthread_rwlock_trywrlock(rwlock);
+    if (0 == ret) return ret;
+
+    // add to rdlock schedule queue
+    rwlock_ctx_t ctx;
+    INIT_LIST_HEAD(&ctx.wait_item);
+    ctx.co = conet::current_coroutine();
+    ctx.rwlock = rwlock;
+    ctx.type = 2; // write
+
+    list_add_tail(&ctx.wait_item, get_rwlock_schedule_queue());
+
+    conet::yield();
+    return 0;
+}
+
 namespace {
 class scope_lock
 {
@@ -438,4 +537,3 @@ HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
 	HOOK_FUNC(pthread_cond_destroy);
     return _(pthread_cond_destroy)(cond);
 }
-
