@@ -91,8 +91,10 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->is_enable_pthread_hook = 0;
     self->is_main =0;
 
-    //self->stack = malloc(stack_size);
-    self->stack = memalign(CACHE_LINE_SIZE, (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE*CACHE_LINE_SIZE);
+    // stack  group from high address to  low; align depend stack_size must be multiplies align size
+    //
+    stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE*CACHE_LINE_SIZE;
+    self->stack = memalign(CACHE_LINE_SIZE, stack_size), 
     self->ctx.uc_stack.ss_sp = self->stack;
     self->ctx.uc_stack.ss_size = stack_size;
     self->ctx.uc_link = NULL;
