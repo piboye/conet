@@ -93,10 +93,10 @@ bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
 {
     assert(list_empty(&obj->link_to));
     assert (timeout >=0);
-    if (timeout <0) return false;
+    if (timeout <0) timeout = 0;
     uint64_t cur_ms = get_cur_ms();
     uint64_t t = cur_ms + timeout;
-    if (t < tw->prev_ms) return false;
+    if (t < tw->prev_ms)  t = tw->prev_ms;
     obj->timeout = t;
 
     ++tw->task_num;
