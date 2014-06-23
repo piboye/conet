@@ -819,6 +819,28 @@ HOOK_SYS_FUNC_DEF(int,  select,
     return cnt;
 }
 
+
+HOOK_SYS_FUNC_DEF(int, pselect,(int nfds, fd_set *readfds, fd_set *writefds,
+                       fd_set *exceptfds, const struct timespec *timeout,
+                               const sigset_t *sigmask))
+{
+    HOOK_SYS_FUNC( pselect );
+    if( !conet::is_enable_sys_hook() )
+    {    
+        return _(pselect)(nfds, readfds, writefds, exceptfds, timeout, sigmask);
+    }    
+
+    if (timeout) 
+    {    
+        struct timeval to;
+        to.tv_sec  = timeout->tv_sec;
+        to.tv_usec = timeout->tv_nsec/1000;
+        return select(nfds, readfds, writefds, exceptfds, &to);
+    } else {
+        return select(nfds, readfds, writefds, exceptfds, NULL);
+    }    
+}
+
 namespace conet
 {
 
