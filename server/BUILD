@@ -2,6 +2,7 @@ cc_library(
     name = 'server_base',
     srcs = [
         "server_base.cpp",
+        "co_pool.cpp",
         "sigsegv.cpp",
     ],
     deps =[

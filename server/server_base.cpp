@@ -27,13 +27,6 @@
 namespace conet
 {
 
-void init_co_pool(co_pool_t *pool, int max_num)
-{
-    INIT_LIST_HEAD(&pool->free_list);
-    INIT_LIST_HEAD(&pool->used_list);
-    pool->total_num = 0;
-    pool->max_num = max_num;
-}
 
 int client_proc(conn_info_t *info)
 {
