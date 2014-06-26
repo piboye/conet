@@ -8,6 +8,7 @@ cc_library(
         "src/fd_ctx.cpp",
         "src/network_hook.cpp",
         "src/pthread_hook.cpp",
+        "src/disk_io_hook.cpp",
         "src/timewheel.cpp",
         "src/dispatch.cpp",
         "src/tls.cpp",
@@ -15,6 +16,10 @@ cc_library(
     incs= [ 
         "incl/",
     ],
+    deps=[
+        '#aio','#dl', '#pthread'
+    ],
+    warning=["fPIC"],
     export_incs=["incl/"],
     link_all_symbols = True,
 );

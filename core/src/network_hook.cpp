@@ -193,6 +193,10 @@ HOOK_SYS_FUNC_DEF(
     free_fd_ctx( fd );
     return ret;
 }
+namespace conet {
+ssize_t disk_read(int fd, void *buf, size_t nbyte);
+ssize_t disk_write(int fd, const void *buf, size_t nbyte);
+}
 
 HOOK_SYS_FUNC_DEF(
     ssize_t, read, ( int fd, void *buf, size_t nbyte )
@@ -204,7 +208,7 @@ HOOK_SYS_FUNC_DEF(
         return _(read)(fd, buf, nbyte );
     }
 
-    fd_ctx_t *lp = get_fd_ctx( fd );
+    fd_ctx_t *lp = get_fd_ctx( fd, 0);
     ssize_t ret = 0;
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
@@ -212,6 +216,11 @@ HOOK_SYS_FUNC_DEF(
         ret = _(read)(fd, buf, nbyte);
         return ret;
     }
+    if (lp->type == 2)
+    {
+        return conet::disk_read(fd, buf, nbyte);
+    }
+
 
     int timeout = lp->rcv_timeout;
 
@@ -228,6 +237,7 @@ events:
     return ret;
 }
 
+
 HOOK_SYS_FUNC_DEF(
     ssize_t, write, ( int fd, const void *buf, size_t nbyte )
 )
@@ -238,12 +248,17 @@ HOOK_SYS_FUNC_DEF(
         return _(write)( fd,buf,nbyte );
     }
 
-    fd_ctx_t *lp = get_fd_ctx( fd );
+    fd_ctx_t *lp = get_fd_ctx( fd, 0);
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
     {
         ssize_t ret = _(write)( fd,buf,nbyte );
         return ret;
+    }
+
+    if (lp->type == 2)
+    {
+        return conet::disk_write(fd, buf, nbyte);
     }
 
     ssize_t ret = 0;

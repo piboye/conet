@@ -35,3 +35,9 @@ cc_binary(
     srcs = ["echo_rpc_cli.cpp"],
     deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread"],
 )
+
+cc_binary(
+    name = "aio_test",
+    srcs = ["aio_test.cpp"],
+    deps = ["//core:conet", "#dl", "#pthread"],
+)

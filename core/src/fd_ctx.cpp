@@ -79,7 +79,7 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
 DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(10000), free_fd_ctx_mgr)
 
 
-fd_ctx_t *get_fd_ctx(int fd)
+fd_ctx_t *get_fd_ctx(int fd, int type)
 {
     if (fd <0) return NULL;
 
@@ -89,10 +89,20 @@ fd_ctx_t *get_fd_ctx(int fd)
         assert("!too many fd");
         exit(1);
     }
-    return  mgr->fds[fd];
+    fd_ctx_t *ctx =   mgr->fds[fd];
+    if (NULL == ctx) {
+        return NULL;
+    }
+
+    if (type == 0) return ctx;
+
+    if (ctx->type == type) {
+        return ctx;
+    }
+    return NULL;
 }
 
-fd_ctx_t *alloc_fd_ctx(int fd)
+fd_ctx_t *alloc_fd_ctx(int fd, int type)
 {
     if (fd <0) {
         assert(!"fd <0");
@@ -111,6 +121,7 @@ fd_ctx_t *alloc_fd_ctx(int fd)
     {
         HOOK_SYS_FUNC(fcntl);
         d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
+        d->type = type;
         d->fd = fd;
         d->use_cnt = 1;
         INIT_LIST_HEAD(&d->poll_wait_queue);

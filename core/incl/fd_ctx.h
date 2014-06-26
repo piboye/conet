@@ -28,6 +28,7 @@ namespace conet
 
 struct fd_ctx_t
 {
+    int type;
     int fd;
     int use_cnt;
     int user_flag;
@@ -41,8 +42,8 @@ struct fd_ctx_t
 };
 
 
-fd_ctx_t * alloc_fd_ctx(int fd);
-fd_ctx_t * get_fd_ctx(int fd);
+fd_ctx_t * alloc_fd_ctx(int fd, int type=1);
+fd_ctx_t * get_fd_ctx(int fd, int type =1);
 
 int free_fd_ctx(int fd);
 
