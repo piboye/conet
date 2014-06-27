@@ -1,4 +1,5 @@
 /*
+*
  * =====================================================================================
  *
  *       Filename:  aio_test.cpp
@@ -28,11 +29,13 @@ int proc(void *arg)
 
     conet::enable_sys_hook();
     
-    int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT, 0666);
-    //FILE *fp = fopen("2.txt", "a+");
-    int ret = write(fd, "hello\n",6); 
-    //fprintf(fp, "hello\n");
-    fprintf(stderr, "out:%d\n", ret);
+    int ret = 0;
+    //int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT, 0666);
+    FILE *fp = fopen("2.txt", "a+");
+    //ret = write(fileno(fp), "hello\n",6); 
+    fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
+    fputs("hello:\n", fp);
+    fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
     return -1;
 }
 

@@ -27,13 +27,16 @@
 #include <inttypes.h>   /*  uint64_t */
 #include <libaio.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <linux/stat.h>
+
 #include <dlfcn.h>
 #include <stdarg.h>
 #include "coroutine.h"
 #include "coroutine_impl.h"
 #include "fd_ctx.h"
 #include "network_hook.h"
-#include <errno.h>
 #include "tls.h"
 #include "hook_helper.h"
 
@@ -43,6 +46,8 @@ using namespace conet;
 HOOK_DECLARE(
     int, fcntl, (int fd, int cmd, ...)
 );
+
+//HOOK_DECLARE(int ,fprintf,( FILE * fp, const char *format,...));
 
 HOOK_SYS_FUNC_DEF(int, open, (const char *pathname, int flags, ...))
 {
@@ -56,7 +61,7 @@ HOOK_SYS_FUNC_DEF(int, open, (const char *pathname, int flags, ...))
         va_end(vl);
 		fd = _(open)(pathname, flags, mode);
     } else {
-        fd = _(open)(pathname, flags);
+        fd = _(open)(pathname, flags, DEFFILEMODE);
     }
 	if( !conet::is_enable_sys_hook() )
 	{
@@ -100,7 +105,7 @@ HOOK_SYS_FUNC_DEF(int, openat, (int dirfd, const char *pathname, int flags, ...)
         va_end(vl);
 		fd = _(openat)(dirfd, pathname, flags, mode);
     } else {
-        fd = _(openat)(dirfd, pathname, flags);
+        fd = _(openat)(dirfd, pathname, flags, DEFFILEMODE);
     }
 	if( !conet::is_enable_sys_hook() || (fd <0))
 	{
@@ -273,6 +278,7 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
     if (res2 != 0) {
         return -1; 
     }
+    lseek64(fd, res, SEEK_CUR);
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -324,10 +330,11 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
     if (res2 != 0) {
         return -1; 
     }
+    lseek64(fd, res, SEEK_CUR);
     if (res != cb.u.c.nbytes) {
         return res;
     }
-
+    fprintf(stderr, "disk write ok\n");
     return res;
 }
 
@@ -426,6 +433,9 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
     if (res2 != 0) {
         return -1; 
     }
+
+    lseek64(fd, res, SEEK_CUR);
+
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -472,6 +482,9 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
     if (res2 != 0) {
         return -1; 
     }
+
+    lseek64(fd, res, SEEK_CUR);
+
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -773,3 +786,272 @@ int ,fdatasync, (int fd)
     return 0;
 }
 
+
+// FILE STREAM HOOK
+//
+#define CALC_FILE_POS(fp, fd) \
+ do { \
+     off64_t off = lseek64(fd, 0, SEEK_CUR); \
+     fseek(fp, off, SEEK_SET); \
+ }while(0)
+
+#define __SRD 1
+#define __SWR 2 
+#define __SRW 3 
+static
+int __sflags(const char *mode, int *optr)
+{
+    int ret, m, o;
+
+    switch (*mode++) {
+
+    case 'r':   /* open for reading */
+        ret = __SRD;
+        m = O_RDONLY;
+        o = 0;
+        break;
+
+    case 'w':   /* open for writing */
+        ret = __SWR;
+        m = O_WRONLY;
+        o = O_CREAT | O_TRUNC;
+        break;
+
+    case 'a':   /* open for appending */
+        ret = __SWR;
+        m = O_WRONLY;
+        o = O_CREAT | O_APPEND;
+        break;
+
+    default:    /* illegal mode */
+        errno = EINVAL;
+        return (0);
+    }
+
+    /* [rwa]\+ or [rwa]b\+ means read and write */
+    if (*mode == '+' || (*mode == 'b' && mode[1] == '+')) {
+        ret = __SRW;
+        m = O_RDWR;
+    }
+    *optr = m | o;
+    return (ret);
+}
+
+
+HOOK_SYS_FUNC_DEF(
+FILE * ,fopen,(const char *file, const char *mode)
+)
+{
+
+    HOOK_SYS_FUNC(fopen);
+    if (!conet::is_enable_sys_hook()) 
+    {
+        return _(fopen)(file, mode);
+    }
+
+	int fd;
+	int flags, oflags;
+	if ((flags = __sflags(mode, &oflags)) == 0)
+		return (NULL);
+	if ((fd = open(file, oflags, DEFFILEMODE)) < 0) {
+		return (NULL);
+	}
+
+    FILE *fp =  fdopen(fd, mode);
+    if (oflags & O_APPEND)
+            fseek(fp, 0, SEEK_END);
+    return fp;
+}
+
+
+// TODO: need to hook freopen
+//
+
+HOOK_SYS_FUNC_DEF(
+int  ,fclose,(FILE *fp)
+)
+{
+
+    HOOK_SYS_FUNC(fclose);
+    if (!conet::is_enable_sys_hook()) 
+    {
+        return _(fclose)(fp);
+    }
+    int fd = fileno(fp);
+    conet::free_fd_ctx(fd);
+    return _(fclose)(fp);
+}
+
+HOOK_SYS_FUNC_DEF(
+int ,vfprintf ,( FILE * fp, const char * format, va_list ap )
+)
+{
+    HOOK_SYS_FUNC(vfprintf);
+
+    int ret = 0;
+
+    if (!conet::is_enable_sys_hook()) {
+        ret = _(vfprintf)(fp, format, ap);
+        return ret;
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        ret =  _(vfprintf)(fp, format, ap);
+        return ret;
+    }
+    char buf[100];
+    char *p = buf;
+    int len = 99;
+    int nlen = 0;
+    va_list bak_arg;
+    va_copy(bak_arg, ap);
+    nlen = vsnprintf( p, len,  format, ap);
+    if (nlen > len) {
+        p = (char *)malloc(nlen+1);
+        len = nlen;
+        nlen = vsnprintf(p, len, format, bak_arg);
+        va_end(bak_arg);
+    }
+    ret = conet::disk_write(fd, p, nlen);
+    if (p != buf) {
+        free(p);
+    }
+    CALC_FILE_POS(fp, fd);
+    return ret;
+}
+
+// fprintf(fp, "abc") would replace to fwrite;
+HOOK_SYS_FUNC_DEF(
+int ,fprintf,(FILE * fp, const char *format, ...)
+)
+{
+    HOOK_SYS_FUNC(fprintf);
+
+    int ret = 0;
+    va_list ap;
+    va_start(ap, format);
+
+    if (!conet::is_enable_sys_hook()) {
+        ret = _(vfprintf)(fp, format, ap);
+        va_end(ap);
+        return ret;
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        ret =  _(vfprintf)(fp, format, ap);
+        va_end(ap);
+        return ret;
+    }
+    char buf[100];
+    char *p = buf;
+    int len = 99;
+    int nlen = 0;
+    nlen = vsnprintf( p, len,  format, ap);
+    if (nlen > len) {
+        va_end(ap);
+        va_start(ap, format);
+        p = (char *)malloc(nlen+1);
+        len = nlen;
+        nlen = vsnprintf(p, len, format, ap);
+    }
+    va_end(ap);
+    ret = 0;
+    ret = conet::disk_write(fd, p, nlen);
+    if (p != buf) {
+        free(p);
+    }
+    CALC_FILE_POS(fp, fd);
+    return ret;
+} 
+
+
+//fputs("abc", fp) would replace to fwrite;
+
+HOOK_SYS_FUNC_DEF(
+int , fputs,(const char *str, FILE *fp)
+)
+{
+    HOOK_SYS_FUNC(fputs);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fputs)(str, fp);
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fputs)(str, fp);
+    }
+    size_t len = strlen(str);
+    int ret= 0;
+    ret = conet::disk_write(fd, str, len);
+    CALC_FILE_POS(fp, fd);
+    return ret;
+}
+
+HOOK_SYS_FUNC_DEF(
+int , fputc,(int c, FILE *fp)
+)
+{
+    HOOK_SYS_FUNC(fputc);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fputc)(c, fp);
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fputc)(c, fp);
+    }
+    char ch = char(c);
+    int ret =  conet::disk_write(fd, &ch, 1);
+    CALC_FILE_POS(fp, fd);
+    return ret;
+}
+
+
+HOOK_SYS_FUNC_DEF(
+ size_t ,fwrite,(const void *ptr, size_t size, size_t nmemb,
+                          FILE *fp)
+)
+{
+    HOOK_SYS_FUNC(fwrite);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fwrite)(ptr, size, nmemb, fp);
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fwrite)(ptr, size, nmemb, fp);
+    }
+    int ret = conet::disk_write(fd, ptr, size*nmemb);
+    CALC_FILE_POS(fp, fd);
+    return ret;
+}
+
+/*
+// read operator, carefull
+HOOK_SYS_FUNC_DEF(
+ size_t ,fread,(void *ptr, size_t size, size_t nmemb,
+                          FILE *fp)
+)
+{
+    HOOK_SYS_FUNC(fread);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fread)(ptr, size, nmemb, fp);
+    }
+    int fd = fileno(fp);
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fread)(ptr, size, nmemb, fp);
+    }
+    int ret = conet::disk_read(fd, ptr, size*nmemb);
+    CALC_FILE_POS(fp, fd);
+    return ret;
+}
+*/
