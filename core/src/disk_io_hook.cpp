@@ -1029,12 +1029,18 @@ HOOK_SYS_FUNC_DEF(
         return _(fwrite)(ptr, size, nmemb, fp);
     }
     int ret = conet::disk_write(fd, ptr, size*nmemb);
-    CALC_FILE_POS(fp, fd);
-    return ret;
+    if (ret<0) {
+        return ret;
+    }
+    int failed_bytes =  ret % size;
+    off64_t off = lseek64(fd, 0, SEEK_CUR); 
+    off = off - failed_bytes;
+    fseek(fp, off, SEEK_SET); 
+    return ret/size;
 }
 
 /*
-// read operator, carefull
+// read operator, carefull, because has other read function no hook, buff would error
 HOOK_SYS_FUNC_DEF(
  size_t ,fread,(void *ptr, size_t size, size_t nmemb,
                           FILE *fp)
@@ -1051,7 +1057,11 @@ HOOK_SYS_FUNC_DEF(
         return _(fread)(ptr, size, nmemb, fp);
     }
     int ret = conet::disk_read(fd, ptr, size*nmemb);
-    CALC_FILE_POS(fp, fd);
-    return ret;
-}
+    if (ret <0) return ret;
+    int failed_bytes =  ret % size;
+    off64_t off = lseek64(fd, 0, SEEK_CUR); 
+    off = off - failed_bytes;
+    fseek(fp, off, SEEK_SET); 
+    return ret/size;
+}  
 */
