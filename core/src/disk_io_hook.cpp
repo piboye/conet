@@ -853,6 +853,14 @@ FILE * ,fopen,(const char *file, const char *mode)
 	int flags, oflags;
 	if ((flags = __sflags(mode, &oflags)) == 0)
 		return (NULL);
+    if ((oflags & O_RDONLY) || (oflags & O_RDWR))
+    {   // read file, need buff, not hook
+        return _(fopen)(file, mode);
+    }
+    if (!(oflags & O_APPEND)) {
+        return _(fopen)(file, mode);
+    }
+
 	if ((fd = open(file, oflags, DEFFILEMODE)) < 0) {
 		return (NULL);
 	}
