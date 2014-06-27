@@ -47,16 +47,22 @@ HOOK_DECLARE(
 HOOK_SYS_FUNC_DEF(int, open, (const char *pathname, int flags, ...))
 {
 	HOOK_SYS_FUNC( open );
-    va_list vl;
-    va_start(vl, flags);
-    int mode = va_arg(vl, int);
-    va_end(vl);
+    int fd = 0;
+    if (flags & O_CREAT)
+    {
+        va_list vl;
+        va_start(vl, flags);
+        mode_t mode = (mode_t) va_arg(vl, int);
+        va_end(vl);
+		fd = _(open)(pathname, flags, mode);
+    } else {
+        fd = _(open)(pathname, flags);
+    }
 	if( !conet::is_enable_sys_hook() )
 	{
-		return _(open)(pathname, flags, mode);
+        return fd;
 	}
 
-    int fd = _(open)(pathname, flags, mode);
 	if( fd < 0 )
 	{
 		return fd;
@@ -70,15 +76,12 @@ HOOK_SYS_FUNC_DEF(int, open, (const char *pathname, int flags, ...))
 HOOK_SYS_FUNC_DEF(int, create, (const char *pathname, mode_t mode))
 {
 	HOOK_SYS_FUNC( create );
-	if( !conet::is_enable_sys_hook() )
-	{
-		return _(create)(pathname, mode);
-	}
     int fd = _(create)(pathname, mode);
-	if( fd < 0 )
+	if( !conet::is_enable_sys_hook() || (fd <0))
 	{
 		return fd;
 	}
+
     fd_ctx_t *lp = alloc_fd_ctx(fd, 2);
     lp->user_flag = _(fcntl)(fd, F_GETFL,0 );
 	fcntl( fd, F_SETFL, lp->user_flag);
@@ -88,18 +91,20 @@ HOOK_SYS_FUNC_DEF(int, create, (const char *pathname, mode_t mode))
 HOOK_SYS_FUNC_DEF(int, openat, (int dirfd, const char *pathname, int flags, ...))
 {
 	HOOK_SYS_FUNC( openat );
-    va_list vl;
-    va_start(vl, flags);
-    int mode = va_arg(vl, int);
-    va_end(vl);
-	if( !conet::is_enable_sys_hook() )
+    int fd = 0;
+    if (flags & O_CREAT)
+    {
+        va_list vl;
+        va_start(vl, flags);
+        mode_t mode = (mode_t) va_arg(vl, int);
+        va_end(vl);
+		fd = _(openat)(dirfd, pathname, flags, mode);
+    } else {
+        fd = _(openat)(dirfd, pathname, flags);
+    }
+	if( !conet::is_enable_sys_hook() || (fd <0))
 	{
-		return _(openat)(dirfd, pathname, flags, mode);
-	}
-    int fd = _(openat)(dirfd, pathname, flags, mode);
-	if( fd < 0 )
-	{
-		return fd;
+        return fd;
 	}
     fd_ctx_t *lp = alloc_fd_ctx(fd, 2);
     lp->user_flag = flags;
@@ -292,8 +297,6 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
         }
     }
 
-    
-
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
     conet_io_cb_t my_cb;
@@ -378,22 +381,23 @@ ssize_t ,pread,(int fd, void *buf, size_t nbyte, off_t off))
     return res;
 }
 
-HOOK_SYS_FUNC_DEF(
-ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt))
+HOOK_DECLARE(
+ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
+);
+HOOK_DECLARE(
+ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
+);
+namespace conet
 {
-    HOOK_SYS_FUNC(readv);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
-    if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
-        return _(readv)(fd, iov, iovcnt);
-    }
 
+ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
+{
     int ret = 0;
     off64_t off = 0;
     ret = lseek64(fd,  0, SEEK_CUR);
     if (ret) {
         return _(readv)(fd, iov, iovcnt);
     }
-
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
@@ -427,6 +431,119 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt))
     }
 
     return res;
+}
+
+ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
+{
+    int ret = 0;
+
+    off64_t off = 0;
+    if (!(ctx->user_flag & O_APPEND)) {
+        ret = lseek64(fd,  0, SEEK_CUR);
+        if (ret) {
+            return _(writev)(fd, iov, iovcnt);
+        }
+    }
+
+    struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
+    struct iocb cb;
+    conet_io_cb_t my_cb;
+    my_cb.cb = &cb;
+    io_prep_pwritev(&cb, fd, (struct iovec *)iov, iovcnt, off);
+    io_set_eventfd(&cb, disk_ctx->eventfd); 
+    io_set_callback(&cb, (io_callback_t)(&my_cb)); 
+
+    struct iocb *cbs[1]; 
+    cbs[0] = &cb;
+    ret = io_submit(disk_ctx->ctx, 1, cbs);
+    if (ret != 1) {
+        return  -1;
+    }
+
+    my_cb.co  = conet::current_coroutine();
+    start_disk_task();
+    conet::yield();
+
+    unsigned long res = 0;
+    unsigned long res2 = 0;
+    res = my_cb.event->res;
+    res2 = my_cb.event->res2;
+
+    if (res2 != 0) {
+        return -1; 
+    }
+    if (res != cb.u.c.nbytes) {
+        return res;
+    }
+
+    return res;
+}
+}
+
+HOOK_SYS_FUNC_DEF(
+ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
+)
+{
+    HOOK_SYS_FUNC(writev);
+    if (!conet::is_enable_sys_hook()) {
+        return _(writev)(fd, iov, iovcnt);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd,0);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(writev)(fd, iov, iovcnt);
+    }
+    if (ctx->type == 2) {
+        //disk
+        return disk_writev(ctx, fd, iov, iovcnt);
+    }
+    ssize_t ret = 0;
+    ret = _(writev)(fd, iov, iovcnt);
+    if (ret >=0) {
+        return ret;
+    }
+
+    if (errno != EAGAIN) return ret;
+
+    int timeout = ctx->snd_timeout;
+    struct pollfd pf = {
+        fd : fd,
+        events:( POLLOUT | POLLERR | POLLHUP )
+    };
+    poll( &pf,1,timeout );
+    ret = _(writev)(fd, iov, iovcnt);
+    return ret;
+}
+
+HOOK_SYS_FUNC_DEF(
+ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
+)
+{
+    HOOK_SYS_FUNC(readv);
+    if (!conet::is_enable_sys_hook()) 
+    {
+        return _(readv)(fd, iov, iovcnt);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd, 0);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(readv)(fd, iov, iovcnt);
+    }
+    if (ctx->type == 2) {
+        //disk
+        return disk_readv(fd, iov, iovcnt);
+    }
+    int timeout = ctx->rcv_timeout;
+
+    struct pollfd pf = {
+        fd: fd,
+        events: POLLIN | POLLERR | POLLHUP
+    };
+
+    poll( &pf, 1, timeout );
+
+    int ret = _(readv)( fd, iov, iovcnt);
+    return ret;
 }
 
 HOOK_SYS_FUNC_DEF(
@@ -519,56 +636,6 @@ ssize_t ,pwrite,(int fd, const void *buf, size_t nbyte, off_t off))
     return res;
 }
 
-HOOK_SYS_FUNC_DEF(
-ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt))
-{
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
-    if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
-        return _(writev)(fd, iov, iovcnt);
-    }
-    int ret = 0;
-
-    off64_t off = 0;
-    if (!(ctx->user_flag & O_APPEND)) {
-        ret = lseek64(fd,  0, SEEK_CUR);
-        if (ret) {
-            return _(writev)(fd, iov, iovcnt);
-        }
-    }
-
-    struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
-    struct iocb cb;
-    conet_io_cb_t my_cb;
-    my_cb.cb = &cb;
-    io_prep_pwritev(&cb, fd, (struct iovec *)iov, iovcnt, off);
-    io_set_eventfd(&cb, disk_ctx->eventfd); 
-    io_set_callback(&cb, (io_callback_t)(&my_cb)); 
-
-    struct iocb *cbs[1]; 
-    cbs[0] = &cb;
-    ret = io_submit(disk_ctx->ctx, 1, cbs);
-    if (ret != 1) {
-        return  -1;
-    }
-
-    my_cb.co  = conet::current_coroutine();
-    start_disk_task();
-    conet::yield();
-
-    unsigned long res = 0;
-    unsigned long res2 = 0;
-    res = my_cb.event->res;
-    res2 = my_cb.event->res2;
-
-    if (res2 != 0) {
-        return -1; 
-    }
-    if (res != cb.u.c.nbytes) {
-        return res;
-    }
-
-    return res;
-}
 
 
 HOOK_SYS_FUNC_DEF(
@@ -613,5 +680,96 @@ ssize_t , pwritev,(int fd, const struct iovec *iov, int iovcnt, off_t off))
     }
 
     return res;
+}
+HOOK_SYS_FUNC_DEF(
+int ,fsync,(int fd)
+)
+{
+    HOOK_SYS_FUNC(fsync);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fsync)(fd);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fsync)(fd);
+    }
+
+    int ret =0;
+
+    struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
+    struct iocb cb;
+    conet_io_cb_t my_cb;
+    my_cb.cb = &cb;
+    io_prep_fsync(&cb, fd);
+    io_set_eventfd(&cb, disk_ctx->eventfd); 
+    io_set_callback(&cb, (io_callback_t)(&my_cb)); 
+
+    struct iocb *cbs[1]; 
+    cbs[0] = &cb;
+    ret = io_submit(disk_ctx->ctx, 1, cbs);
+    if (ret != 1) {
+        return  -1;
+    }
+
+    my_cb.co  = conet::current_coroutine();
+    start_disk_task();
+    conet::yield();
+
+    unsigned long res = 0;
+    unsigned long res2 = 0;
+    res = my_cb.event->res;
+    res2 = my_cb.event->res2;
+
+    if (res2 != 0) {
+        return -1; 
+    }
+    return 0;
+}
+
+HOOK_SYS_FUNC_DEF(
+int ,fdatasync, (int fd) 
+)
+{
+    HOOK_SYS_FUNC(fdatasync);
+    if (!conet::is_enable_sys_hook()) {
+        return _(fdatasync)(fd);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(fdatasync)(fd);
+    }
+
+    int ret =0;
+
+    struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
+    struct iocb cb;
+    conet_io_cb_t my_cb;
+    my_cb.cb = &cb;
+    io_prep_fdsync(&cb, fd);
+    io_set_eventfd(&cb, disk_ctx->eventfd); 
+    io_set_callback(&cb, (io_callback_t)(&my_cb)); 
+
+    struct iocb *cbs[1]; 
+    cbs[0] = &cb;
+    ret = io_submit(disk_ctx->ctx, 1, cbs);
+    if (ret != 1) {
+        return  -1;
+    }
+
+    my_cb.co  = conet::current_coroutine();
+    start_disk_task();
+    conet::yield();
+
+    unsigned long res = 0;
+    unsigned long res2 = 0;
+    res = my_cb.event->res;
+    res2 = my_cb.event->res2;
+
+    if (res2 != 0) {
+        return -1; 
+    }
+    return 0;
 }
 

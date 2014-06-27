@@ -225,10 +225,8 @@ HOOK_SYS_FUNC_DEF(
     int timeout = lp->rcv_timeout;
 
     struct pollfd pf = {
-fd:
-        fd,
-events:
-        POLLIN | POLLERR | POLLHUP
+        fd: fd,
+        events: POLLIN | POLLERR | POLLHUP
     };
 
     poll( &pf, 1, timeout );

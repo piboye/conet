@@ -28,7 +28,7 @@ int proc(void *arg)
 
     conet::enable_sys_hook();
     
-    int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT);
+    int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT, 0666);
     //FILE *fp = fopen("2.txt", "a+");
     int ret = write(fd, "hello\n",6); 
     //fprintf(fp, "hello\n");
