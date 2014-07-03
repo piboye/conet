@@ -27,17 +27,22 @@ proto_library(
 cc_binary(
     name = "echo_rpc_server",
     srcs = ["echo_rpc_server.cpp"],
-    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread"],
+    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread", 
+            "//thirdparty/perftools:tcmalloc_debug",
+           ],
 )
 
 cc_binary(
     name = "echo_rpc_cli",
     srcs = ["echo_rpc_cli.cpp"],
-    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread"],
+    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread",
+            "//thirdparty/perftools:tcmalloc_debug",
+           ],
 )
 
 cc_binary(
     name = "aio_test",
     srcs = ["aio_test.cpp"],
-    deps = ["//core:conet", "#dl", "#pthread"],
+    deps = ["//core:conet", "#dl", "#pthread", 
+            "//thirdparty/perftools:tcmalloc_debug"],
 )

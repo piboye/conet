@@ -79,12 +79,7 @@ HOOK_SYS_FUNC_DEF(
     } else {
         //block call
 
-        struct pollfd pf = {
-fd:
-            fd,
-events:
-            POLLIN|POLLERR|POLLHUP
-        };
+        struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP};
         poll( &pf,1, -1);
         client_fd =  _(accept)(fd, addr, len);
     }
@@ -628,6 +623,42 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
+HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *rem))
+{
+    HOOK_SYS_FUNC(nanosleep);
+    if( !conet::is_enable_sys_hook() )
+    {
+        return _(nanosleep)(req, rem);
+    }
+
+    if (NULL == req) { 
+        if (rem) {
+            rem->tv_sec = req->tv_sec;
+            rem->tv_nsec = req->tv_nsec;
+        }
+        return -1;
+    }
+
+    int ms = req->tv_sec *1000+ (req->tv_nsec+999999)/1000000;
+
+    int ret = conet::co_poll(NULL, 0, ms);
+    if (rem) {
+        rem->tv_sec = 0;
+        rem->tv_nsec = 0;
+    }
+    return 0;
+}
+
+HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
+{
+    HOOK_SYS_FUNC(sleep);
+    if( !conet::is_enable_sys_hook() )
+    {
+        return _(sleep)(s);
+    }
+    return conet::co_poll(NULL, 0, s*1000);
+}
+
 HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
 {
 
@@ -733,15 +764,6 @@ HOOK_SYS_FUNC_DEF(int, dup3, (int old, int newfd, int flags))
 
 
 
-HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
-{
-    HOOK_SYS_FUNC(sleep);
-    if( !conet::is_enable_sys_hook() )
-    {
-        return _(sleep)(s);
-    }
-    return conet::co_poll(NULL, 0, s*1000);
-}
 
 HOOK_SYS_FUNC_DEF(int,  select, 
         (int nfds, fd_set *readfds, fd_set *writefds,

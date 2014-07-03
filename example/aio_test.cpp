@@ -31,7 +31,7 @@ int proc(void *arg)
     
     int ret = 0;
     //int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT, 0666);
-    FILE *fp = fopen("2.txt", "a+");
+    FILE *fp = fopen("2.txt", "a");
     //ret = write(fileno(fp), "hello\n",6); 
     fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
     fputs("hello:\n", fp);
