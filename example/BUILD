@@ -43,6 +43,11 @@ cc_binary(
 cc_binary(
     name = "aio_test",
     srcs = ["aio_test.cpp"],
-    deps = ["//core:conet", "#dl", "#pthread", 
-            "//thirdparty/perftools:tcmalloc_debug"],
+    deps = [
+        "//core:conet", 
+        '//thirdparty/gflags:gflags',
+        '//thirdparty/perftools:tcmalloc_debug',
+        "#dl", 
+        "#pthread"
+    ],
 )

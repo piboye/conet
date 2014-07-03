@@ -23,6 +23,9 @@
 #include <unistd.h>
 
 #include "conet_all.h"
+#include "thirdparty/gflags/gflags.h"
+
+DEFINE_string(out_file, "2.txt", "output file name");
 
 int proc(void *arg)
 {
@@ -30,8 +33,7 @@ int proc(void *arg)
     conet::enable_sys_hook();
     
     int ret = 0;
-    //int fd = open("2.txt", O_APPEND|O_WRONLY|O_CREAT, 0666);
-    FILE *fp = fopen("2.txt", "a");
+    FILE *fp = fopen(FLAGS_out_file.c_str(), "a+");
     //ret = write(fileno(fp), "hello\n",6); 
     fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
     fputs("hello:\n", fp);
@@ -39,8 +41,9 @@ int proc(void *arg)
     return -1;
 }
 
-int main(int argc, char const* argv[])
+int main(int argc, char * argv[])
 {
+    google::ParseCommandLineFlags(&argc, &argv, false); 
     conet::coroutine_t *co = conet::alloc_coroutine(proc, NULL); 
     conet::resume(co);
     while (conet::get_epoll_pend_task_num() >0) {

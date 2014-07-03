@@ -178,13 +178,13 @@ HOOK_SYS_FUNC_DEF(
     int, close, (int fd)
 )
 {
-    HOOK_SYS_FUNC(close);
+    //HOOK_SYS_FUNC(close);
     if( !conet::is_enable_sys_hook() )
     {
-        return SYS_FUNC(close)( fd );
+        return syscall(SYS_close, fd );
     }
 
-    int ret = SYS_FUNC(close)(fd);
+    int ret = syscall(SYS_close, fd);
     free_fd_ctx( fd );
     return ret;
 }
@@ -198,9 +198,8 @@ HOOK_SYS_FUNC_DEF(
 )
 {
 
-    HOOK_SYS_FUNC(read);
     if( !conet::is_enable_sys_hook() ) {
-        return _(read)(fd, buf, nbyte );
+        return syscall(SYS_read, fd, buf, nbyte ); // tcmalloc imcompatibility with dlsym, in global contructor;
     }
 
     fd_ctx_t *lp = get_fd_ctx( fd, 0);
@@ -208,7 +207,7 @@ HOOK_SYS_FUNC_DEF(
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
     {
-        ret = _(read)(fd, buf, nbyte);
+        ret = syscall(SYS_read, fd, buf, nbyte);
         return ret;
     }
     if (lp->type == 2)
@@ -226,7 +225,7 @@ HOOK_SYS_FUNC_DEF(
 
     poll( &pf, 1, timeout );
 
-    ret = _(read)( fd,(char*)buf , nbyte );
+    ret = syscall(SYS_read,  fd,(char*)buf , nbyte );
     return ret;
 }
 
