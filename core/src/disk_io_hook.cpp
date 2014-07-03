@@ -219,7 +219,7 @@ void start_disk_task()
    disk_io_ctx_t *ctx = get_disk_ctx(); 
    if (ctx && (NULL == ctx->proc_co)) {
         ctx->proc_co=conet::alloc_coroutine(proc_disk_event, ctx);
-        conet::resume(g_disk_io_ctx->proc_co);
+        conet::resume(ctx->proc_co);
    }
 }
 
