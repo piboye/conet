@@ -21,22 +21,26 @@ proto_library(
         srcs=[
             'echo_rpc.proto'
         ],
-        export_incs=["example"],
 )
 
 cc_binary(
     name = "echo_rpc_server",
     srcs = ["echo_rpc_server.cpp"],
-    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread", 
+    deps = [":echo_rpc_proto",
+            "//server:rpc_pb_server", 
             "//thirdparty/perftools:tcmalloc_debug",
+            "#dl", "#pthread", 
            ],
 )
 
 cc_binary(
     name = "echo_rpc_cli",
     srcs = ["echo_rpc_cli.cpp"],
-    deps = [":echo_rpc_proto", "//server:rpc_pb_server", "#dl", "#pthread",
+    deps = [":echo_rpc_proto", 
+            "//server:rpc_pb_server", 
             "//thirdparty/perftools:tcmalloc_debug",
+            "#dl", 
+            "#pthread",
            ],
 )
 

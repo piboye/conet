@@ -6,7 +6,9 @@ cc_library(
         "sigsegv.cpp",
     ],
     deps =[
-        "//core:conet", "#unwind", "#unwind-x86_64"
+        "//core:conet", 
+        "#unwind", 
+        "#unwind-x86_64"
     ],
     link_all_symbols = True,
 );

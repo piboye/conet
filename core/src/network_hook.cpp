@@ -624,10 +624,10 @@ HOOK_SYS_FUNC_DEF(
 
 HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *rem))
 {
-    HOOK_SYS_FUNC(nanosleep);
+    //HOOK_SYS_FUNC(nanosleep);
     if( !conet::is_enable_sys_hook() )
     {
-        return _(nanosleep)(req, rem);
+        return syscall(SYS_nanosleep, req, rem);
     }
 
     if (NULL == req) { 
