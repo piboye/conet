@@ -85,6 +85,7 @@ void init_task(task_t *task, task_proc_fun_t proc, void *arg)
     task->proc= proc;
     task->arg = arg;
     task->auto_del = 0;
+    INIT_LIST_HEAD(&task->link_to);
 }
 
 void registry_task(list_head *list, task_proc_fun_t proc, void *arg)
