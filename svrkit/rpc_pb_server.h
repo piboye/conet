@@ -21,6 +21,7 @@
 #include <string>
 #include <map>
 #include "svrkit/rpc_base_pb.pb.h"
+
 namespace conet
 {
 struct rpc_pb_server_t;
@@ -100,39 +101,6 @@ int rpc_pb_registry_cmd_##server##_##cmd() \
     conet::registry_cmd(#server, #cmd, rpc_pb_serve_stub_##server##_##cmd, arg); \
     return 1; \
 } \
-
-//client 
-int rpc_pb_call_impl(char const *ip, int port, 
-        std::string const &server_name,
-        std::string const &cmd_name,
-        std::string const &req, std::string *resp, std::string *errmsg);
-
-template <typename ReqT, typename RespT>
-int rpc_pb_call(char const *ip, int port, 
-        std::string const &server_name,
-        std::string const &cmd_name,
-        ReqT const *a_req, RespT *a_resp, std::string *errmsg=NULL)
-{
-    std::string req;
-    if (!a_req->SerializeToString(&req)) {
-        return -8;
-    }
-    std::string resp;
-    int ret = 0;
-
-    ret = rpc_pb_call_impl(ip, port, server_name, cmd_name, req, &resp, errmsg);
-
-    if (ret) {
-        return ret;
-    }
-
-    if (a_resp) {
-        if (!a_resp->ParseFromString(resp)) {
-            return -7;
-        }
-    }
-    return ret;
-}
 
 }
 #endif /* end of include guard */ 

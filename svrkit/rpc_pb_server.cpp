@@ -195,49 +195,5 @@ static int proc_rpc_pb(conn_info_t *conn)
     return 0;
 }
 
-int rpc_pb_call_impl(char const *ip, int port, 
-        std::string const &server_name,
-        std::string const &cmd_name,
-        std::string const &req, std::string *resp, std::string *errmsg)
-{
-    int fd = 0;
-    fd = connect_to(ip, port);
-    if (fd <0) return -3;
-    int ret = 0;
-
-    conet_rpc_pb::CmdBase req_base, resp_base;
-    req_base.set_server_name(server_name);
-    req_base.set_cmd_name(cmd_name);
-    req_base.set_seq_id(1);
-    req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
-    req_base.set_body(req);
-
-    ret = send_data_pack(fd, req_base.SerializeAsString());
-    if (ret <=0) {
-        close(fd);
-        return -4;
-    }
-    std::string data;
-    ret = read_one_pack(fd, &data);
-    close(fd);
-    if (ret <=0) {
-        return -5;
-    }
-    if (!resp_base.ParseFromString(data)) {
-        return -6;
-    }
-    ret = resp_base.ret();
-    if (ret) {
-        if (errmsg) {
-            *errmsg = resp_base.errmsg();
-        }
-        return ret;
-    }
-
-    if (resp) {
-        *resp = resp_base.body();
-    }
-    return ret;
-}
 
 }
