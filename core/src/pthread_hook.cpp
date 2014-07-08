@@ -192,9 +192,6 @@ int proc_lock_schedule(void *arg)
             ++cnt;
         }
     }
-    if (list_empty(list)) {
-       unregistry_task(g_lock_dipatch_task);
-    }
     return cnt;
 }
 
@@ -209,11 +206,9 @@ list_head *get_lock_schedule_queue()
         g_lock_dipatch_task = new conet::task_t();
         tls_onexit_add(g_lock_dipatch_task, tls_destructor_fun<conet::task_t>);
 
+        conet::registry_task(g_lock_dipatch_task);
         conet::init_task(g_lock_dipatch_task, 
                 proc_lock_schedule, g_lock_schedule_queue);
-    }
-    if (list_empty(g_lock_schedule_queue)) {
-        conet::registry_task(g_lock_dipatch_task);
     }
     return g_lock_schedule_queue;
 }
