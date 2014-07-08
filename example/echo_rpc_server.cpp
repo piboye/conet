@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "server/rpc_pb_server.h"
+#include "svrkit/rpc_pb_server.h"
 #include "example/echo_rpc.pb.h"
 
 using namespace conet;

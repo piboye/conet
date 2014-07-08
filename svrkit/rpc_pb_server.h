@@ -17,10 +17,10 @@
  */
 #ifndef __PB_RPC_SERVER_H_INC__
 #define __PB_RPC_SERVER_H_INC__
-#include "server/server_base.h"
+#include "server_base.h"
 #include <string>
 #include <map>
-#include "server/rpc_base_pb.pb.h"
+#include "svrkit/rpc_base_pb.pb.h"
 namespace conet
 {
 struct rpc_pb_server_t;

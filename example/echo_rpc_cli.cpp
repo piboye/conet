@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include "net_tool.h"
 #include "example/echo_rpc.pb.h"
-#include "server/rpc_pb_server.h"
+#include "svrkit/rpc_pb_server.h"
 
 int main(int argc, char const* argv[])
 {

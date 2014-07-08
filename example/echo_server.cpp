@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "server/server_base.h"
+#include "svrkit/server_base.h"
 
 using namespace conet;
 
