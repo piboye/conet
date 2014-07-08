@@ -53,8 +53,8 @@ int proc_tasks(list_head *list)
     list_head *it=NULL, *next = NULL;
     list_for_each_safe(it, next, list) {
         task_t * t = container_of(it, task_t, link_to);
-        t->proc(t->arg);
-        ++num;
+        int ret = t->proc(t->arg);
+        if(ret >0) num+=ret;
     }
     return num;
 }

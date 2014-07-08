@@ -14,12 +14,22 @@ cc_binary(
 cc_binary(
     name = "echo_rpc_cli",
     srcs = ["echo_rpc_cli.cpp"],
-    deps = [":echo_rpc_proto", 
+    deps = [
+            ":echo_rpc_proto", 
             "//svrkit:client_base", 
             "//thirdparty/perftools:tcmalloc_debug",
             "#dl", 
             "#pthread",
            ],
+)
+
+cc_binary(
+    name = "echo_rpc_cli_co",
+    srcs = ["echo_rpc_cli_co.cpp"],
+    deps = [
+            ":echo_rpc_proto", 
+            "//svrkit:client_base", 
+            "#dl", "#pthread"],
 )
 
 proto_library(

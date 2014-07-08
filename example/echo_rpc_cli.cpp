@@ -21,16 +21,16 @@
 #include "net_tool.h"
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client.h"
+#include "thirdparty/gflags/gflags.h"
 
-int main(int argc, char const* argv[])
+DEFINE_string(server_addr, "", "server address");
+
+int main(int argc, char * argv[])
 {
-    if (argc < 3) {
-        fprintf(stderr, "usage:%s ip port\n", argv[0]);
-        return 0;
-    }
-    char const * ip = argv[1];
-    int  port = atoi(argv[2]);
+    google::ParseCommandLineFlags(&argc, &argv, false); 
 
+    conet::IpListLB lb; 
+    lb.init(FLAGS_server_addr);
     int ret = 0;
     char *line= NULL;
     size_t len = 0;
@@ -40,7 +40,7 @@ int main(int argc, char const* argv[])
         EchoResp resp;
         req.set_msg(std::string(line, ret));
         int ret_code = 0; 
-        ret_code = conet::rpc_pb_call(ip, port, "echo", "echo", &req, &resp, NULL);
+        ret_code = conet::rpc_pb_call(lb, "echo", "echo", &req, &resp, NULL);
         printf("ret_code:%d, response:%s\n", ret_code, resp.msg().c_str());
     }
     free(line);
