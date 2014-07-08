@@ -60,6 +60,17 @@ int proc_tasks(list_head *list)
 }
 
 
+int proc_netevent(int timeout);
+
+int dispatch(int wait_ms)
+{
+    int num = dispatch_one();
+    if (num >0) wait_ms = 0; 
+    int cnt = proc_netevent(wait_ms);
+    if (cnt >0) num += cnt;
+    return cnt;
+}
+
 int dispatch_one()
 {
     return proc_tasks(tls_get(g_tasks));

@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
     conet::coroutine_t *co = conet::alloc_coroutine(proc, NULL); 
     conet::resume(co);
     while (conet::get_epoll_pend_task_num() >0) {
-        conet::dispatch_one();
+        conet::dispatch();
     }
     return 0;
 }

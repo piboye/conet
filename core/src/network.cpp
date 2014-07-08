@@ -316,7 +316,7 @@ epoll_ctx_t *create_epoll(int event_size)
 {
     epoll_ctx_t * p = (epoll_ctx_t *) malloc(sizeof(epoll_ctx_t));
     init_epoll_ctx(p, event_size);
-    registry_task(task_proc, p);
+    //registry_task(task_proc, p);
     return p;
 }
 
