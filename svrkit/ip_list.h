@@ -22,6 +22,7 @@
 #include <vector>
 #include <string.h>
 #include <stdlib.h>
+#include "bobhash.h"
 
 
 struct ip_port_t
@@ -47,14 +48,14 @@ bool operator==(ip_port_t const &lval, ip_port_t const &rval )
     return lval.port == rval.port;
 }
 
-/*
 size_t hash_value(ip_port_t const &val)
 {
     size_t seed = 0;    
-    seed = __gnu_cxx::hash(val.ip) * val.port;
+    seed = bob_hash(val.ip.c_str(), val.ip.size(), 251);
+    size_t seed2 = bob_hash(&val.port, sizeof(val.port), 251);
+    seed = 3*seed + 23*seed2;
     return seed;   
 }
-*/
 
 
 static 

@@ -21,12 +21,11 @@
 #include <vector>
 #include <queue>
 #include <list>
-#include <map>
 
 #include "ip_list.h"
 #include "core/incl/auto_var.h"
 #include "net_tool.h"
-//#include <tr1/unordered_map>
+#include <tr1/unordered_map>
 
 namespace conet
 {
@@ -41,7 +40,7 @@ public:
         std::queue<int> m_fds;
     };
 
-    std::map<ip_port_t, Node> m_nodes;
+    std::tr1::unordered_map<ip_port_t, Node> m_nodes;
 
     FdPool()
     {
@@ -153,7 +152,7 @@ public:
     };
 
     std::vector<Node *> m_nodes;
-    std::map<ip_port_t, Node *> m_ip_port_nodes;
+    std::tr1::unordered_map<ip_port_t, Node *> m_ip_port_nodes;
 
     FdPool m_fds;
 
