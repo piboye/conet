@@ -61,18 +61,6 @@ struct ip_port_hash_t
     }
 };
 
-
-static 
-void get_ip_port_str(char const *ip, int port, std::string *key) 
-{
-    char buf[20];
-    int len =0;
-    len = snprintf(buf, sizeof(buf), "%s:%d", ip, port);
-    if (len >= (int) sizeof(buf)) len = sizeof(buf)-1;
-    buf[len] = 0;
-    *key = buf;
-}
-
 static
 inline 
 void parse_ip_list(std::string txt, std::vector<ip_port_t> * list)

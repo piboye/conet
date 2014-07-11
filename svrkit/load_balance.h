@@ -24,8 +24,10 @@
 
 #include "ip_list.h"
 #include "core/incl/auto_var.h"
+#include "core/incl/time_helper.h"
 #include "net_tool.h"
 #include <tr1/unordered_map>
+#include <math.h>
 
 namespace conet
 {
@@ -121,7 +123,16 @@ public:
         uint64_t called;
         uint64_t success_called;
         uint64_t failed_called;
+
+        uint64_t success_tk; // cpu tick
+        uint64_t failed_tk;  // cpu tick
+
+        uint64_t success_cost; // cpu tick
+        uint64_t failed_cost; // cpu tick
+
         list_head link_to;
+
+
 
         int calc() 
         {
@@ -129,12 +140,27 @@ public:
                 dymanic_weight = 100;
                 return 0;
             }
+
             if (called == 0) {
-                dymanic_weight = 100;
+                dymanic_weight = 1;
                 return 0;
             }
 
-            dymanic_weight = success_called * 100 / called * __builtin_ffs(success_called); 
+
+            int i = 0;
+            if (success_called == 0)  {
+                i = 1;
+            } else {
+                i = sizeof(success_called) *8 - __builtin_ctz(success_called);
+            }
+
+            success_cost = success_tk / success_called;
+            if (success_cost == 0) success_cost = 1;
+
+            failed_cost = failed_cost / failed_called;
+            if (failed_cost == 0) failed_cost = 1;
+
+            dymanic_weight = success_called * 100 / called * i; 
 
             return 0;
 
@@ -156,11 +182,13 @@ public:
 
     FdPool m_fds;
 
-    uint32_t m_pick_num;
+    std::vector<Node *> m_schedule_list;
+    int m_schedule_pos;
+    std::tr1::unordered_map<int, uint64_t> m_fd_start_tks;
+
 
     int init(std::string const &ips) 
     {
-        m_pick_num = 0;
 
         std::vector<ip_port_t> list;
         parse_ip_list(ips, &list);
@@ -180,12 +208,11 @@ public:
     }
 
 
-    std::vector<Node *> m_schedule_list;
-    int m_schedule_pos;
 
     int calc() 
     {
         int sum = 0;
+        int avg_cost = 0;
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
             m_nodes[i]->calc();
@@ -250,12 +277,15 @@ public:
                 calc();
             }
 
-            n = m_schedule_list[m_schedule_pos];
+            int pos = random()%m_schedule_list.size();
+
+            n = m_schedule_list[pos];
             ++m_schedule_pos;
 
             fd = m_fds.get(n->ip_port.ip.c_str(), n->ip_port.port);
             if (fd >= 0) {
                 *ip_port = n->ip_port;
+                m_fd_start_tks[fd] = rdtscp();
                 break;
             }
 
@@ -280,13 +310,22 @@ public:
         if (it != m_ip_port_nodes.end()) {
             ++it->second->called;
         }
+
+        uint64_t tk = m_fd_start_tks[fd];
+        if (tk >0) {
+            tk = rdtscp() -tk;
+        } else {
+            tk = 1;
+        }
+
         if (status == 0) {
             m_fds.add(ip_port, fd);
             it->second->success_called;
-           
+            it->second->success_tk += tk;   
         } else {
             close(fd);
             it->second->failed_called;
+            it->second->failed_tk += tk;   
         }
     }
 
