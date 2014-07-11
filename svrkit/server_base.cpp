@@ -119,7 +119,7 @@ int server_main(void *arg)
 
     conet::enable_sys_hook();
 
-    int listen_fd = create_tcp_socket(server->port, server->ip.c_str());
+    int listen_fd = create_tcp_socket(server->port, server->ip.c_str(), true);
     if (listen_fd <0) 
     {
         return -1;

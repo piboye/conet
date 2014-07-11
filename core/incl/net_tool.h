@@ -137,7 +137,7 @@ int read_data(int fd, char *buff, size_t len, int timeout, int *cost_timeout=NUL
 static
 inline
 int read_one_pack(int fd, char *result, 
-            int timeout = 10,  
+            int timeout = 100,  
             int max_len = 1024*1024, 
             int *cost_timeout = NULL
             ) 
@@ -186,7 +186,7 @@ int read_one_pack(int fd, char *result,
 static
 inline
 int read_one_pack(int fd, std::string *result,
-                  int timeout = 10,
+                  int timeout = 100,
                   int max_len = 1024*1024,
                   int *cost_timeout = NULL
                  )

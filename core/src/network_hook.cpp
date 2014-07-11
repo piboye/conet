@@ -151,12 +151,7 @@ HOOK_SYS_FUNC_DEF(
         return ret;
     }
 
-    struct pollfd pf = {
-fd:
-        fd,
-events:
-        POLLOUT|POLLERR|POLLHUP
-    };
+    struct pollfd pf = { fd: fd, events: POLLIN|POLLOUT|POLLERR|POLLHUP};
 
     int poll_ret = poll ( &pf,1, lp->snd_timeout);
     if (0 == poll_ret) {
@@ -210,6 +205,7 @@ HOOK_SYS_FUNC_DEF(
         ret = syscall(SYS_read, fd, buf, nbyte);
         return ret;
     }
+
     if (lp->type == 2)
     {
         return conet::disk_read(fd, buf, nbyte);

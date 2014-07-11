@@ -40,6 +40,7 @@ bool operator<(ip_port_t const &lval, ip_port_t const &rval )
     return lval.port < rval.port;
 }
 
+/*
 inline
 bool operator==(ip_port_t const &lval, ip_port_t const &rval )
 {
@@ -60,6 +61,7 @@ struct ip_port_hash_t
         return seed;   
     }
 };
+*/
 
 static
 inline 

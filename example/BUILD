@@ -29,6 +29,8 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
+            "//thirdparty/perftools:tcmalloc_debug",
+            "//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )
 

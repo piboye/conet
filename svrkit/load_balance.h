@@ -28,6 +28,7 @@
 #include "net_tool.h"
 #include <tr1/unordered_map>
 #include <math.h>
+#include <map>
 
 namespace conet
 {
@@ -42,7 +43,7 @@ public:
         std::queue<int> m_fds;
     };
 
-    std::tr1::unordered_map<ip_port_t, Node, ip_port_hash_t> m_nodes;
+    std::map<ip_port_t, Node> m_nodes;
 
     FdPool()
     {
@@ -73,11 +74,13 @@ public:
         int fd = -1;
         if (node.m_fds.empty()) {
             fd = connect_to(node.ip_port.ip.c_str(), node.ip_port.port);
+            //fprintf(stderr, "fd pool create fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
             return fd;
         }
 
         fd = node.m_fds.front();
         node.m_fds.pop();
+        //fprintf(stderr, "fd pool select fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
         return fd;
     }
 
@@ -127,10 +130,10 @@ public:
         uint64_t success_tk; // cpu tick
         uint64_t failed_tk;  // cpu tick
 
-        uint64_t success_cost; // cpu tick
-        uint64_t failed_cost; // cpu tick
+        uint64_t avg_cost; // cpu tick
 
         list_head link_to;
+        int succ_rate;
 
 
 
@@ -141,26 +144,54 @@ public:
                 return 0;
             }
 
+            /* 
             if (called == 0) {
                 dymanic_weight = 1;
                 return 0;
             }
+            */
 
 
 
-            success_cost = success_tk / success_called;
-            if (success_cost == 0) success_cost = 1;
 
-            failed_cost = failed_cost / failed_called;
-
-            if (failed_cost == 0) failed_cost = 1;
-
-            int t = success_called - 5*failed_called;
+            int t = success_called;// - 5*failed_called;
             if (t <=0) t = 1;
-            dymanic_weight = t * 100 / called;
+
+            int s = this->called;  
+            if (s == 0) {
+                s=1;
+            }
+
+            avg_cost = (success_tk) / s;
+
+            if (avg_cost <= 0) avg_cost = 1;
+
+             t  = t *100/ s;
+             succ_rate = t;
+
+            if (t >=90) {
+                dymanic_weight = success_called;
+            } else {
+                dymanic_weight = success_called;
+            }
+            if (this->dymanic_weight <= 0) {
+                this->dymanic_weight = 1;
+            }
+            
 
             return 0;
 
+        }
+
+        int reinit_stat()
+        {
+            avg_cost = 0;
+            called = 0;
+            success_called = 0;
+            failed_called = 0;
+            success_tk = 0;
+            failed_tk =0;
+            succ_rate = 0;
         }
 
         Node()
@@ -170,12 +201,14 @@ public:
             success_called = 0;
             failed_called = 0;
             dymanic_weight = 0;
+            avg_cost = 1;
             would_cnt = 0;
+            succ_rate = 0;
         }
     };
 
     std::vector<Node *> m_nodes;
-    std::tr1::unordered_map<ip_port_t, Node *, ip_port_hash_t> m_ip_port_nodes;
+    std::map<ip_port_t, Node *> m_ip_port_nodes;
 
     FdPool m_fds;
 
@@ -200,6 +233,7 @@ public:
             m_nodes.push_back(node);
             m_ip_port_nodes[list[i]] = node;
         }
+        m_report_num=0;
         return 0;
     }
 
@@ -208,9 +242,9 @@ public:
     int calc() 
     {
         int sum = 0;
-        int avg_cost = 0;
-        int sum_tk = 0;
-        int sum_sunc_cnt = 0;
+        uint64_t avg_cost = 0;
+        uint64_t sum_tk = 0;
+        int sum_cnt = 0;
 
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
@@ -218,10 +252,14 @@ public:
             n->calc();
             sum += n->dymanic_weight;
             sum_tk += n->success_tk;
-            sum_sunc_cnt += n->success_called;
+            sum_cnt += n->success_called;
         }
 
-        avg_cost = sum_tk / sum_sunc_cnt;
+        if (sum_cnt == 0) sum_cnt = 1;
+        
+        int avg_wg = sum / m_nodes.size();
+
+        avg_cost = sum_tk / sum_cnt;
         if (avg_cost <=0) avg_cost = 1;
 
         list_head schedule;
@@ -231,12 +269,19 @@ public:
         {
             Node *n = m_nodes[i];
 
-            float prio = (float)(avg_cost - n->success_cost)/avg_cost;
+            float prio = (float)(avg_cost - n->avg_cost)/avg_cost;
             if (prio > 1) prio = 1;
-            if (prio <= -0.8) prio = -0.8;
+            if (prio <= -1) prio = -1;
 
-            n->would_cnt = (n->dymanic_weight * 101 / sum) * (1+ prio);
-            if (m_nodes[i]->would_cnt <= 0) m_nodes[i]->would_cnt = 1;
+            if (n->succ_rate > 98 && (n->dymanic_weight < avg_wg)) {
+                n->would_cnt = (n->dymanic_weight*2 * 101 / sum); // * (1 + prio);
+            } else {
+                n->would_cnt = (n->dymanic_weight * 101 / sum); // * (1 + prio);
+            }
+            if (n->would_cnt <= 0) n->would_cnt = 1;
+            n->reinit_stat();
+
+            list_del_init(&m_nodes[i]->link_to);
             list_add_tail(&m_nodes[i]->link_to, &schedule);
         }
 
@@ -252,6 +297,7 @@ public:
                 Node *n = container_of(it, Node, link_to);
 
                 if (n->would_cnt > 0) {
+                    ++cnt;
                     m_schedule_list.push_back(n);
                     --(n->would_cnt); 
                 } 
@@ -278,31 +324,39 @@ public:
         return fd;
     }
 
+    int m_report_num;
+
     int get(ip_port_t * ip_port)
     {
         int fd = -1;
         Node *n = NULL;
         for (int i=0; i<10; ++i) 
         {
-            if (m_schedule_pos >= (int)m_schedule_list.size()) {
+            if (m_report_num >= (int)m_schedule_list.size()) {
                 calc();
+                m_report_num = 0;
             }
 
-            int pos = random()%m_schedule_list.size();
+            int pos = (m_schedule_pos++)%m_schedule_list.size();
+            
 
             n = m_schedule_list[pos];
-            ++m_schedule_pos;
 
+            uint64_t start_tk = rdtscp();
             fd = m_fds.get(n->ip_port.ip.c_str(), n->ip_port.port);
             if (fd >= 0) {
+                m_fd_start_tks[fd] = start_tk;
                 *ip_port = n->ip_port;
-                m_fd_start_tks[fd] = rdtscp();
                 break;
             }
 
+            ++m_report_num;
+            n->failed_tk += (rdtscp()-start_tk); 
             ++ n->called;
             ++ n->failed_called;
         }
+        if (fd <0) *ip_port = n->ip_port;
+        //fprintf(stderr, "select fd:%d, address:[%s:%d]\n", fd, ip_port->ip.c_str(), ip_port->port);
 
         return fd;
     }
@@ -317,6 +371,7 @@ public:
 
     void release(ip_port_t const &ip_port, int fd, int status) 
     {
+
         AUTO_VAR(it, =, m_ip_port_nodes.find(ip_port));
         if (it == m_ip_port_nodes.end()) {
             if (fd>=0) {
@@ -325,15 +380,18 @@ public:
             return;
         }
 
+        ++m_report_num;
+
         Node *n = it->second;
-        n->called;
+        ++n->called;
 
         uint64_t tk = m_fd_start_tks[fd];
         if (tk >0) {
-            tk = rdtscp() -tk;
+            tk = rdtscp() - tk;
         } else {
             tk = 1;
         }
+        //fprintf(stderr, "fd:%d, address:[%s:%d], ret:%d, tk:%lu\n", fd, ip_port.ip.c_str(), ip_port.port, status, tk);
 
         if (status == 0) {
             m_fds.add(ip_port, fd);
@@ -342,7 +400,7 @@ public:
         } else {
             close(fd);
             ++n->failed_called;
-            n->failed_tk += tk;   
+            n->failed_tk += tk;
         }
     }
 

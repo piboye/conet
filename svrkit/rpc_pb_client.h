@@ -91,11 +91,7 @@ int rpc_pb_call(LBT &lb,
     fd = lb.get(&ip, &port);
     if (fd <0) return -3;
     int ret =  rpc_pb_call(fd, server_name, cmd_name, a_req, a_resp, errmsg);
-    if (ret == 0) {
-        lb.release(ip.c_str(), port, fd, 0);
-    } else {
-        lb.release(ip.c_str(), port, fd, 1);
-    }
+    lb.release(ip.c_str(), port, fd, ret);
     return ret;
 }
 
