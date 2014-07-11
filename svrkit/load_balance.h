@@ -147,20 +147,17 @@ public:
             }
 
 
-            int i = 0;
-            if (success_called == 0)  {
-                i = 1;
-            } else {
-                i = sizeof(success_called) *8 - __builtin_ctz(success_called);
-            }
 
             success_cost = success_tk / success_called;
             if (success_cost == 0) success_cost = 1;
 
             failed_cost = failed_cost / failed_called;
+
             if (failed_cost == 0) failed_cost = 1;
 
-            dymanic_weight = success_called * 100 / called * i; 
+            int t = success_called - 5*failed_called;
+            if (t <=0) t = 1;
+            dymanic_weight = t * 100 / called;
 
             return 0;
 
@@ -201,7 +198,6 @@ public:
             Node *node = new Node();
             node->ip_port = list[i];
             m_nodes.push_back(node);
-
             m_ip_port_nodes[list[i]] = node;
         }
         return 0;
@@ -213,18 +209,33 @@ public:
     {
         int sum = 0;
         int avg_cost = 0;
+        int sum_tk = 0;
+        int sum_sunc_cnt = 0;
+
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
-            m_nodes[i]->calc();
-            sum += m_nodes[i]->dymanic_weight;
+            Node *n = m_nodes[i];
+            n->calc();
+            sum += n->dymanic_weight;
+            sum_tk += n->success_tk;
+            sum_sunc_cnt += n->success_called;
         }
+
+        avg_cost = sum_tk / sum_sunc_cnt;
+        if (avg_cost <=0) avg_cost = 1;
 
         list_head schedule;
         INIT_LIST_HEAD(&schedule);
 
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
-            m_nodes[i]->would_cnt = m_nodes[i]->dymanic_weight * 101 / sum;
+            Node *n = m_nodes[i];
+
+            float prio = (float)(avg_cost - n->success_cost)/avg_cost;
+            if (prio > 1) prio = 1;
+            if (prio <= -0.8) prio = -0.8;
+
+            n->would_cnt = (n->dymanic_weight * 101 / sum) * (1+ prio);
             if (m_nodes[i]->would_cnt <= 0) m_nodes[i]->would_cnt = 1;
             list_add_tail(&m_nodes[i]->link_to, &schedule);
         }
@@ -307,9 +318,15 @@ public:
     void release(ip_port_t const &ip_port, int fd, int status) 
     {
         AUTO_VAR(it, =, m_ip_port_nodes.find(ip_port));
-        if (it != m_ip_port_nodes.end()) {
-            ++it->second->called;
+        if (it == m_ip_port_nodes.end()) {
+            if (fd>=0) {
+                close(fd);
+            }
+            return;
         }
+
+        Node *n = it->second;
+        n->called;
 
         uint64_t tk = m_fd_start_tks[fd];
         if (tk >0) {
@@ -320,12 +337,12 @@ public:
 
         if (status == 0) {
             m_fds.add(ip_port, fd);
-            it->second->success_called;
-            it->second->success_tk += tk;   
+            ++n->success_called;
+            n->success_tk += tk;   
         } else {
             close(fd);
-            it->second->failed_called;
-            it->second->failed_tk += tk;   
+            ++n->failed_called;
+            n->failed_tk += tk;   
         }
     }
 
