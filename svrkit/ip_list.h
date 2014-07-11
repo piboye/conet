@@ -48,14 +48,18 @@ bool operator==(ip_port_t const &lval, ip_port_t const &rval )
     return lval.port == rval.port;
 }
 
-size_t hash_value(ip_port_t const &val)
+
+struct ip_port_hash_t
 {
-    size_t seed = 0;    
-    seed = bob_hash(val.ip.c_str(), val.ip.size(), 251);
-    size_t seed2 = bob_hash(&val.port, sizeof(val.port), 251);
-    seed = 3*seed + 23*seed2;
-    return seed;   
-}
+    size_t operator()(ip_port_t const &val) const
+    {
+        size_t seed = 0;    
+        seed = bob_hash(val.ip.c_str(), val.ip.size(), 251);
+        size_t seed2 = bob_hash(&val.port, sizeof(val.port), 251);
+        seed = 3*seed + 23*seed2;
+        return seed;   
+    }
+};
 
 
 static 

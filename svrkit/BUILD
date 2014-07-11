@@ -17,6 +17,7 @@ cc_library(
     name = 'client_base',
     srcs = [
         "rpc_pb_client.cpp",
+        "bobhash.cpp",
     ],
     deps =[
         "//core:conet", 

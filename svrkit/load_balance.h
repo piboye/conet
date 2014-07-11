@@ -40,7 +40,7 @@ public:
         std::queue<int> m_fds;
     };
 
-    std::tr1::unordered_map<ip_port_t, Node> m_nodes;
+    std::tr1::unordered_map<ip_port_t, Node, ip_port_hash_t> m_nodes;
 
     FdPool()
     {
@@ -116,7 +116,7 @@ public:
     public:
         ip_port_t ip_port;
 
-        int weigth;
+        int dymanic_weight;
         int would_cnt;
         uint64_t called;
         uint64_t success_called;
@@ -125,16 +125,16 @@ public:
 
         int calc() 
         {
-            if (weigth == 0) {
-                weigth = 100;
+            if (dymanic_weight == 0) {
+                dymanic_weight = 100;
                 return 0;
             }
             if (called == 0) {
-                weigth = 100;
+                dymanic_weight = 100;
                 return 0;
             }
 
-            weigth = success_called * 100 / called; 
+            dymanic_weight = success_called * 100 / called * __builtin_ffs(success_called); 
 
             return 0;
 
@@ -146,13 +146,13 @@ public:
             called = 0;
             success_called = 0;
             failed_called = 0;
-            weigth = 0;
+            dymanic_weight = 0;
             would_cnt = 0;
         }
     };
 
     std::vector<Node *> m_nodes;
-    std::tr1::unordered_map<ip_port_t, Node *> m_ip_port_nodes;
+    std::tr1::unordered_map<ip_port_t, Node *, ip_port_hash_t> m_ip_port_nodes;
 
     FdPool m_fds;
 
@@ -189,7 +189,7 @@ public:
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
             m_nodes[i]->calc();
-            sum += m_nodes[i]->weigth;
+            sum += m_nodes[i]->dymanic_weight;
         }
 
         list_head schedule;
@@ -197,7 +197,7 @@ public:
 
         for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
         {
-            m_nodes[i]->would_cnt = m_nodes[i]->weigth * 101 / sum;
+            m_nodes[i]->would_cnt = m_nodes[i]->dymanic_weight * 101 / sum;
             if (m_nodes[i]->would_cnt <= 0) m_nodes[i]->would_cnt = 1;
             list_add_tail(&m_nodes[i]->link_to, &schedule);
         }
