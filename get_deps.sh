@@ -1,7 +1,7 @@
 echo "get thirdparty"
 if [[ ! -d thirdparty ]]
 then
-git clone https://github.com/chen3feng/thirdparty thirdparty
+git clone https://github.com/piboye/thirdparty thirdparty
 fi
 
 echo "get blade"
