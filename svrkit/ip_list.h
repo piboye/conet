@@ -30,6 +30,43 @@ struct ip_port_t
     int port;
 };
 
+inline
+bool operator<(ip_port_t const &lval, ip_port_t const &rval )
+{
+    int i = lval.ip.compare(rval.ip); 
+    if (i>0) return false;
+    if (i<0) return true;
+    return lval.port < rval.port;
+}
+
+inline
+bool operator==(ip_port_t const &lval, ip_port_t const &rval )
+{
+    int i = lval.ip.compare(rval.ip); 
+    if (i) return false;
+    return lval.port == rval.port;
+}
+
+/*
+size_t hash_value(ip_port_t const &val)
+{
+    size_t seed = 0;    
+    seed = __gnu_cxx::hash(val.ip) * val.port;
+    return seed;   
+}
+*/
+
+
+static 
+void get_ip_port_str(char const *ip, int port, std::string *key) 
+{
+    char buf[20];
+    int len =0;
+    len = snprintf(buf, sizeof(buf), "%s:%d", ip, port);
+    if (len >= (int) sizeof(buf)) len = sizeof(buf)-1;
+    buf[len] = 0;
+    *key = buf;
+}
 
 static
 inline 
