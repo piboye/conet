@@ -17,6 +17,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/syscall.h>
 #include "tls.h"
 #include "list.h"
@@ -59,10 +60,17 @@ void pthread_atexit_done(void *arg)
     free(list);
 }
 
+
+static void main_thread_atexit_done()
+{
+    return pthread_atexit_done(pthread_getspecific(g_pthread_atexit_key));
+}
+
 static
 void pthread_atexit_init(void)
 {
     pthread_key_create(&g_pthread_atexit_key, pthread_atexit_done);
+    atexit(&main_thread_atexit_done);
 }
 
 
