@@ -221,6 +221,10 @@ HOOK_SYS_FUNC_DEF(
 
     poll( &pf, 1, timeout );
 
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
+
     ret = syscall(SYS_read,  fd,(char*)buf , nbyte );
     return ret;
 }
@@ -258,13 +262,11 @@ HOOK_SYS_FUNC_DEF(
     if (errno != EAGAIN) return ret;
 
     int timeout = lp->snd_timeout;
-    struct pollfd pf = {
-fd :
-        fd,
-events:
-        ( POLLOUT | POLLERR | POLLHUP )
-    };
+    struct pollfd pf = { fd : fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
     poll( &pf,1,timeout );
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
     ret = _(write)(fd, (const char*)buf, nbyte);
     return ret;
 }
@@ -292,8 +294,13 @@ HOOK_SYS_FUNC_DEF(
     {
         int timeout = lp->snd_timeout;
 
-struct pollfd pf = {fd: fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
+        struct pollfd pf = {fd: fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
         poll(&pf, 1, timeout);
+
+        if (pf.revents & POLLERR) {
+            return -1;
+        }
+
         ret = _(sendto)(fd, message, length, flags, dest_addr, dest_len);
     }
     return ret;
@@ -319,8 +326,12 @@ HOOK_SYS_FUNC_DEF(
 
     int timeout = lp->rcv_timeout;
 
-struct pollfd pf = { fd:fd, events:( POLLIN | POLLERR | POLLHUP ) };
+    struct pollfd pf = { fd:fd, events:( POLLIN | POLLERR | POLLHUP ) };
     poll( &pf,1,timeout );
+
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
     ssize_t ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
     return ret;
 }
@@ -350,6 +361,10 @@ HOOK_SYS_FUNC_DEF(
         pf.events = ( POLLOUT | POLLERR | POLLHUP );
         poll( &pf,1,timeout );
 
+        if (pf.revents & POLLERR) {
+            return -1;
+        }
+
         ret = _(send)(fd, (const char*)buffer, length, flags);
     }
 
@@ -378,6 +393,9 @@ HOOK_SYS_FUNC_DEF(
     pf.fd = fd;
     pf.events = ( POLLIN | POLLERR | POLLHUP );
     poll( &pf,1, timeout );
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
 
     ssize_t ret = _(recv)(fd, buffer, length, flags);
     return ret;

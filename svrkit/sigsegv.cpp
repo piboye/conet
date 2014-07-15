@@ -181,7 +181,7 @@ void signal_handle(int signum, siginfo_t* info, void*ptr)
 
 static char s_sig_stack[1024000];
 
-static int s_catch_sig[] = {SIGILL, SIGBUS, SIGFPE, SIGABRT, SIGPIPE, SIGSEGV};
+static int s_catch_sig[] = {SIGILL, SIGBUS, SIGFPE, SIGABRT, SIGSEGV};
 
 static void __attribute__((constructor)) setup_sig() 
 {
@@ -202,5 +202,7 @@ static void __attribute__((constructor)) setup_sig()
         if(sigaction(s_catch_sig[i], &action, NULL) < 0)
             perror("sigaction");
     }
+    //ignore sigpipe
+    signal(SIGPIPE, SIG_IGN);
 }
 

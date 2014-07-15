@@ -271,7 +271,10 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
     int cnt = 0;
     ret = epoll_wait(epoll_ctx->m_epoll_fd, &epoll_ctx->m_epoll_events[0],
                      epoll_ctx->m_epoll_size, timeout);
-    if (ret <0 ) return ret;
+    if (ret <0 ) {
+        // epoll_wait failed;
+        return 0;
+    }
     if (ret ==0 ) {
         return ret;
     }
