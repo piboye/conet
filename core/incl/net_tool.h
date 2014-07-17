@@ -41,19 +41,16 @@
 #include "time_helper.h"
 #include "log.h"
 
-
 enum {
     ERR_TIMEOUT_NET_HELPER = -2  // 超时错误码
 };
 
 
 static inline
-int send_data(int fd, char const * buf, size_t len, int timeout=10, int * cost_timeout=NULL)
+int send_data(int fd, char const * buf, size_t len)
 {
     int ret = 0;
     size_t cur_len = 0;
-    uint64_t start = get_tick_ms();
-    uint64_t now = start;
     while (cur_len < len)
     {
         ret = ::write(fd, &buf[cur_len], len-cur_len);
@@ -64,11 +61,7 @@ int send_data(int fd, char const * buf, size_t len, int timeout=10, int * cost_t
             break;
         }
         cur_len += ret;
-        now = get_tick_ms();
-        if (time_after(now, start + timeout)) break;
     }
-
-    if (cost_timeout) *cost_timeout = (now-start);
 
     if (ret <0) return ret;
     return len;
@@ -77,7 +70,7 @@ int send_data(int fd, char const * buf, size_t len, int timeout=10, int * cost_t
 
 
 static inline
-int send_data_pack(int fd, char const *buf, size_t a_len, int timeout=10, int *cost_timeout=NULL)
+int send_data_pack(int fd, char const *buf, size_t a_len)
 {
     int ret = 0;
 
@@ -88,156 +81,112 @@ int send_data_pack(int fd, char const *buf, size_t a_len, int timeout=10, int *c
     char *out =new char[a_len+sizeof(len)];
     memcpy(out, (char *)&len, sizeof(len));
     memcpy(out+sizeof(len), buf, a_len);
-    ret = send_data(fd, out, a_len +sizeof(len), timeout, cost_timeout);
+    ret = send_data(fd, out, a_len +sizeof(len));
     if (ret > 4) ret -=4;
     delete out;
     return ret;
 }
 
 static inline
-int send_data_pack(int fd, std::string data, int timeout=10, int *cost_timeout=NULL)
+int send_data_pack(int fd, std::string data)
 {
     uint32_t len = 0;
     len = htonl(data.size());
     data.insert(0, (char *)(&len), sizeof(len));
-    int ret = send_data(fd, data.c_str(), data.size(), timeout, cost_timeout);
+    int ret = send_data(fd, data.c_str(), data.size());
     if (ret > 4) ret -=4 ;
     return ret;
 }
 
 static inline
-int send_data_pack(int fd, std::vector<char> const & data, int timeout=10, int *cost_timeout=NULL)
+int send_data_pack(int fd, std::vector<char> const & data)
 {
-    return send_data_pack(fd, &data[0], data.size(), timeout, cost_timeout);
+    return send_data_pack(fd, &data[0], data.size());
 }
 
 static inline
-int read_data(int fd, char *buff, size_t len, int timeout, int *cost_timeout=NULL)
+int read_data(int fd, char *buff, size_t len)
 {
     int ret = 0;
     size_t cur_len =0;
-    uint64_t start = get_tick_ms();
-    uint64_t now = start;
     while (cur_len < len)
     {
         ret = read(fd, &buff[cur_len], len-cur_len);
         if (ret <= 0) {
-            break;
+            return ret;
         }
         cur_len += ret;
-        now = get_tick_ms();
-        if (time_after(now, start + timeout)) break;
     }
-    if (cost_timeout) *cost_timeout = (now-start);
-
-    if (ret <=0) return ret;
     return cur_len;
 }
 
-static
-inline
-int read_one_pack(int fd, char *result, 
-            int timeout = 100,  
-            int max_len = 1024*1024, 
-            int *cost_timeout = NULL
-            ) 
+
+class PacketStream
 {
-    int rest_timeout = timeout; 
-    int used_timeout = 0; 
-    int use_timeout = rest_timeout;
+public:
+    int fd;
+    int max_size;
+    char *buff;
+    int prev_pos;
+    int total_len;
 
-    uint32_t len = 0;
-    int ret = 0;
-    ret = read_data(fd, (char *)&len, sizeof(len), rest_timeout, &use_timeout);
-
-    rest_timeout -= use_timeout; 
-    used_timeout += use_timeout; 
-    if (cost_timeout) *cost_timeout = used_timeout; 
-
-    if (ret == 0) {
-        return 0;
-    } 
-
-    if (rest_timeout < 0) { 
-        return ERR_TIMEOUT_NET_HELPER; 
+    int init(int fd, int max_size) 
+    {
+        this->fd = fd;
+        this->max_size = max_size;
+        buff = (char *)malloc(max_size);
+        prev_pos = 0;
+        total_len = 0;
     }
 
-
-
-    if (ret != (int) sizeof(len)) {
-        return -3;
+    ~PacketStream()
+    {
+        free(buff);
     }
 
-    len = ntohl(len);
-    if ((int64_t) len >  max_len) return -4;
+    int read_packet(char **pack, int * pack_len) 
+    {
+        uint32_t len = 0;
+        int ret = 0;
+        int cur_len = 0;
+        
+        if (prev_pos >0) {
+            cur_len = total_len - prev_pos;
+            memmove(buff, buff+prev_pos, cur_len);
+        }
 
-    ret = read_data(fd, (char *)result, len, rest_timeout, &use_timeout);
+        while (cur_len < sizeof(len)) {
+            ret = read(fd, buff+cur_len, max_size-cur_len);
+            if (ret <= 0) {
+                return ret;
+            } 
+            cur_len += ret;
+        }
 
-    rest_timeout -= use_timeout; 
-    used_timeout += use_timeout; 
-    if (cost_timeout) *cost_timeout = used_timeout; 
-    if (rest_timeout < 0) { 
-        return ERR_TIMEOUT_NET_HELPER; 
-    } 
 
-    return ret; 
-}
+        len = ntohl(*(uint32_t *)(buff));
 
-static
-inline
-int read_one_pack(int fd, std::string *result,
-                  int timeout = 100,
-                  int max_len = 1024*1024,
-                  int *cost_timeout = NULL
-                 )
-{
-    int rest_timeout = timeout;
-    int used_timeout = 0;
-    int use_timeout = rest_timeout;
+        if ((int32_t) len + 4 >  max_size) return -4;
 
-    uint32_t len = 0;
-    int ret = 0;
- 
+        while (cur_len - 4 < len) {
+            ret = read(fd, buff+cur_len, max_size-cur_len);
+            if (ret <= 0) {
+                return ret;
+            } 
+            cur_len += ret;
+        }
 
-    ret = read_data(fd, (char *)&len, sizeof(len), rest_timeout, &use_timeout);
+        *pack_len = len;
+        total_len = cur_len;
 
-    rest_timeout -= use_timeout; 
-    used_timeout += use_timeout; 
-    if (cost_timeout) *cost_timeout = used_timeout; 
+        prev_pos = len + 4;
 
-    if (ret == 0) {
-        return 0;
+        *pack = buff + 4;
+
+        return 1; 
     }
+};
 
-    if (rest_timeout < 0) { 
-        return ERR_TIMEOUT_NET_HELPER; 
-    } 
-
-
-    if (ret != (int) sizeof(len)) {
-        return -3;
-    }
-
-    len = ntohl(len);
-    if ((int64_t) len >  max_len) return -4;
-
-    result->resize(len, '0');
-    ret = read_data(fd, (char *)result->data(), len, rest_timeout, &use_timeout);
-    if (ret >0) {
-        result->resize(ret);
-    } else {
-        result->clear();
-    }
-
-    rest_timeout -= use_timeout;
-    used_timeout += use_timeout;
-    if (cost_timeout) *cost_timeout = used_timeout;
-    if (rest_timeout < 0) {
-        return ERR_TIMEOUT_NET_HELPER;
-    }
-
-    return ret;
-}
 
 static inline
 int set_none_block(int fd, bool enable=true)

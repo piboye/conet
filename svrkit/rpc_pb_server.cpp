@@ -17,7 +17,6 @@
  */
 #include <stdlib.h>
 #include "rpc_pb_server.h"
-#include "log.h"
 #include "net_tool.h"
 
 #define AUTO_VAR(a, op, val) typeof(val) a op val
@@ -110,11 +109,10 @@ static int proc_rpc_pb(conn_info_t *conn)
 {
     server_t * server_base= conn->server; 
     rpc_pb_server_t * server = (rpc_pb_server_t *) server_base->extend;
-    int size = server_base->max_packet_size;
-    //char * buff = CO_ALLOC_ARRAY(char, size);
+    int max_size = server_base->max_packet_size;
     int ret = 0;
     int fd = conn->fd;
-    set_none_block(fd, false);
+    //set_none_block(fd, false);
 
     rpc_pb_ctx_t ctx;
 
@@ -125,35 +123,39 @@ static int proc_rpc_pb(conn_info_t *conn)
     ctx.server = server;
     ctx.conn_info = conn;
     ctx.req = &cmd_base;
+
+    PacketStream stream;
+    stream.init(fd, max_size);
     do
     {
-        std::string data;
+        char * data = NULL;
+        int packet_len = 0;
 
-        ret = read_one_pack(fd,  &data,  1000, size, NULL);
+        ret = stream.read_packet(&data, &packet_len);
         if (ret == 0) {
             break;
         }
 
         if (ret <0) {
-            CONET_LOG(ERROR, " read 4 byte pack failed, fd:%d, ret:%d", fd, ret);
+            LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             break;
         }
 
-        if (!cmd_base.ParseFromString(data)) {
+        if (!cmd_base.ParseFromArray(data, packet_len)) 
+        {
             // parse cmd base head failed;
-            CONET_LOG(ERROR, " parse cmd base failed, fd:%d, ret:%d", fd, ret);
+            LOG(ERROR)<<"parse cmd base failed, fd:"<<fd<<", ret:"<<ret;
             break;
         }
+        
 
         if (cmd_base.type() != CmdBase::REQUEST_TYPE) {
-            CONET_LOG(ERROR, "request type[%d] error, require REQUEST_TYPE:%d",
-                    (int ) cmd_base.type(), (int) CmdBase::REQUEST_TYPE);
+            LOG(ERROR)<<"request type["<<cmd_base.type()<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
             break;
         }
 
         if (cmd_base.server_name() != server->server_name) {
-            CONET_LOG(ERROR, "request server name[%s] nomatch cur server[%s]",
-                    cmd_base.server_name().c_str(), server->server_name.c_str());
+            LOG(ERROR)<< "request server["<<cmd_base.server_name()<<"] nomatch the server["<<server->server_name<<"]";
             break;
 
         }
@@ -162,20 +164,20 @@ static int proc_rpc_pb(conn_info_t *conn)
         rpc_pb_cmd_t * cmd = get_rpc_pb_cmd(server, cmd_name);
         if (NULL == cmd) {
             // not unsuppend cmd;
-            CONET_LOG(ERROR, "unsuppend cmd, server:%s, cmd:%s",
-                    server->server_name.c_str(), cmd_name.c_str());
+            LOG(ERROR)<< "unsuppend cmd, server:"<<server->server_name
+                <<"cmd:"<<cmd_name;
 
             cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
             cmd_base.set_errmsg("unsuppored cmd");
             ret = send_data_pack(fd, cmd_base.SerializeAsString());
             if (ret <= 0) {
-                CONET_LOG(ERROR, "send resp failed!, fd:%d, ret:%d", fd, ret);
+                LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
                 break;
             }
             break;
         }
 
-        std::string req = cmd_base.body();
+        std::string & req = cmd_base.body();
         std::string resp;
         std::string errmsg;
 
@@ -188,7 +190,7 @@ static int proc_rpc_pb(conn_info_t *conn)
         ret = send_data_pack(fd, cmd_base.SerializeAsString());
         if (ret <=0) {
             // send data failed;
-            CONET_LOG(ERROR, "send resp failed!, fd:%d, ret:%d", fd, ret);
+            LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
             break; 
         }
     } while(1);

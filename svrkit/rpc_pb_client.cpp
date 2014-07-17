@@ -43,13 +43,18 @@ int rpc_pb_call_impl(int fd,
         //close(fd);
         return -4;
     }
-    std::string data;
-    ret = read_one_pack(fd, &data);
+    PacketStream stream;
+    stream.init(fd, 1024*1024);
+    char * data = NULL;
+    int packet_len = 0;
+
+    ret = stream.read_packet(&data, &packet_len);
+
     //close(fd);
     if (ret <=0) {
         return -5;
     }
-    if (!resp_base.ParseFromString(data)) {
+    if (!resp_base.ParseFromArray(data, packet_len)) {
         return -6;
     }
     ret = resp_base.ret();

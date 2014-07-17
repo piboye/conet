@@ -17,6 +17,8 @@ cc_library(
         "incl/",
     ],
     deps=[
+        '//thirdparty/gflags:gflags',
+        "//thirdparty/glog:glog",
         '#aio','#dl', '#pthread'
     ],
     warning=["fPIC"],

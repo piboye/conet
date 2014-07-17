@@ -29,8 +29,8 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            "//thirdparty/perftools:tcmalloc_debug",
-            "//thirdparty/perftools:profiler",
+            #"//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )
 
@@ -52,9 +52,8 @@ cc_binary(
     srcs = ["echo_rpc_server.cpp"],
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server", 
-            "//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:tcmalloc_debug",
             "//thirdparty/gflags:gflags",
-            "//thirdparty/glog:glog",
             "#dl", "#pthread", 
            ],
 )
@@ -65,8 +64,7 @@ cc_binary(
     srcs = ["aio_test.cpp"],
     deps = [
         "//core:conet", 
-        '//thirdparty/gflags:gflags',
-        '//thirdparty/perftools:tcmalloc_debug',
+        #'//thirdparty/perftools:tcmalloc_debug',
         "#dl", 
         "#pthread"
     ],
