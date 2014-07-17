@@ -147,7 +147,8 @@ static int proc_disk_event(void *arg)
     ts.tv_sec = 0;
     ts.tv_nsec = 0;
     struct io_event  event[64];
-    do
+
+    do 
     {
         uint64_t ready = 0;
         int n = 0;
@@ -165,7 +166,7 @@ static int proc_disk_event(void *arg)
             }
             break;
         }
-    } while(1);
+    } while(1); // need dead loop
     return 0;
 }
 
