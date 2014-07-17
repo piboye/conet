@@ -242,11 +242,7 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
     int ret = 0;
 
     off64_t off = 0;
-    ret = lseek64(fd,  0, SEEK_CUR);
-    if (ret) {
-        return _(read)(fd, buf, nbyte);
-    }
-
+    off = lseek64(fd,  0, SEEK_CUR);
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
@@ -297,10 +293,7 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
 
     off64_t off = 0;
     if (!(ctx->user_flag & O_APPEND)) {
-        ret = lseek64(fd,  0, SEEK_CUR);
-        if (ret) {
-            return _(write)(fd, buf, nbyte);
-        }
+        off = lseek64(fd,  0, SEEK_CUR);
     }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
@@ -334,7 +327,6 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
     if (res != cb.u.c.nbytes) {
         return res;
     }
-    fprintf(stderr, "disk write ok\n");
     return res;
 }
 
@@ -401,10 +393,7 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
 {
     int ret = 0;
     off64_t off = 0;
-    ret = lseek64(fd,  0, SEEK_CUR);
-    if (ret) {
-        return _(readv)(fd, iov, iovcnt);
-    }
+    off = lseek64(fd,  0, SEEK_CUR);
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
@@ -449,10 +438,7 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
 
     off64_t off = 0;
     if (!(ctx->user_flag & O_APPEND)) {
-        ret = lseek64(fd,  0, SEEK_CUR);
-        if (ret) {
-            return _(writev)(fd, iov, iovcnt);
-        }
+        off = lseek64(fd,  0, SEEK_CUR);
     }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
@@ -857,6 +843,7 @@ FILE * ,fopen,(const char *file, const char *mode)
     {   // read file, need buff, not hook
         return _(fopen)(file, mode);
     }
+
     if (!(oflags & O_APPEND)) {
         return _(fopen)(file, mode);
     }

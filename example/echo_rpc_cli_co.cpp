@@ -25,7 +25,7 @@
 #include "thirdparty/gflags/gflags.h"
 #include "conet_all.h"
 
-DEFINE_string(server_addr, "", "server address");
+DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
 DEFINE_string(data_file, "1.txt", "send data file");
 

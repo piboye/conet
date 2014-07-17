@@ -3,7 +3,7 @@ cc_library(
     srcs = [
         "server_base.cpp",
         "co_pool.cpp",
-        "sigsegv.cpp",
+        #"sigsegv.cpp",
     ],
     deps =[
         "//core:conet", 

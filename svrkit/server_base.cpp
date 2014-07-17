@@ -31,6 +31,8 @@ namespace conet
 int client_proc(conn_info_t *info)
 {
     conet::enable_sys_hook();
+    conet::enable_pthread_hook();
+
     co_pool_item_t pool_item;   
     INIT_LIST_HEAD(&pool_item.link);
     pool_item.co = info->co;
@@ -118,6 +120,7 @@ int server_main(void *arg)
     server_t *server = (server_t *)(arg);
 
     conet::enable_sys_hook();
+    conet::enable_pthread_hook();
 
     int listen_fd = create_tcp_socket(server->port, server->ip.c_str(), true);
     if (listen_fd <0) 

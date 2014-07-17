@@ -61,6 +61,7 @@ struct coroutine_t
         unsigned int is_enable_sys_hook:1;
         unsigned int is_end_delete:1;
         unsigned int is_enable_pthread_hook:1;
+        unsigned int is_enable_disk_io_hook:1;
     };
 
     int ret_val;

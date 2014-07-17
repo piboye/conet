@@ -14,7 +14,7 @@ uint64_t rdtscp(void)
     return (o | lo);
 }
 
-static inline
+static 
 uint64_t get_cpu_khz()
 {
     FILE *fp = fopen("/proc/cpuinfo","r");
@@ -36,7 +36,7 @@ uint64_t get_cpu_khz()
     return u;
 }
 
-static inline
+static 
 uint64_t get_tick_ms()
 {
     static uint64_t khz = get_cpu_khz();

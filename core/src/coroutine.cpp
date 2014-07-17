@@ -89,6 +89,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->is_enable_sys_hook = 0;
     self->is_end_delete = 0;
     self->is_enable_pthread_hook = 0;
+    self->is_enable_disk_io_hook = 0;
     self->is_main =0;
 
     // stack  group from high address to  low; align depend stack_size must be multiplies align size

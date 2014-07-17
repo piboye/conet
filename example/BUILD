@@ -53,6 +53,8 @@ cc_binary(
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server", 
             "//thirdparty/perftools:tcmalloc_debug",
+            "//thirdparty/gflags:gflags",
+            "//thirdparty/glog:glog",
             "#dl", "#pthread", 
            ],
 )

@@ -47,7 +47,8 @@ namespace conet
 {
 int is_enable_pthread_hook()
 {
-    return current_coroutine()->is_enable_pthread_hook;
+    coroutine_t *co = current_coroutine();
+    return !(co->is_main) && (co->is_enable_pthread_hook);
 }
 
 void enable_pthread_hook()
@@ -170,10 +171,9 @@ static int trylock(lock_ctx_t *ctx)
         default:
             fprintf(stderr, "error lock type:%d\n", ctx->type);
             exit(-1);
-            return 0;
-
+         return -1;
     }
-    return 0;
+    return -2;
 }
 
 static
@@ -206,9 +206,9 @@ list_head *get_lock_schedule_queue()
         g_lock_dipatch_task = new conet::task_t();
         tls_onexit_add(g_lock_dipatch_task, tls_destructor_fun<conet::task_t>);
 
-        conet::registry_task(g_lock_dipatch_task);
         conet::init_task(g_lock_dipatch_task, 
                 proc_lock_schedule, g_lock_schedule_queue);
+        conet::registry_task(g_lock_dipatch_task);
     }
     return g_lock_schedule_queue;
 }

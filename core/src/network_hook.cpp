@@ -208,7 +208,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        return conet::disk_read(fd, buf, nbyte);
+        return _(read)(fd, buf, nbyte);
+        //return conet::disk_read(fd, buf, nbyte);
     }
 
 
@@ -250,7 +251,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        return conet::disk_write(fd, buf, nbyte);
+        return _(write)(fd, buf, nbyte);
+        //return conet::disk_write(fd, buf, nbyte);
     }
 
     ssize_t ret = 0;
@@ -894,7 +896,8 @@ namespace conet
 
 int is_enable_sys_hook()
 {
-    return current_coroutine()->is_enable_sys_hook;
+    coroutine_t *co = current_coroutine();
+    return (!co->is_main) && (co->is_enable_sys_hook);
 }
 
 void enable_sys_hook()
