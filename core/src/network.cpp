@@ -353,7 +353,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 
 void free_epoll(epoll_ctx_t *ep)
 {
-    delete ep;
+    free(ep);
 }
 
 int get_epoll_pend_task_num() {

@@ -149,7 +149,7 @@ static int proc_disk_event(void *arg)
     struct io_event  event[64];
     do
     {
-        int ready = 0;
+        uint64_t ready = 0;
         int n = 0;
         n = read(ctx->eventfd, &ready, 8);
         while ((n == 8) && ready > 0) {
