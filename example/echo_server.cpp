@@ -21,6 +21,9 @@
 #include <string.h>
 #include <unistd.h>
 #include "svrkit/server_base.h"
+#include "thirdparty/glog/logging.h"
+#include "thirdparty/gflags/gflags.h"
+#include "svrkit/ip_list.h"
 
 using namespace conet;
 
@@ -47,18 +50,23 @@ int proc_echo(conn_info_t *conn)
     return 0;
 }
 
-int main(int argc, char const* argv[])
+DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
+
+int main(int argc, char * argv[])
 {
-    if (argc < 3) {
-        fprintf(stderr, "usage:%s ip port\n", argv[0]);
-        return 0;
+    google::ParseCommandLineFlags(&argc, &argv, false); 
+    google::InitGoogleLogging(argv[0]);
+
+    std::vector<ip_port_t> ip_list;
+    parse_ip_list(FLAGS_server_addr, &ip_list);
+    if (ip_list.empty()) {
+        fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_addr.c_str());
+        return 1;
     }
-    char const * ip = argv[1];
-    int  port = atoi(argv[2]);
-    fprintf(stderr, "listen to %s:%d\n", ip, port);
+
     server_t server;
     int ret = 0;
-    ret = init_server(&server, ip, port);
+    ret = init_server(&server, ip_list[0].ip.c_str(), ip_list[0].port);
     server.proc = &proc_echo;
     start_server(&server);
     while (conet::get_epoll_pend_task_num() >0) {
