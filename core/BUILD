@@ -12,6 +12,7 @@ cc_library(
         "src/timewheel.cpp",
         "src/dispatch.cpp",
         "src/tls.cpp",
+        "src/time_helper.cpp",
     ],
     incs= [ 
         "incl/",
