@@ -23,6 +23,8 @@
 #include "tls.h"
 #include "dispatch.h"
 
+using namespace conet;
+
 void init_timeout_handle(timeout_handle_t * self,
                          void (*fn)(void *), void *arg, int timeout)
 {
