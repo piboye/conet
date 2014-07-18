@@ -22,6 +22,7 @@
 #include "log.h"
 #include "tls.h"
 #include "dispatch.h"
+#include "time_helper.h"
 
 using namespace conet;
 
@@ -35,7 +36,22 @@ void init_timeout_handle(timeout_handle_t * self,
     self->tw = NULL;
 }
 
-#define get_cur_ms get_sys_ms
+#define get_cur_ms conet::get_cached_ms
+
+namespace conet 
+{
+
+uint64_t __thread g_cached_ms = 0; 
+uint64_t get_cached_ms()
+{
+    if (g_cached_ms == 0) {
+        g_cached_ms = get_sys_ms();
+    }
+    return g_cached_ms;
+}
+
+}
+
 
 void init_timewheel(timewheel_t *self, int slot_num)
 {
@@ -114,8 +130,10 @@ bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 {
+    g_cached_ms = conet::get_sys_ms();
+
     if (cur_ms == 0 ) {
-        cur_ms = get_cur_ms();
+        cur_ms = g_cached_ms;
     }
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
     assert(elasp_ms >=0);

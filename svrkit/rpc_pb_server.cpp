@@ -126,6 +126,10 @@ static int proc_rpc_pb(conn_info_t *conn)
 
     PacketStream stream;
     stream.init(fd, max_size);
+    char *out_buf = (char *)malloc(max_size+4);
+    uint32_t out_len = max_size;
+    std::string errmsg;
+    std::string resp;
     do
     {
         char * data = NULL;
@@ -177,17 +181,23 @@ static int proc_rpc_pb(conn_info_t *conn)
             break;
         }
 
-        std::string & req = cmd_base.body();
-        std::string resp;
-        std::string errmsg;
+        std::string * req = cmd_base.mutable_body();
 
-        int retcode = cmd->proc(cmd->arg, &ctx, &req, &resp, &errmsg);
+        resp.resize(0);
+        errmsg.resize(0);
 
+        int retcode = cmd->proc(cmd->arg, &ctx, req, &resp, &errmsg);
+
+        cmd_base.set_type(CmdBase::RESPONSE_TYPE);
         cmd_base.set_ret(retcode);
         if (!errmsg.empty()) cmd_base.set_errmsg(errmsg);
         if (!resp.empty()) cmd_base.set_body(resp);
-        cmd_base.set_type(CmdBase::RESPONSE_TYPE);
-        ret = send_data_pack(fd, cmd_base.SerializeAsString());
+
+        cmd_base.SerializeToArray(out_buf+4, max_size);
+        out_len= cmd_base.ByteSize();
+        (*(uint32_t *)(out_buf)) = htonl(out_len);
+
+        ret = send_data(fd, out_buf, out_len+4);
         if (ret <=0) {
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;

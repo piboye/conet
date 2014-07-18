@@ -16,7 +16,6 @@ uint64_t get_sys_ms();
 uint64_t get_cached_ms();
 }
 
-using namespace conet;
 
 #define time_after(a,b) (((int64_t)(b) - (int64_t)(a))<0)
 #define time_before(a,b) time_after(b, a)

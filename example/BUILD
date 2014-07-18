@@ -44,7 +44,11 @@ proto_library(
 cc_binary(
     name = "echo_server",
     srcs = ["echo_server.cpp"],
-    deps = ["//svrkit:server_base", "#dl", "#pthread"],
+    deps = [
+        "//svrkit:server_base", 
+        "#dl", 
+        "#pthread"
+    ],
 )
 
 cc_binary(
@@ -53,6 +57,7 @@ cc_binary(
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server", 
             #"//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 
            ],

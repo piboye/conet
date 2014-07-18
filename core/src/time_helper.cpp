@@ -72,24 +72,6 @@ uint64_t get_sys_ms()
     return ms;
 }
 
-__thread uint64_t g_cached_ms = 0;
-
-
-int update_ms(void *arg)
-{
-    uint64_t *ms = (uint64_t *)(arg);
-    *ms = get_sys_ms();
-    return 0;
-}
-
-uint64_t get_cached_ms()
-{
-    if (g_cached_ms == 0) {
-        g_cached_ms = get_sys_ms();
-        conet::registry_task(update_ms, &g_cached_ms);
-    }
-    return g_cached_ms;
-}
 
 
 }
