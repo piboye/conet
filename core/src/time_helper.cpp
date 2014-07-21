@@ -72,7 +72,19 @@ uint64_t get_sys_ms()
     return ms;
 }
 
+uint64_t __thread g_cached_ms = 0; 
+uint64_t get_cached_ms()
+{
+    if (g_cached_ms == 0) {
+        g_cached_ms = get_sys_ms();
+    }
+    return g_cached_ms;
+}
 
+void update_cached_ms()
+{
+    g_cached_ms = get_sys_ms();
+}
 
 }
 

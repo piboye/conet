@@ -137,6 +137,7 @@ public:
         buff = (char *)malloc(max_size);
         prev_pos = 0;
         total_len = 0;
+        return 0;
     }
 
     ~PacketStream()
@@ -155,7 +156,7 @@ public:
             memmove(buff, buff+prev_pos, cur_len);
         }
 
-        while (cur_len < sizeof(len)) {
+        while (cur_len < (int)sizeof(len)) {
             ret = read(fd, buff+cur_len, max_size-cur_len);
             if (ret <= 0) {
                 return ret;
@@ -168,7 +169,7 @@ public:
 
         if ((int32_t) len + 4 >  max_size) return -4;
 
-        while (cur_len - 4 < len) {
+        while (cur_len - 4 < (int)len) {
             ret = read(fd, buff+cur_len, max_size-cur_len);
             if (ret <= 0) {
                 return ret;

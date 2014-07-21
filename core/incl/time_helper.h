@@ -14,6 +14,7 @@ uint64_t get_sys_ms();
 
 // ms base conet heartbeart
 uint64_t get_cached_ms();
+void update_cached_ms();
 }
 
 
