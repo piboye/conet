@@ -34,6 +34,7 @@ void init_timeout_handle(timeout_handle_t * self,
     self->fn = fn;
     self->arg = arg;
     self->tw = NULL;
+    self->interval = 0;
 }
 
 #define get_cur_ms conet::get_cached_ms
@@ -93,7 +94,7 @@ void cancel_timeout(timeout_handle_t *obj) {
     obj->tw = NULL;
 }
 
-bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
+bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval)
 {
     assert(list_empty(&obj->link_to));
     assert (timeout >=0);
@@ -108,8 +109,19 @@ bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
     int pos = obj->timeout % tw->slot_num;
     list_add(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
+    obj->interval = interval;
     //CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
     return true;
+}
+
+bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
+{
+    return set_timeout_impl(tw, obj, timeout, 0);
+}
+
+bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval)
+{
+    return set_timeout_impl(tw, obj, interval, interval);
 }
 
 
@@ -148,12 +160,10 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         {
             timeout_handle_t *t1 = container_of(it, timeout_handle_t, link_to);
             if (time_after_eq(cur_ms, t1->timeout)) {
-                //timeout and call timeout callback;
-
-                //CONET_LOG(DEBUG, "timeout, obj:%p, cur:%lu, timeout:%lu", t1, cur_ms, t1->timeout);
                 cancel_timeout(t1);
-                // cancel_timeout must call before t1-fn callbak
-                // because fn callback would coroutine swap
+                if (t1->interval) {
+                    set_timeout_impl(t1->tw, t1, t1->interval, t1->interval);
+                }
                 t1->fn(t1->arg);
                 ++cnt;
             }

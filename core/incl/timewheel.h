@@ -33,10 +33,11 @@ struct timewheel_t;
 struct timeout_handle_t
 {
     list_head link_to;
-    uint64_t timeout;
+    uint64_t  timeout;
     void (*fn)(void *);
     void * arg;
     timewheel_t * tw;
+    int interval;
 };
 
 void init_timeout_handle(timeout_handle_t * self,
@@ -63,6 +64,9 @@ void free_timewheel(timewheel_t *tw);
 timewheel_t *alloc_timewheel();
 
 void cancel_timeout(timeout_handle_t *self);
+
+
+bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval);
 
 bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout);
 
