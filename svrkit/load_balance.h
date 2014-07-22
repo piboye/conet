@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboyeliu
  *   Organization:  
  *
  * =====================================================================================
@@ -74,13 +74,11 @@ public:
         int fd = -1;
         if (node.m_fds.empty()) {
             fd = connect_to(node.ip_port.ip.c_str(), node.ip_port.port);
-            //fprintf(stderr, "fd pool create fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
             return fd;
         }
 
         fd = node.m_fds.front();
         node.m_fds.pop();
-        //fprintf(stderr, "fd pool select fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
         return fd;
     }
 
@@ -143,14 +141,6 @@ public:
                 dymanic_weight = 100;
                 return 0;
             }
-
-            /* 
-            if (called == 0) {
-                dymanic_weight = 1;
-                return 0;
-            }
-            */
-
 
 
 
@@ -275,9 +265,9 @@ public:
             if (prio <= -1) prio = -1;
 
             if (n->succ_rate > 98 && (n->dymanic_weight < avg_wg)) {
-                n->would_cnt = (n->dymanic_weight*2 * 101 / sum); // * (1 + prio);
+                n->would_cnt = (n->dymanic_weight*2 * 101 / sum); 
             } else {
-                n->would_cnt = (n->dymanic_weight * 101 / sum); // * (1 + prio);
+                n->would_cnt = (n->dymanic_weight * 101 / sum);
             }
             if (n->would_cnt <= 0) n->would_cnt = 1;
             n->reinit_stat();
@@ -392,7 +382,6 @@ public:
         } else {
             tk = 1;
         }
-        //fprintf(stderr, "fd:%d, address:[%s:%d], ret:%d, tk:%lu\n", fd, ip_port.ip.c_str(), ip_port.port, status, tk);
 
         if (status == 0) {
             m_fds.add(ip_port, fd);
