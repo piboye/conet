@@ -67,42 +67,19 @@ int send_data(int fd, char const * buf, size_t len)
     return len;
 }
 
-
-
-static inline
-int send_data_pack(int fd, char const *buf, size_t a_len)
+template <typename T>
+int send_pb_obj(int fd,  T const &data, std::vector<char> *buf)
 {
-    int ret = 0;
+    uint32_t len = data.ByteSize();
+    
+    buf->resize(len+4);
+    char * p = buf->data();
+    *((uint32_t *)p) = htonl(len);
+    data.SerializeToArray(p+4, len);
 
-    uint32_t len = 0;
-
-    len = htonl(a_len);
-
-    char *out =new char[a_len+sizeof(len)];
-    memcpy(out, (char *)&len, sizeof(len));
-    memcpy(out+sizeof(len), buf, a_len);
-    ret = send_data(fd, out, a_len +sizeof(len));
-    if (ret > 4) ret -=4;
-    delete out;
-    return ret;
+    return send_data(fd, p, buf->size());
 }
 
-static inline
-int send_data_pack(int fd, std::string data)
-{
-    uint32_t len = 0;
-    len = htonl(data.size());
-    data.insert(0, (char *)(&len), sizeof(len));
-    int ret = send_data(fd, data.c_str(), data.size());
-    if (ret > 4) ret -=4 ;
-    return ret;
-}
-
-static inline
-int send_data_pack(int fd, std::vector<char> const & data)
-{
-    return send_data_pack(fd, &data[0], data.size());
-}
 
 static inline
 int read_data(int fd, char *buff, size_t len)

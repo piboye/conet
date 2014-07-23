@@ -38,9 +38,11 @@ int rpc_pb_call_impl(int fd,
     req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
     req_base.set_body(req);
 
-    ret = send_data_pack(fd, req_base.SerializeAsString());
+    std::vector<char> out_buf;
+
+    ret = send_pb_obj(fd, req_base, &out_buf);
+
     if (ret <=0) {
-        //close(fd);
         return -4;
     }
     PacketStream stream;
@@ -50,7 +52,6 @@ int rpc_pb_call_impl(int fd,
 
     ret = stream.read_packet(&data, &packet_len);
 
-    //close(fd);
     if (ret <=0) {
         return -5;
     }
