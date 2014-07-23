@@ -112,7 +112,6 @@ static int proc_rpc_pb(conn_info_t *conn)
     int max_size = server_base->max_packet_size;
     int ret = 0;
     int fd = conn->fd;
-    //set_none_block(fd, false);
 
     rpc_pb_ctx_t ctx;
 
@@ -123,6 +122,7 @@ static int proc_rpc_pb(conn_info_t *conn)
     ctx.server = server;
     ctx.conn_info = conn;
     ctx.req = &cmd_base;
+    ctx.to_close = 0;
 
     PacketStream stream;
     stream.init(fd, max_size);
@@ -202,6 +202,9 @@ static int proc_rpc_pb(conn_info_t *conn)
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
             break; 
+        }
+        if (ctx.to_close) {
+            break;
         }
     } while(1);
     return 0;

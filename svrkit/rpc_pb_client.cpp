@@ -26,7 +26,7 @@ namespace conet
 int rpc_pb_call_impl(int fd,
         std::string const &server_name,
         std::string const &cmd_name,
-        std::string const &req, std::string *resp, std::string *errmsg)
+        std::string const &req, std::string *resp, int *retcode, std::string *errmsg)
 {
     if (fd <0) return -3;
     int ret = 0;
@@ -57,18 +57,18 @@ int rpc_pb_call_impl(int fd,
     if (!resp_base.ParseFromArray(data, packet_len)) {
         return -6;
     }
-    ret = resp_base.ret();
-    if (ret) {
+    *retcode = resp_base.ret();
+    if (*retcode) {
         if (errmsg) {
             *errmsg = resp_base.errmsg();
         }
-        return ret;
+        return 0;
     }
 
     if (resp) {
         *resp = resp_base.body();
     }
-    return ret;
+    return 0;
 }
 
 }

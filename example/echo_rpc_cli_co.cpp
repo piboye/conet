@@ -53,8 +53,9 @@ int proc_send(void *arg)
         EchoReq req;
         EchoResp resp;
         req.set_msg(std::string(line, ret));
-        ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, NULL);
-        printf("ret_code:%d, response:%s\n", ret, resp.msg().c_str());
+        int retcode=0;
+        ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
+        printf("ret:%d, ret_code:%d, response:%s\n", ret, retcode, resp.msg().c_str());
     }
     return 0;
 }
