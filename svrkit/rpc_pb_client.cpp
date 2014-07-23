@@ -50,7 +50,7 @@ int rpc_pb_call_impl(int fd,
     char * data = NULL;
     int packet_len = 0;
 
-    ret = stream.read_packet(&data, &packet_len);
+    ret = stream.read_packet(&data, &packet_len, 100);
 
     if (ret <=0) {
         return -5;

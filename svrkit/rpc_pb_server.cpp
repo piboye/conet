@@ -132,10 +132,26 @@ static int proc_rpc_pb(conn_info_t *conn)
     std::string resp;
     do
     {
+
+        struct pollfd pf = {
+            fd: fd,
+            events: POLLIN | POLLERR | POLLHUP
+        };
+
+        poll( &pf, 1, 1000);
+
+        if (pf.revents & POLLERR) {
+            break;
+        }
+
+        if (!(pf.revents & POLLIN)) {
+            continue;
+        }
+
         char * data = NULL;
         int packet_len = 0;
 
-        ret = stream.read_packet(&data, &packet_len);
+        ret = stream.read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
             break;
         }
