@@ -13,6 +13,7 @@ cc_library(
         "src/dispatch.cpp",
         "src/tls.cpp",
         "src/time_helper.cpp",
+        "src/net_tool.cpp",
     ],
     incs= [ 
         "incl/",

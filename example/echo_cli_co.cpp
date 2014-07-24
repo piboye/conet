@@ -43,8 +43,8 @@ int proc_send(void *arg)
 
     int ret = 0;
     int fd = 0;
-    fd = connect_to(task->ip.c_str(), task->port);
-    set_none_block(fd, false);
+    fd = conet::connect_to(task->ip.c_str(), task->port);
+    conet::set_none_block(fd, false);
     char *line= NULL;
     size_t len = 0;
     char rbuff[1024];

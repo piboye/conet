@@ -18,10 +18,10 @@
 #include <stdlib.h>
 #include "dispatch.h"
 #include "tls.h"
+#include "time_helper.h"
 
 namespace conet
 {
-
 
 static __thread list_head * g_tasks = NULL;
 
@@ -64,6 +64,8 @@ int proc_netevent(int timeout);
 
 int dispatch(int wait_ms)
 {
+    conet::update_cached_ms();
+
     int num = dispatch_one();
     if (num >0) wait_ms = 0; 
     int cnt = proc_netevent(wait_ms);

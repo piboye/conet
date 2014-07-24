@@ -32,8 +32,8 @@ int main(int argc, char const* argv[])
 
     int ret = 0;
     int fd = 0;
-    fd = connect_to(ip, port);
-    set_none_block(fd, false);
+    fd = conet::connect_to(ip, port);
+    conet::set_none_block(fd, false);
     char *line= NULL;
     size_t len = 0;
     char rbuff[1024];

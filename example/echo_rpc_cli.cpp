@@ -39,9 +39,9 @@ int main(int argc, char * argv[])
         EchoReq req;
         EchoResp resp;
         req.set_msg(std::string(line, ret));
-        int ret_code = 0; 
-        ret_code = conet::rpc_pb_call(lb, "echo", "echo", &req, &resp, NULL);
-        printf("ret_code:%d, response:%s\n", ret_code, resp.msg().c_str());
+        int retcode = 0; 
+        ret = conet::rpc_pb_call(lb, "echo", "echo", &req, &resp, &retcode, NULL);
+        printf("ret:%d, retcode:%d, response:%s\n", ret, retcode, resp.msg().c_str());
     }
     free(line);
     return 0;

@@ -26,7 +26,7 @@ namespace conet
 int rpc_pb_call_impl(int fd,
         std::string const &server_name,
         std::string const &cmd_name,
-        std::string const &req, std::string *resp, std::string *errmsg)
+        std::string const &req, std::string *resp, int *retcode, std::string *errmsg)
 {
     if (fd <0) return -3;
     int ret = 0;
@@ -38,9 +38,11 @@ int rpc_pb_call_impl(int fd,
     req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
     req_base.set_body(req);
 
-    ret = send_data_pack(fd, req_base.SerializeAsString());
+    std::vector<char> out_buf;
+
+    ret = send_pb_obj(fd, req_base, &out_buf);
+
     if (ret <=0) {
-        //close(fd);
         return -4;
     }
     PacketStream stream;
@@ -48,27 +50,26 @@ int rpc_pb_call_impl(int fd,
     char * data = NULL;
     int packet_len = 0;
 
-    ret = stream.read_packet(&data, &packet_len);
+    ret = stream.read_packet(&data, &packet_len, 100);
 
-    //close(fd);
     if (ret <=0) {
         return -5;
     }
     if (!resp_base.ParseFromArray(data, packet_len)) {
         return -6;
     }
-    ret = resp_base.ret();
-    if (ret) {
+    *retcode = resp_base.ret();
+    if (*retcode) {
         if (errmsg) {
             *errmsg = resp_base.errmsg();
         }
-        return ret;
+        return 0;
     }
 
     if (resp) {
         *resp = resp_base.body();
     }
-    return ret;
+    return 0;
 }
 
 }

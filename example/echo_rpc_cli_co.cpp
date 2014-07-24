@@ -43,7 +43,6 @@ int proc_send(void *arg)
     int ret = 0;
     char *line= NULL;
     size_t len = 0;
-    char rbuff[1024];
     FILE *fp = fopen(FLAGS_data_file.c_str(), "r");
     if (!fp) {
         fprintf(stderr, "open file:%s failed!\n", FLAGS_data_file.c_str());
@@ -53,8 +52,9 @@ int proc_send(void *arg)
         EchoReq req;
         EchoResp resp;
         req.set_msg(std::string(line, ret));
-        ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, NULL);
-        printf("ret_code:%d, response:%s\n", ret, resp.msg().c_str());
+        int retcode=0;
+        ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
+        printf("ret:%d, ret_code:%d, response:%s\n", ret, retcode, resp.msg().c_str());
     }
     return 0;
 }
@@ -67,7 +67,6 @@ int main(int argc, char * argv[])
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);
 
-    int ret = 0;
     task_t * tasks = new task_t[FLAGS_task_num];
     for (int i=0; i<FLAGS_task_num; ++i) {
         tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);

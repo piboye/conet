@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboyeliu
  *   Organization:  
  *
  * =====================================================================================
@@ -29,6 +29,7 @@
 #include <tr1/unordered_map>
 #include <math.h>
 #include <map>
+#include "core/incl/time_helper.h"
 
 namespace conet
 {
@@ -74,13 +75,11 @@ public:
         int fd = -1;
         if (node.m_fds.empty()) {
             fd = connect_to(node.ip_port.ip.c_str(), node.ip_port.port);
-            //fprintf(stderr, "fd pool create fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
             return fd;
         }
 
         fd = node.m_fds.front();
         node.m_fds.pop();
-        //fprintf(stderr, "fd pool select fd:%d, address[%s:%d]\n", fd, node.ip_port.ip.c_str(), node.ip_port.port);
         return fd;
     }
 
@@ -135,8 +134,6 @@ public:
         list_head link_to;
         int succ_rate;
 
-
-
         int calc() 
         {
             if (dymanic_weight == 0) {
@@ -144,17 +141,9 @@ public:
                 return 0;
             }
 
-            /* 
-            if (called == 0) {
-                dymanic_weight = 1;
-                return 0;
-            }
-            */
 
 
-
-
-            int t = success_called;// - 5*failed_called;
+            int t = success_called;
             if (t <=0) t = 1;
 
             int s = this->called;  
@@ -166,14 +155,11 @@ public:
 
             if (avg_cost <= 0) avg_cost = 1;
 
-             t  = t *100/ s;
-             succ_rate = t;
+            t  = t *100/ s;
+            succ_rate = t;
 
-            if (t >=90) {
-                dymanic_weight = success_called;
-            } else {
-                dymanic_weight = success_called;
-            }
+            dymanic_weight = this->success_called - 5* failed_called;
+
             if (this->dymanic_weight <= 0) {
                 this->dymanic_weight = 1;
             }
@@ -275,9 +261,9 @@ public:
             if (prio <= -1) prio = -1;
 
             if (n->succ_rate > 98 && (n->dymanic_weight < avg_wg)) {
-                n->would_cnt = (n->dymanic_weight*2 * 101 / sum); // * (1 + prio);
+                n->would_cnt = (n->dymanic_weight*2 * 101*(1+prio) / sum); 
             } else {
-                n->would_cnt = (n->dymanic_weight * 101 / sum); // * (1 + prio);
+                n->would_cnt = (n->dymanic_weight * 101*(1+prio) / sum);
             }
             if (n->would_cnt <= 0) n->would_cnt = 1;
             n->reinit_stat();
@@ -343,7 +329,7 @@ public:
 
             n = m_schedule_list[pos];
 
-            uint64_t start_tk = rdtscp();
+            uint64_t start_tk = conet::get_cached_ms();
             fd = m_fds.get(n->ip_port.ip.c_str(), n->ip_port.port);
             if (fd >= 0) {
                 m_fd_start_tks[fd] = start_tk;
@@ -352,12 +338,11 @@ public:
             }
 
             ++m_report_num;
-            n->failed_tk += (rdtscp()-start_tk); 
+            n->failed_tk += (conet::get_cached_ms()-start_tk); 
             ++ n->called;
             ++ n->failed_called;
         }
         if (fd <0) *ip_port = n->ip_port;
-        //fprintf(stderr, "select fd:%d, address:[%s:%d]\n", fd, ip_port->ip.c_str(), ip_port->port);
 
         return fd;
     }
@@ -388,11 +373,10 @@ public:
 
         uint64_t tk = m_fd_start_tks[fd];
         if (tk >0) {
-            tk = rdtscp() - tk;
+            tk = conet::get_cached_ms() - tk;
         } else {
             tk = 1;
         }
-        //fprintf(stderr, "fd:%d, address:[%s:%d], ret:%d, tk:%lu\n", fd, ip_port.ip.c_str(), ip_port.port, status, tk);
 
         if (status == 0) {
             m_fds.add(ip_port, fd);

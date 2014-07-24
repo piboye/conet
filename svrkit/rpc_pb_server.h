@@ -27,6 +27,7 @@ namespace conet
 struct rpc_pb_server_t;
 struct rpc_pb_ctx_t
 {
+    int to_close; // close connection when set 1
     conn_info_t * conn_info;
     rpc_pb_server_t *server;
     conet_rpc_pb::CmdBase *req;

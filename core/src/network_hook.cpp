@@ -230,7 +230,6 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
-
 HOOK_SYS_FUNC_DEF(
     ssize_t, write, ( int fd, const void *buf, size_t nbyte )
 )
@@ -241,11 +240,13 @@ HOOK_SYS_FUNC_DEF(
         return _(write)( fd,buf,nbyte );
     }
 
+    ssize_t ret = 0;
+
     fd_ctx_t *lp = get_fd_ctx( fd, 0);
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
     {
-        ssize_t ret = _(write)( fd,buf,nbyte );
+        ret = _(write)( fd,buf,nbyte );
         return ret;
     }
 
@@ -255,7 +256,6 @@ HOOK_SYS_FUNC_DEF(
         //return conet::disk_write(fd, buf, nbyte);
     }
 
-    ssize_t ret = 0;
     ret = _(write)(fd, (const char*) buf, nbyte);
     if (ret >=0) {
         return ret;
@@ -272,6 +272,7 @@ HOOK_SYS_FUNC_DEF(
     ret = _(write)(fd, (const char*)buf, nbyte);
     return ret;
 }
+
 
 HOOK_SYS_FUNC_DEF(
     ssize_t, sendto, (int fd, const void *message, size_t length,

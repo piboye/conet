@@ -112,7 +112,6 @@ static int proc_rpc_pb(conn_info_t *conn)
     int max_size = server_base->max_packet_size;
     int ret = 0;
     int fd = conn->fd;
-    //set_none_block(fd, false);
 
     rpc_pb_ctx_t ctx;
 
@@ -123,19 +122,36 @@ static int proc_rpc_pb(conn_info_t *conn)
     ctx.server = server;
     ctx.conn_info = conn;
     ctx.req = &cmd_base;
+    ctx.to_close = 0;
 
     PacketStream stream;
     stream.init(fd, max_size);
-    char *out_buf = (char *)malloc(max_size+4);
+    std::vector<char> out_buf;
     uint32_t out_len = max_size;
     std::string errmsg;
     std::string resp;
     do
     {
+
+        struct pollfd pf = {
+            fd: fd,
+            events: POLLIN | POLLERR | POLLHUP
+        };
+
+        poll( &pf, 1, 1000);
+
+        if (pf.revents & POLLERR) {
+            break;
+        }
+
+        if (!(pf.revents & POLLIN)) {
+            continue;
+        }
+
         char * data = NULL;
         int packet_len = 0;
 
-        ret = stream.read_packet(&data, &packet_len);
+        ret = stream.read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
             break;
         }
@@ -173,10 +189,9 @@ static int proc_rpc_pb(conn_info_t *conn)
 
             cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
             cmd_base.set_errmsg("unsuppored cmd");
-            ret = send_data_pack(fd, cmd_base.SerializeAsString());
+            ret = send_pb_obj(fd, cmd_base, &out_buf);
             if (ret <= 0) {
                 LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
-                break;
             }
             break;
         }
@@ -193,15 +208,14 @@ static int proc_rpc_pb(conn_info_t *conn)
         if (!errmsg.empty()) cmd_base.set_errmsg(errmsg);
         if (!resp.empty()) cmd_base.set_body(resp);
 
-        cmd_base.SerializeToArray(out_buf+4, max_size);
-        out_len= cmd_base.ByteSize();
-        (*(uint32_t *)(out_buf)) = htonl(out_len);
-
-        ret = send_data(fd, out_buf, out_len+4);
+        ret = send_pb_obj(fd, cmd_base, &out_buf);
         if (ret <=0) {
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
             break; 
+        }
+        if (ctx.to_close) {
+            break;
         }
     } while(1);
     return 0;
