@@ -7,8 +7,9 @@ cc_library(
     ],
     deps =[
         "//core:conet", 
-        "#unwind", 
-        "#unwind-x86_64"
+        #"#unwind", 
+        #"#unwind-x86_64"
+        "//thirdparty/libunwind:unwind",
     ],
     link_all_symbols = True,
 );

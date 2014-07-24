@@ -192,6 +192,7 @@ public:
             success_tk = 0;
             failed_tk =0;
             succ_rate = 0;
+            return 0;
         }
 
         Node()
