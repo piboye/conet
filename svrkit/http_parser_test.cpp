@@ -21,10 +21,10 @@
 
 using namespace conet;
 
-TEST(http_request_parse, parser)
+TEST(http_request, parse)
 {
-    http_request_t parser;
-    http_request_init(&parser);
+    http_request_t req;
+    http_request_init(&req);
     char buff[]=
         "POST / HTTP/1.1\r\n"
         "A: a\r\n"
@@ -34,15 +34,15 @@ TEST(http_request_parse, parser)
         "\r\n"
         "fooba";
 
-    http_request_parse(&parser, buff, sizeof(buff), 0);
-    int status = http_request_finish(&parser);
-    printf("status:%d, %d\n", (int) parser.status, (int)parser.err_too_many_header);
+    http_request_parse(&req, buff, sizeof(buff), 0);
+    int status = http_request_finish(&req);
+    printf("status:%d, %d\n", (int) req.status, (int)req.err_too_many_header);
     
     EXPECT_EQ(status, 1); 
-    EXPECT_EQ(5, parser.content_length);
+    EXPECT_EQ(5, req.content_length);
     char hold = 0;
-    EXPECT_STREQ("text-plain", ref_str_to_cstr(&parser.content_type, &hold));
-    EXPECT_STREQ("a", ref_str_to_cstr(&parser.headers[0].value, &hold));
-    EXPECT_STREQ("b", ref_str_to_cstr(&parser.headers[1].value, &hold));
-    EXPECT_STREQ("fooba", parser.body);
+    EXPECT_STREQ("text-plain", ref_str_to_cstr(&req.content_type, &hold));
+    EXPECT_STREQ("a", ref_str_to_cstr(&req.headers[0].value, &hold));
+    EXPECT_STREQ("b", ref_str_to_cstr(&req.headers[1].value, &hold));
+    EXPECT_STREQ("fooba", req.body);
 }
