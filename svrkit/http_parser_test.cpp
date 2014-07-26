@@ -21,10 +21,10 @@
 
 using namespace conet;
 
-TEST(http_parser, parser)
+TEST(http_request_parse, parser)
 {
-    http_parser_t parser;
-    http_parser_init(&parser);
+    http_request_t parser;
+    http_request_init(&parser);
     char buff[]=
         "POST / HTTP/1.1\r\n"
         "A: a\r\n"
@@ -34,8 +34,8 @@ TEST(http_parser, parser)
         "\r\n"
         "fooba";
 
-    http_parser_execute(&parser, buff, sizeof(buff), 0);
-    int status = http_parser_finish(&parser);
+    http_request_parse(&parser, buff, sizeof(buff), 0);
+    int status = http_request_finish(&parser);
     printf("status:%d, %d\n", (int) parser.status, (int)parser.err_too_many_header);
     
     EXPECT_EQ(status, 1); 

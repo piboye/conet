@@ -12,10 +12,8 @@
 #define MARK(M,FPC) (parser->M = FPC)
 #define PTR_TO(F) (parser->F)
 
-
-/** machine **/
 %%{
-  machine http_parser;
+  machine http_request;
   
   action mark {
       parser->mark = fpc;
@@ -131,12 +129,12 @@
 
   field_name = ( token -- ":" )+ >start_field %write_field;
 
-  field_value = hval* >start_value %write_value;
+  field_value = any* >start_value %write_value;
   
-  known_header = ( ("Accept:"i         " "* (hval* >mark %http_accept))
-                 | ("Connection:"i     " "* (hval* >mark %http_connection))
+  known_header = ( ("Accept:"i         " "* (any* >mark %http_accept))
+                 | ("Connection:"i     " "* (any* >mark %http_connection))
                  | ("Content-Length:"i " "* (digit+ >mark %http_content_length))
-                 | ("Content-Type:"i   " "* (hval* >mark %http_content_type))
+                 | ("Content-Type:"i   " "* (any* >mark %http_content_type))
                  ) :> CRLF;
 
   unknown_header = (field_name ":" " "* field_value :> CRLF) -- known_header;
@@ -154,7 +152,7 @@ namespace conet
 %% write data;
 
 
-void http_parser_init(http_parser_t *parser)  {
+void http_request_init(http_request_t *parser)  {
   int cs = 0;
   %% write init;
 
@@ -164,11 +162,11 @@ void http_parser_init(http_parser_t *parser)  {
 
 
 /** exec **/
-size_t http_parser_execute(http_parser_t *parser, char *buffer, size_t len, size_t off)  {
+size_t http_request_parse(http_request_t *parser, char *buffer, size_t len, size_t off)  {
   char *p, *pe;
   int cs = parser->status;
   
-  assert(off <= len && "offset past end of buffer");
+  if (off > len) return -1;
   
   p = buffer+off;
   pe = buffer+len;
@@ -182,22 +180,22 @@ size_t http_parser_execute(http_parser_t *parser, char *buffer, size_t len, size
   return(parser->nread);
 }
 
-int http_parser_finish(http_parser_t *parser)
+int http_request_finish(http_request_t *parser)
 {
-  if (http_parser_has_error(parser))
+  if (http_request_has_error(parser))
     return -1;
-  else if (http_parser_is_finished(parser))
+  else if (http_request_is_finished(parser))
     return 1;
   else
     return 0;
 }
 
-int http_parser_has_error(http_parser_t *parser) {
-  return parser->status == http_parser_error || parser->err_too_many_header;
+int http_request_has_error(http_request_t *parser) {
+  return parser->status == http_request_error || parser->err_too_many_header;
 }
 
-int http_parser_is_finished(http_parser_t *parser) {
-  return parser->status >= http_parser_first_final;
+int http_request_is_finished(http_request_t *parser) {
+  return parser->status >= http_request_first_final;
 }
 
 }
