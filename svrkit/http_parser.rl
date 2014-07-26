@@ -5,11 +5,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#define TRUE 1
-#define FALSE 0
-
-#define LEN(AT, FPC) (FPC - parser->AT)
-#define MARK(M,FPC) (parser->M = FPC)
 #define PTR_TO(F) (parser->F)
 
 %%{
@@ -27,58 +22,54 @@
       fbreak;
     }
 
-    init_ref_str(&(parser->headers[num].name), 
-            parser->header_start, 
-            LEN(header_start, fpc));
+    init_ref_str(&parser->headers[num].name, parser->header_start, fpc);
   }
   
   action start_value { parser->header_val_start = fpc;}
 
   action write_value {
     int num = parser->headers_num;
-    init_ref_str(&(parser->headers[num].value), 
-                parser->header_val_start, 
-                LEN(header_val_start, fpc));
+    init_ref_str(&parser->headers[num].value, parser->header_val_start, fpc);
     ++parser->headers_num;
   }
   
   action http_accept {
-    init_ref_str(&parser->accept, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->accept, PTR_TO(mark), fpc);
   }
   action http_connection {
-    init_ref_str(&parser->connection, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->connection, PTR_TO(mark), fpc);
   }
   action http_content_length {
     parser->content_length = atoi(PTR_TO(mark));
   }
   
   action http_content_type {
-    init_ref_str(&(parser->content_type), PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&(parser->content_type), PTR_TO(mark),  fpc);
   }
   
   action fragment {
-    init_ref_str(&(parser->fragment), PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&(parser->fragment), PTR_TO(mark), fpc);
   }
   
   action http_version {
-    init_ref_str(&parser->version, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->version, PTR_TO(mark), fpc);
   }
   
   action request_path {
-    init_ref_str(&parser->path, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->path, PTR_TO(mark), fpc);
   }
   
   action request_method { 
-    init_ref_str(&parser->method, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->method, PTR_TO(mark), fpc);
   }
   
   action request_uri {
-    init_ref_str(&parser->uri, PTR_TO(mark), LEN(mark, fpc));
+    init_ref_str(&parser->uri, PTR_TO(mark), fpc);
   }
   
-  action start_query {MARK(query_start, fpc); }
+  action start_query {parser->query_start = fpc; }
   action query_string { 
-    init_ref_str(&parser->query_string, PTR_TO(query_start), LEN(query_start, fpc));
+    init_ref_str(&parser->query_string, PTR_TO(query_start), fpc);
   }
   
   
