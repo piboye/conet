@@ -18,6 +18,7 @@
 #ifndef __HOOK_HELLPER_H__
 #define __HOOK_HELLPER_H__
 
+#include <dlfcn.h>
 
 #define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
@@ -26,7 +27,7 @@
     typedef ret_type (* name##_pfn_t) proto; \
     name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name); \
     extern "C"  ret_type name proto __attribute__ ((visibility ("default")));  \
-    extern "C"  ret_type name proto \
+    ret_type name proto \
  
 
 #define HOOK_SYS_FUNC(name) if( !_(name)) { _(name) = (name##_pfn_t)dlsym(RTLD_NEXT,#name); }

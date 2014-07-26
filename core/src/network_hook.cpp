@@ -8,7 +8,6 @@
 #include <sys/syscall.h>
 #include <sys/un.h>
 
-#include <dlfcn.h>
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>

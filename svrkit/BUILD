@@ -27,13 +27,29 @@ cc_library(
     link_all_symbols = True,
 );
 
+gen_rule(
+    name='http_parser_rl',
+    srcs=['http_parser.rl'],
+    cmd='ragel $SRCS -o $OUTS',
+    outs=['http_parser.cpp'],
+);
+
+cc_library(
+    name='http_parser',
+    srcs=[
+        'http_parser.cpp',
+    ],
+    deps=[':http_parser_rl'],
+);
+
+
 
 proto_library(
     name='rpc_base_pb_proto',
     srcs=[
         'rpc_base_pb.proto'
     ],
-)
+);
 
 cc_library(
     name = 'rpc_pb_server',
@@ -47,4 +63,13 @@ cc_library(
     ],
     link_all_symbols = True,
 );
+
+cc_test(
+    name='test',
+    srcs =[
+        'http_parser_test.cpp',
+    ],
+    deps=[':http_parser']
+);
+
 
