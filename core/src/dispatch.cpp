@@ -66,11 +66,21 @@ int dispatch(int wait_ms)
 {
     conet::update_cached_ms();
 
-    int num = dispatch_one();
+    
+    int num = 0;
+
+    int cnt = 0;
+
+    for (int i=0; i< 3; ++i) {
+        cnt = dispatch_one();
+        num+=cnt;
+        if (cnt == 0) break;
+    }
+
     if (num >0) wait_ms = 0; 
-    int cnt = proc_netevent(wait_ms);
-    if (cnt >0) num += cnt;
-    return cnt;
+    cnt = proc_netevent(wait_ms);
+    num += cnt;
+    return num;
 }
 
 int dispatch_one()

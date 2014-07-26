@@ -37,7 +37,7 @@ enum
 int send_data(int fd, char const * buf, size_t len, int timeout=10);
 
 template <typename T>
-int send_pb_obj(int fd,  T const &data, std::vector<char> *buf, int timeout=10)
+int send_pb_obj(int fd,  T const &data, std::vector<char> *buf, int timeout=1000)
 {
     uint32_t len = data.ByteSize();
     

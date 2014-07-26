@@ -177,7 +177,7 @@ void init_epoll_ctx(epoll_ctx_t *self, int size)
 {
     self->m_epoll_size = size;
     self->m_epoll_events = (epoll_event *)malloc(sizeof(epoll_event)* size);
-    self->m_epoll_fd = epoll_create(size);
+    self->m_epoll_fd = epoll_create(200000);
     self->wait_num = 0;
     return;
 }

@@ -19,6 +19,7 @@
 #include <string>
 
 #include "rpc_pb_client.h"
+#include "glog/logging.h"
 
 namespace conet
 {
@@ -26,9 +27,12 @@ namespace conet
 int rpc_pb_call_impl(int fd,
         std::string const &server_name,
         std::string const &cmd_name,
-        std::string const &req, std::string *resp, int *retcode, std::string *errmsg)
+        std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout)
 {
-    if (fd <0) return -3;
+    if (fd <0) {
+        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"]";
+        return -3;
+    }
     int ret = 0;
 
     conet_rpc_pb::CmdBase req_base, resp_base;
@@ -40,9 +44,10 @@ int rpc_pb_call_impl(int fd,
 
     std::vector<char> out_buf;
 
-    ret = send_pb_obj(fd, req_base, &out_buf);
+    ret = send_pb_obj(fd, req_base, &out_buf, timeout);
 
     if (ret <=0) {
+        LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]";
         return -4;
     }
     PacketStream stream;
@@ -50,12 +55,14 @@ int rpc_pb_call_impl(int fd,
     char * data = NULL;
     int packet_len = 0;
 
-    ret = stream.read_packet(&data, &packet_len, 100);
+    ret = stream.read_packet(&data, &packet_len, timeout);
 
     if (ret <=0) {
+        LOG(ERROR)<<"[rpc_pb_client] recv respose failed, [ret:"<<ret<<"][errno:"<<errno<<"]";
         return -5;
     }
     if (!resp_base.ParseFromArray(data, packet_len)) {
+        LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
         return -6;
     }
     *retcode = resp_base.ret();

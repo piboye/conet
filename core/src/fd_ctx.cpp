@@ -43,9 +43,7 @@ fd_ctx_mgr_t *create_fd_ctx_mgr(int size)
 {
     fd_ctx_mgr_t *mgr = (fd_ctx_mgr_t *)malloc(sizeof(fd_ctx_mgr_t));
     mgr->fds = (fd_ctx_t**)malloc(sizeof(void *) *(size+1));
-    for (int i=0; i<=size; ++i) {
-        mgr->fds[i] = NULL;
-    }
+    memset(mgr->fds, 0, (size+1) * sizeof(fd_ctx_t *));
     mgr->size = size;
     return mgr;
 }
@@ -70,13 +68,15 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
     while (size <= need_size) {
         size +=10000;
     }
-    mgr->fds = (fd_ctx_t **)realloc(mgr->fds, size+1);
-    for (int i = mgr->size+1; i < size; i++) {
-        mgr->fds[i] = NULL;
-    }
+
+    fd_ctx_t ** fds= (fd_ctx_t **) malloc(sizeof(void *) * (size+1));
+    memset(fds, 0, (size+1) *sizeof(void *));
+    memcpy(fds, mgr->fds, (mgr->size+1) * sizeof(void *) ); 
+    mgr->fds = fds;
+    mgr->size = size;
 }
 
-DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(10000), free_fd_ctx_mgr)
+DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(100000), free_fd_ctx_mgr)
 
 
 fd_ctx_t *get_fd_ctx(int fd, int type)
