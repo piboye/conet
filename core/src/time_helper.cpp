@@ -29,8 +29,8 @@ namespace conet
 inline
 uint64_t rdtscp(void)
 {
-    register uint32_t lo, hi;
-    register uint64_t o;
+    uint64_t lo, hi;
+    uint64_t o;
     __asm__ __volatile__ (
         "rdtscp" : "=a"(lo), "=d"(hi)
     );
@@ -66,10 +66,12 @@ uint64_t get_tick_ms()
     return rdtscp() / khz;
 }
 
+HOOK_DECLARE(int ,gettimeofday,(struct timeval *tv, struct timezone *tz));
+
 uint64_t get_sys_ms()
 {
     struct timeval te;
-    gettimeofday(&te, NULL);
+    _(gettimeofday)(&te, NULL);
     uint64_t ms = te.tv_sec*1000UL + te.tv_usec/1000;
     return ms;
 }
@@ -108,7 +110,7 @@ HOOK_SYS_FUNC_DEF(int ,gettimeofday,(struct timeval *tv, struct timezone *tz))
 
     uint64_t cur_tk = rdtscp();
 
-    if ((cur_tk - g_prev_tk) >= g_khz>>1) {
+    if ((cur_tk - g_prev_tk) >= (g_khz)) {
         g_prev_tk = cur_tk; 
         ret = _(gettimeofday)(&g_pre_te, NULL);
     }

@@ -1,4 +1,3 @@
-
 cc_binary(
     name = "echo_cli",
     srcs = ["echo_cli.cpp"],
@@ -56,6 +55,18 @@ cc_binary(
     srcs = ["echo_rpc_server.cpp"],
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server", 
+            #"//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:profiler",
+            "//thirdparty/gflags:gflags",
+            "#dl", "#pthread", 
+           ],
+)
+
+cc_binary(
+    name = "http_server",
+    srcs = ["http_server.cpp"],
+    deps = [
+            "//svrkit:http_server", 
             #"//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",

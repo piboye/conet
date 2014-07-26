@@ -18,6 +18,7 @@
 
 #ifndef REF_STR_H
 #define REF_STR_H
+#include <string>
 
 namespace conet
 {
@@ -55,6 +56,12 @@ inline
 void ref_str_restore(struct ref_str_t *s, char hold)
 {
     s->data[s->len] = hold;
+}
+
+inline 
+void ref_str_to(struct ref_str_t *src, std::string *out)
+{
+    out->assign(src->data, src->len);
 }
 
 }

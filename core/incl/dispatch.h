@@ -45,7 +45,7 @@ void unregistry_task(task_t *task);
 
 int proc_tasks(list_head *list);
 int dispatch_one();
-int dispatch(int wait_ms=1 /*ms*/);
+int dispatch(int wait_ms=10 /*ms*/);
 
 }
 

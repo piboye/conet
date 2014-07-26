@@ -42,6 +42,17 @@ cc_library(
     deps=[':http_parser_rl'],
 );
 
+cc_library(
+    name='http_server',
+    srcs=[
+        'http_server.cpp',
+    ],
+    deps=[
+        ':http_parser',
+        ':server_base',
+    ],
+);
+
 
 
 proto_library(
