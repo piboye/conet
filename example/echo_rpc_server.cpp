@@ -37,7 +37,7 @@ int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
         EchoReq *req, EchoResp *resp, std::string *errmsg) 
 {
    resp->set_msg(req->msg()); 
-   LOG(INFO)<<req->msg();
+   //LOG(INFO)<<req->msg();
    return 0;
 }
 

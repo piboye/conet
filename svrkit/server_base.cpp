@@ -104,6 +104,7 @@ int init_server(server_t *server, const char *ip, int port, int max_packet_size)
     return 0;
 }
 
+
 int server_main(void *arg);
 
 int start_server(server_t *server)
@@ -133,7 +134,6 @@ int server_main(void *arg)
     server->listen_fd = listen_fd;
     int waits = 5; // 5 seconds;
     setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
-
     int ret = 0;
     while (server->state == 0) {
         struct pollfd pf = { 0 };

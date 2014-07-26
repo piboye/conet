@@ -67,7 +67,7 @@ cc_binary(
     srcs = ["http_server.cpp"],
     deps = [
             "//svrkit:http_server", 
-            #"//thirdparty/perftools:tcmalloc_debug",
+            "//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 

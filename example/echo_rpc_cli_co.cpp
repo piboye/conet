@@ -54,7 +54,8 @@ int proc_send(void *arg)
         req.set_msg(std::string(line, ret));
         int retcode=0;
         ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
-        printf("ret:%d, ret_code:%d, response:%s\n", ret, retcode, resp.msg().c_str());
+        if (ret || retcode)
+            printf("ret:%d, ret_code:%d, response:%s\n", ret, retcode, resp.msg().c_str());
     }
     return 0;
 }

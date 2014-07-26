@@ -214,7 +214,11 @@ int create_tcp_socket(int port, const char *ip_txt, int reuse)
         if(port != 0) {
             if(reuse) {
                 int reuse_addr = 1;
+#if HAVE_SO_REUSEPORT
+                setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+#else 
                 setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
+#endif
             }
             struct sockaddr_in addr ;
             set_addr(&addr, ip_txt, port);
