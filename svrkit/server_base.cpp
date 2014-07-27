@@ -49,6 +49,7 @@ int client_proc(conn_info_t *info)
 
         ret = server->proc(info);
         close(info->fd);
+        --server->cur_conn_num;
         delete info;
         info = NULL;
 
@@ -73,16 +74,18 @@ int proc_pool(server_t *server, conn_info_t *conn_info)
 
     if (list_empty(&pool->free_list))
     {
-        if (pool->total_num + 1 < pool->max_num) {
+        //if (pool->total_num + 1 < pool->max_num) {
             conn_info->co = alloc_coroutine((int (*)(void *))client_proc, conn_info);
             set_auto_delete(conn_info->co);
             resume(conn_info->co, conn_info);
             return 0;
+        /*
         } else {
             while  (list_empty(&pool->free_list)) {
                 usleep(1000);
             }
         }
+        */
     }
 
     list_head * it = pool->free_list.next;
@@ -92,14 +95,16 @@ int proc_pool(server_t *server, conn_info_t *conn_info)
     return 0;
 }
 
-int init_server(server_t *server, const char *ip, int port, int max_packet_size)
+int init_server(server_t *server, const char *ip, int port, int max_packet_size, int max_conn_num)
 {
     server->ip = ip;
     server->port = port;
     server->state = 0;
     server->co = NULL;
     server->extend = NULL;
+    server->max_conn_num = max_conn_num;
     server->max_packet_size = max_packet_size;
+    server->cur_conn_num = 0;
     init_co_pool(&server->co_pool, 10000);
     return 0;
 }
@@ -136,6 +141,9 @@ int server_main(void *arg)
     setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
     int ret = 0;
     while (server->state == 0) {
+        while (server->cur_conn_num >= server->max_conn_num) {
+            usleep(10000);
+        }
         struct pollfd pf = { 0 };
         pf.fd = listen_fd;
         pf.events = (POLLIN|POLLERR|POLLHUP);
@@ -149,6 +157,8 @@ int server_main(void *arg)
         int fd = accept(listen_fd, (struct sockaddr *)&addr, &len);
 
         if (fd <0) continue;
+
+        ++server->cur_conn_num;
 
         conn_info_t *conn_info = new conn_info_t();
         conn_info->server = server;

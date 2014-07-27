@@ -48,6 +48,8 @@ int output_response(http_response_t *resp, int fd)
 
     if (resp->keepalive) {
         out.append("Connection: Keep-Alive\r\n");
+    } else {
+        out.append("Connection: close\r\n");
     }
 
     len = resp->body.size();
@@ -84,6 +86,8 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
     
     http_response_t resp;
     init_http_response(&resp);
+    if (req->connection == CONNECTION_KEEPALIVE && http_server->enable_keepalive) 
+        resp.keepalive = 1;
 
     http_ctx_t ctx;
     ctx.to_close = 0;
@@ -98,6 +102,10 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
     if (ret <=0) {
         LOG(ERROR)<<"send response failed [ret="<<ret<<"]";
         return -1;
+    }
+    if (resp.keepalive == 0 || ctx.to_close) 
+    {
+        return 1;
     }
     return 0;
 }
@@ -156,7 +164,7 @@ int http_server_proc(conn_info_t *conn)
                 break;
         }
 
-        ret == 0;
+
     } while(ret == 0);
 
     free(buf);

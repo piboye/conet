@@ -37,7 +37,9 @@
     init_ref_str(&parser->accept, PTR_TO(mark), fpc);
   }
   action http_connection {
-    init_ref_str(&parser->connection, PTR_TO(mark), fpc);
+      if (*(parser->mark) == 'K') {
+          parser->connection = CONNECTION_KEEPALIVE; 
+      }
   }
   action http_content_length {
     parser->content_length = atoi(PTR_TO(mark));
@@ -51,16 +53,24 @@
     init_ref_str(&(parser->fragment), PTR_TO(mark), fpc);
   }
   
-  action http_version {
-    init_ref_str(&parser->version, PTR_TO(mark), fpc);
+  action http_version_1_0 {
+      parser->version = HTTP_1_0;
+  }
+
+  action http_version_1_1 {
+      parser->version = HTTP_1_1;
   }
   
   action request_path {
     init_ref_str(&parser->path, PTR_TO(mark), fpc);
   }
   
-  action request_method { 
-    init_ref_str(&parser->method, PTR_TO(mark), fpc);
+  action request_method_get { 
+    parser->method = METHOD_GET;
+  }
+
+  action request_method_post { 
+    parser->method = METHOD_POST;
   }
   
   action request_uri {
@@ -112,10 +122,12 @@
 
   Request_URI = ( "*" | absolute_uri | absolute_path ) >mark %request_uri;
   Fragment = ( uchar | reserved )* >mark %fragment;
-  Method = ( upper | digit | safe ){1,20} >mark %request_method;
+  Method = ("GET"i %request_method_get | "POST"i %request_method_post );
 
-  http_number = ( digit+ "." digit+ ) ;
-  HTTP_Version = ( "HTTP/" http_number ) >mark %http_version ;
+  http_1_0 = "1.0";
+  http_1_1 = "1.1";
+  HTTP_Version = ( "HTTP/" (http_1_0 %http_version_1_0 | http_1_1 %http_version_1_1));
+
   Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " HTTP_Version CRLF ) ;
 
   field_name = ( token -- ":" )+ >start_field %write_field;

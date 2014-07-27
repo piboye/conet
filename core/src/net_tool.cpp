@@ -35,6 +35,7 @@
 #include "time_helper.h"
 #include "fd_ctx.h"
 #include <sys/syscall.h>
+#include "glog/logging.h"
 
 namespace conet 
 {
@@ -53,8 +54,17 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
     if (errno != EAGAIN) return ret;
 
     struct pollfd pf = { fd : fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
-    poll( &pf,1,timeout );
+    ret =  poll( &pf, 1, timeout );
+    if (ret == 0) {
+        // timeout;
+        return -2;
+    }
     if (pf.revents & POLLERR) {
+        return -1;
+    }
+    if (!(pf.revents &POLLOUT))
+    {
+        LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
         return -1;
     }
     ret = syscall(SYS_write, fd, (const char*)buf, nbyte);
@@ -79,6 +89,7 @@ int send_data(int fd, char const * buf, size_t len, int timeout)
         else if (ret == 0) {
             break;
         }
+
         cur_len += ret;
 
         cur = conet::get_cached_ms();
@@ -115,9 +126,18 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
         events: POLLIN | POLLERR | POLLHUP
     };
 
-    poll( &pf, 1, timeout );
+    ret = poll( &pf, 1, timeout );
+    if (ret == 0) {
+        return -2;
+    }
+
 
     if (pf.revents & POLLERR) {
+        return -1;
+    }
+    if (!(pf.revents &POLLIN))
+    {
+        LOG(ERROR)<<"poll read failed, [events:"<<pf.revents<<"]";
         return -1;
     }
 

@@ -36,6 +36,7 @@ struct http_response_t
     std::vector<std::string> headers;
     std::string body;
 };
+
 void init_http_response(http_response_t *self);
 int output_response(http_response_t *resp, int fd);
 
@@ -62,6 +63,10 @@ struct http_server_t
     struct server_t *server;
     std::string server_name;
     std::map<std::string, http_cmd_t> cmd_maps;
+
+    struct {
+        unsigned int enable_keepalive:1;
+    };
 };
 
 http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name);

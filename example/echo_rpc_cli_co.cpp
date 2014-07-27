@@ -43,19 +43,29 @@ int proc_send(void *arg)
     int ret = 0;
     char *line= NULL;
     size_t len = 0;
+    /*
     FILE *fp = fopen(FLAGS_data_file.c_str(), "r");
     if (!fp) {
         fprintf(stderr, "open file:%s failed!\n", FLAGS_data_file.c_str());
         return -1;
     }
     while( (ret = getline(&line, &len, fp)) >= 0) {
+    */
+    line = "hello";
+    for (int i=0; i<100000; ++i) {
         EchoReq req;
+
         EchoResp resp;
-        req.set_msg(std::string(line, ret));
+        req.set_msg(std::string(line));
         int retcode=0;
         ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
-        if (ret || retcode)
-            printf("ret:%d, ret_code:%d, response:%s\n", ret, retcode, resp.msg().c_str());
+        if (ret || retcode) {
+            printf("ret:%d\n", ret);
+            continue;
+        }
+
+        if (retcode)
+            printf("ret_code:%d, response:%s\n", retcode, resp.msg().c_str());
     }
     return 0;
 }
@@ -64,6 +74,7 @@ int proc_send(void *arg)
 int main(int argc, char * argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, false); 
+    google::InitGoogleLogging(argv[0]);
 
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);

@@ -17,7 +17,9 @@
  */
 #include <stdlib.h>
 #include <string>
+#include <string.h>
 
+#include <errno.h>
 #include "rpc_pb_client.h"
 #include "glog/logging.h"
 
@@ -30,7 +32,7 @@ int rpc_pb_call_impl(int fd,
         std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout)
 {
     if (fd <0) {
-        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"]";
+        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
         return -3;
     }
     int ret = 0;
@@ -47,7 +49,7 @@ int rpc_pb_call_impl(int fd,
     ret = send_pb_obj(fd, req_base, &out_buf, timeout);
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]";
+        LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
         return -4;
     }
     PacketStream stream;
@@ -58,16 +60,17 @@ int rpc_pb_call_impl(int fd,
     ret = stream.read_packet(&data, &packet_len, timeout);
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] recv respose failed, [ret:"<<ret<<"][errno:"<<errno<<"]";
+        LOG(ERROR)<<"[rpc_pb_client] recv respose failed, [ret:"<<ret<<"][errno:"<<errno<<"][strerr:"<<strerror(errno)<<"]";
         return -5;
     }
+
     if (!resp_base.ParseFromArray(data, packet_len)) {
         LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
         return -6;
     }
     *retcode = resp_base.ret();
     if (*retcode) {
-        if (errmsg) {
+        if (errmsg && (resp_base.has_errmsg())) {
             *errmsg = resp_base.errmsg();
         }
         return 0;

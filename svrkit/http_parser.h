@@ -14,6 +14,21 @@ typedef struct http_header_t
   ref_str_t value;
 } http_header_t;
 
+enum {
+    CONNECTION_CLOSE=0,
+    CONNECTION_KEEPALIVE=1,
+};
+
+enum {
+    METHOD_GET=0,
+    METHOD_POST=1,
+};
+
+enum {
+    HTTP_1_0 =1,
+    HTTP_1_1 =0,
+};
+
 typedef 
 struct http_request_t 
 { 
@@ -36,13 +51,14 @@ struct http_request_t
   size_t nread;
   
   ref_str_t fragment;
-  ref_str_t version;
   ref_str_t path;
-  ref_str_t method;
   ref_str_t query_string;
   ref_str_t uri;
+  
+  int version;
+  int method;
+  int connection;
 
-  ref_str_t connection;
   ref_str_t accept;
   ref_str_t content_type;
 

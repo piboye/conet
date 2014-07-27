@@ -79,7 +79,12 @@ HOOK_SYS_FUNC_DEF(
         //block call
 
         struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP};
-        poll( &pf,1, -1);
+        int ret = poll( &pf,1, -1);
+        if (ret == 0) {
+            errno = ETIMEDOUT;
+            return -1;
+        }
+
         client_fd =  _(accept)(fd, addr, len);
     }
     if (client_fd >=0) {
@@ -108,13 +113,13 @@ HOOK_SYS_FUNC_DEF(
 
     //block call
 
-    struct pollfd pf = {
-fd:
-        fd,
-events:
-        POLLIN|POLLERR|POLLHUP
-    };
-    poll( &pf,1, -1);
+    struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
+    int ret = poll( &pf,1, -1);
+    if (ret == 0) {
+        errno = ETIMEDOUT;
+        return -1;
+    }
+
 
     return _(accept4)(fd, addr, len, flags);
 }
@@ -219,7 +224,11 @@ HOOK_SYS_FUNC_DEF(
         events: POLLIN | POLLERR | POLLHUP
     };
 
-    poll( &pf, 1, timeout );
+    ret = poll( &pf, 1, timeout );
+    if (ret == 0) {
+        errno = ETIMEDOUT;
+        return -1;
+    }
 
     if (pf.revents & POLLERR) {
         return -1;
@@ -264,7 +273,11 @@ HOOK_SYS_FUNC_DEF(
 
     int timeout = lp->snd_timeout;
     struct pollfd pf = { fd : fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
-    poll( &pf,1,timeout );
+    ret = poll( &pf,1,timeout );
+    if (ret == 0) {
+        errno = ETIMEDOUT;
+        return -1;
+    }
     if (pf.revents & POLLERR) {
         return -1;
     }
@@ -297,7 +310,11 @@ HOOK_SYS_FUNC_DEF(
         int timeout = lp->snd_timeout;
 
         struct pollfd pf = {fd: fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
-        poll(&pf, 1, timeout);
+        ret = poll(&pf, 1, timeout);
+        if (ret == 0) {
+            errno = ETIMEDOUT;
+            return -1;
+        }
 
         if (pf.revents & POLLERR) {
             return -1;
@@ -329,12 +346,17 @@ HOOK_SYS_FUNC_DEF(
     int timeout = lp->rcv_timeout;
 
     struct pollfd pf = { fd:fd, events:( POLLIN | POLLERR | POLLHUP ) };
-    poll( &pf,1,timeout );
+    ssize_t ret = poll( &pf,1,timeout );
+    if (ret == 0) {
+        errno = ETIMEDOUT;
+        return -1;
+    }
+
 
     if (pf.revents & POLLERR) {
         return -1;
     }
-    ssize_t ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
+    ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
     return ret;
 }
 
@@ -361,7 +383,12 @@ HOOK_SYS_FUNC_DEF(
         struct pollfd pf = { 0 };
         pf.fd = fd;
         pf.events = ( POLLOUT | POLLERR | POLLHUP );
-        poll( &pf,1,timeout );
+        int ret = poll( &pf,1,timeout );
+        if (ret == 0) {
+            errno = ETIMEDOUT;
+            return -1;
+        }
+
 
         if (pf.revents & POLLERR) {
             return -1;
@@ -394,12 +421,17 @@ HOOK_SYS_FUNC_DEF(
     struct pollfd pf = { 0 };
     pf.fd = fd;
     pf.events = ( POLLIN | POLLERR | POLLHUP );
-    poll( &pf,1, timeout );
+    ssize_t ret = poll( &pf,1, timeout );
+    if (ret == 0) {
+        errno = ETIMEDOUT;
+        return -1;
+    }
+
     if (pf.revents & POLLERR) {
         return -1;
     }
 
-    ssize_t ret = _(recv)(fd, buffer, length, flags);
+    ret = _(recv)(fd, buffer, length, flags);
     return ret;
 }
 

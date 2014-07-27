@@ -10,9 +10,11 @@
 
 #define ALLOC_VAR(type) (type *) malloc(sizeof(type))
 
+extern "C" void co_swapcontext(ucontext_t *co, ucontext_t *co2);
+extern "C" void co_setcontext(ucontext_t *co);
+
 namespace conet
 {
-
 
 static
 void co_return(void *val=NULL) {
@@ -27,7 +29,8 @@ void co_return(void *val=NULL) {
     env->curr_co = last;
     last->state = RUNNING;
     last->yield_val = val;
-    setcontext(&last->ctx);
+    //setcontext(&last->ctx);
+    co_setcontext(&last->ctx);
 }
 
 void delay_del_coroutine(void *arg)
@@ -54,7 +57,6 @@ void co_main_helper(int co_low, int co_high )
     assert(env->curr_co == co);
     env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
     list_del_init(&env->curr_co->wait_to);
-
     {
         // notify exit wait queue
         list_head *it=NULL, *next=NULL;
@@ -171,7 +173,7 @@ void *resume(coroutine_t * co, void * val)
     env->curr_co = co;
     list_add_tail(&cur->wait_to, &env->run_queue);
     co->yield_val = val;
-    swapcontext(&(cur->ctx), &(co->ctx) );
+    co_swapcontext(&(cur->ctx), &(co->ctx) );
     return cur->yield_val;
 }
 
@@ -200,7 +202,7 @@ void * yield(list_head *wait_to, void * val)
     cur->state = SUSPEND;
     last->state = RUNNING;
     last->yield_val = val;
-    swapcontext(&cur->ctx, &last->ctx);
+    co_swapcontext(&cur->ctx, &last->ctx);
     return cur->yield_val;
 }
 

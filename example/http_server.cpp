@@ -36,7 +36,6 @@ http_server_t g_server;
 int proc_hello(void *arg, http_ctx_t *ctx,
         http_request_t *req, http_response_t *resp)
 {
-   resp->keepalive=1;
    resp->body = "hello\r\n";
    return 0;
 }
