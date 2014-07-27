@@ -49,15 +49,18 @@ struct http_request_t
 
   size_t content_length;
   size_t nread;
+
+  int version;
+  int method;
+  int connection;
+
   
+  ref_str_t host;
   ref_str_t fragment;
   ref_str_t path;
   ref_str_t query_string;
   ref_str_t uri;
   
-  int version;
-  int method;
-  int connection;
 
   ref_str_t accept;
   ref_str_t content_type;

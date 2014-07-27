@@ -76,6 +76,10 @@
   action request_uri {
     init_ref_str(&parser->uri, PTR_TO(mark), fpc);
   }
+
+  action request_host {
+    init_ref_str(&parser->host, PTR_TO(mark), fpc);
+  }
   
   action start_query {parser->query_start = fpc; }
   action query_string { 
@@ -138,6 +142,7 @@
                  | ("Connection:"i     " "* (any* >mark %http_connection))
                  | ("Content-Length:"i " "* (digit+ >mark %http_content_length))
                  | ("Content-Type:"i   " "* (any* >mark %http_content_type))
+                 | ("Host:"i   " "* (any* >mark %request_host))
                  ) :> CRLF;
 
   unknown_header = (field_name ":" " "* field_value :> CRLF) -- known_header;

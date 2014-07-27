@@ -1,6 +1,7 @@
 cc_library(
     name = 'server_base',
     srcs = [
+        "pb2json.cpp",
         "server_base.cpp",
         "co_pool.cpp",
         #"sigsegv.cpp",
