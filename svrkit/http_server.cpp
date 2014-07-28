@@ -107,27 +107,34 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
 {
     std::string path;
     ref_str_to(&req->path, &path);
+    int ret = 0;
 
     server_t * server_base= conn->server; 
     http_server_t * http_server = (http_server_t *) server_base->extend;
 
-    http_cmd_t *cmd = get_http_cmd(http_server, path);
-    if (cmd == NULL) {
-        return 0;
-    }
-    
     http_response_t resp;
     init_http_response(&resp);
-    if (req->connection == CONNECTION_KEEPALIVE && http_server->enable_keepalive) 
-        resp.keepalive = 1;
 
     http_ctx_t ctx;
+    if (req->connection == CONNECTION_KEEPALIVE && http_server->enable_keepalive)  {
+        resp.keepalive = 1;
+    }
     ctx.to_close = 0;
     ctx.server = http_server;
     ctx.conn_info = conn;
-    int ret = cmd->proc(cmd->arg, &ctx, req, &resp);
-    if (ret) {
-        return ret;
+
+    http_cmd_t *cmd = get_http_cmd(http_server, path);
+    if (cmd == NULL) {
+        LOG(ERROR)<<"no found path cmd, [path:"<<path<<"]";
+        ctx.to_close = 1;
+        response_to(&resp, 404, "");
+        return 0;
+    } else {
+    
+        ret = cmd->proc(cmd->arg, &ctx, req, &resp);
+        if (ret) {
+            ctx.to_close = 1;
+        }
     }
 
     ret = output_response(&resp, conn->fd);

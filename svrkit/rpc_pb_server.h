@@ -55,15 +55,15 @@ struct rpc_pb_server_t
 
 int get_global_server_cmd(rpc_pb_server_t * server);
 
-int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, void *arg );
+int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg);
 
-int registry_cmd( rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, void *arg );
+int registry_cmd(rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg );
+
 
 int unregistry_cmd(rpc_pb_server_t *server, std::string const &name);
 
 rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name);
 
-rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name);
 
 
 int init_server(
@@ -108,26 +108,25 @@ int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *res
 { \
     typeof(conet::get_request_type_from_rpc_pb_func(&func)) req1; \
     int ret = conet::json2pb(req->body, req->content_length, &req1, NULL); \
-    if(!ret) { \
-        conet::response_to(resp, 200, "{code:1, errmsg:\"param error\"}"); \
+    if(ret) { \
+        conet::response_format(resp, 200, "{code:1, errmsg:\"param error, ret:%d\"}", ret); \
         return -1; \
     } \
-    req1.ParseFromMessage(req_msg); \
     \
     typeof(conet::get_response_type_from_rpc_pb_func(&func)) resp1; \
     ret = 0; \
     rpc_pb_ctx_t pb_ctx;  \
     pb_ctx.to_close = ctx->to_close;  \
     pb_ctx.conn_info = ctx->conn_info;  \
-    pb_ctx.server = ctx->server->extend;  \
+    pb_ctx.server = (conet::rpc_pb_server_t *)ctx->server->extend;  \
     conet_rpc_pb::CmdBase cmdbase; \
-    cmdbase.set_type(conet_rpc_pb::CmdBase::REQEST_TYPE); \
+    cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); \
     cmdbase.set_server_name(ctx->server->server_name); \
-    cmdbase.set_cmd_name(cmd); \
+    cmdbase.set_cmd_name(#cmd); \
     cmdbase.set_seq_id(time(NULL)); \
-    pb_ctx.req = &cmd_base; \
+    pb_ctx.req = &cmdbase; \
     std::string errmsg; \
-    ret = func(arg, ctx, &req1, &resp1, &errmsg); \
+    ret = func(arg, &pb_ctx, &req1, &resp1, &errmsg); \
     if (ret) { \
         conet::response_format(resp, 200, "{code:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
         return -1; \

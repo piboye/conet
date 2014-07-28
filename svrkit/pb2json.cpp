@@ -349,38 +349,20 @@ int json2pb(
                         index < static_cast<int>(value.size());             \
                         index++) {                                          \
                         Json::Value item = value[Json::Value::ArrayIndex(index)];  \
-                        if (item.is##jsontype()) {                          \
-                            reflection->Add##method(message, field,         \
-                                item.as##jsontype());                       \
-                        } else if (item.isString()) {                       \
                             valuetype number_value;                         \
                             std::string txt = item.asString();   \
                             char *p = (char *) (txt.c_str()+txt.size());  \
                             number_value = func(txt.c_str(), &p,10); \
                             reflection->Add##method(message, field,     \
                                     number_value);                          \
-                        } else {                                            \
-                            SET_ERROR_INFO(error, "invalid type field " +   \
-                                    field->full_name() + ".");              \
-                            return -15;                                   \
-                        }                                                   \
                     }                                                       \
                 } else {                                                    \
-                    if (value.is##jsontype()) {                             \
-                        reflection->Set##method(message, field,             \
-                            value.as##jsontype());                          \
-                    } else if (value.isString()) {                          \
                         valuetype number_value;                             \
                         std::string txt = value.asString();   \
                         char *p = (char *) (txt.c_str()+txt.size());  \
                         number_value = func(txt.c_str(), &p,10); \
                         reflection->Set##method(message, field,         \
                                 number_value);                              \
-                    } else {                                                \
-                        SET_ERROR_INFO(error, "invalid type for field " +   \
-                                field->full_name() + ".");                  \
-                        return -17;                                       \
-                    }                                                       \
                 }                                                           \
                 break;                                                      \
             }                                                               \

@@ -62,6 +62,7 @@ int main(int argc, char * argv[])
         fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_addr.c_str(), ret);
         return 1;
     }
+    fprintf(stdout, "listen to %s\n, success\n", FLAGS_server_addr.c_str());
 
     start_server(&g_server);
     while (conet::get_epoll_pend_task_num() >0) {

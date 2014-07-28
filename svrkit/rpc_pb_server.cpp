@@ -148,6 +148,7 @@ int init_server(
 
     http_server_t *http_server = new http_server_t();
     http_server->server = server_base2; 
+    http_server->extend = self;
     self->http_server = http_server;
     if (use_global_cmd) {
         get_global_server_cmd(self);
@@ -162,7 +163,10 @@ int start_server(rpc_pb_server_t *server)
     if (server->cmd_maps.empty() ) {
         return -1;
     }
-    return start_server(server->server);
+    int ret =  0;
+    ret = start_server(server->server);
+    start_server(server->http_server);
+    return ret;
 }
 
 
