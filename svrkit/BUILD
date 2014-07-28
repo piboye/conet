@@ -1,7 +1,6 @@
 cc_library(
     name = 'server_base',
     srcs = [
-        "pb2json.cpp",
         "server_base.cpp",
         "co_pool.cpp",
         #"sigsegv.cpp",
@@ -66,12 +65,15 @@ proto_library(
 cc_library(
     name = 'rpc_pb_server',
     srcs = [
-        "rpc_pb_server.cpp"
+        "rpc_pb_server.cpp",
+        "pb2json.cpp",
     ],
     deps =[
         ":rpc_base_pb_proto",
         ":server_base",
+        ":http_server",
         ":client_base",
+        "//thirdparty/jsoncpp:jsoncpp",
     ],
     link_all_symbols = True,
 );

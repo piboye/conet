@@ -904,6 +904,7 @@ int ,vfprintf ,( FILE * fp, const char * format, va_list ap )
     va_list bak_arg;
     va_copy(bak_arg, ap);
     nlen = vsnprintf( p, len,  format, ap);
+    va_end(ap);
     if (nlen > len) {
         p = (char *)malloc(nlen+1);
         len = nlen;

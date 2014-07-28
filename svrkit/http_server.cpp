@@ -22,11 +22,43 @@
 #include "server_base.h"
 #include "http_server.h"
 #include "thirdparty/glog/logging.h"
-
-#define AUTO_VAR(a, op, val) typeof(val) a op val
+#include "core/incl/auto_var.h"
+#include <stdarg.h>
 
 namespace conet
 {
+
+void response_to(http_response_t *resp, int http_code, std::string const &body) 
+{
+    resp->http_code = http_code;
+    resp->body = body; 
+}
+
+void response_format(http_response_t *resp, int http_code, char const *fmt, ...) 
+{
+    resp->http_code = http_code;
+    char buf[100];
+    size_t len = sizeof(buf);
+    size_t nlen = 0;
+    char *p = buf;
+    va_list ap;
+    va_list bak_arg;
+    va_start(ap, fmt);
+    va_copy(bak_arg, ap);
+    nlen = vsnprintf(p, len, fmt, ap);
+    if (nlen > len) {
+        p = (char *)malloc(nlen+1);
+        len = nlen;
+        nlen = vsnprintf(p, len, fmt, bak_arg);
+        va_end(bak_arg);
+    }
+    va_end(ap);
+
+    resp->body.assign(p, nlen);
+    if (p != buf) {
+        free(p);
+    }
+}
 
 
 void init_http_response(http_response_t *self)

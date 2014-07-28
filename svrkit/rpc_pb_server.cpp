@@ -18,8 +18,7 @@
 #include <stdlib.h>
 #include "rpc_pb_server.h"
 #include "net_tool.h"
-
-#define AUTO_VAR(a, op, val) typeof(val) a op val
+#include "core/incl/auto_var.h"
 
 using namespace conet_rpc_pb;
 
@@ -28,17 +27,22 @@ namespace conet
 
 static std::map<std::string , std::map<std::string, rpc_pb_cmd_t> > *g_server_cmd_maps=NULL;
 
+static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
+
 static 
 void clear_g_server_maps(void)
 {
     delete g_server_cmd_maps;
+    delete g_server_http_cmd_maps;
     g_server_cmd_maps = NULL;
+    g_server_http_cmd_maps = NULL;
 }
 
-int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, void *arg )
+int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg)
 {
     if (NULL == g_server_cmd_maps) {
         g_server_cmd_maps = new typeof(*g_server_cmd_maps);
+        g_server_http_cmd_maps = new typeof(*g_server_http_cmd_maps);
         atexit(clear_g_server_maps);
     }
     std::map<std::string, rpc_pb_cmd_t> & maps = (*g_server_cmd_maps)[server_name];
@@ -47,10 +51,20 @@ int registry_cmd(std::string const & server_name, std::string const & name,  rpc
     item.proc = proc;
     item.arg = arg;
     maps.insert(std::make_pair(name, item));
+
+
+    { // registry http cmd
+        std::map<std::string, http_cmd_t> & maps = (*g_server_http_cmd_maps)[server_name];
+        http_cmd_t item; 
+        item.name = name;
+        item.proc = hproc;
+        item.arg = arg;
+        maps.insert(std::make_pair(std::string("/rpc/") + name, item));
+    }
     return 0;
 }
 
-int registry_cmd( rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, void *arg )
+int registry_cmd(rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg )
 {
 
     if (server->cmd_maps.find(name) != server->cmd_maps.end()) {
@@ -61,6 +75,16 @@ int registry_cmd( rpc_pb_server_t *server, std::string const & name,  rpc_pb_cal
     item.proc = proc;
     item.arg = arg;
     server->cmd_maps.insert(std::make_pair(name, item));
+
+    if (server->http_server) {
+        AUTO_VAR(&maps, =, server->http_server->cmd_maps);
+        http_cmd_t item; 
+        item.name = name;
+        item.proc = hproc;
+        item.arg = arg;
+        maps.insert(std::make_pair(name, item));
+    }
+
     return 0;
 }
 
@@ -72,6 +96,7 @@ int unregistry_cmd(rpc_pb_server_t *server, std::string const &name)
         return -1;
     }
     server->cmd_maps.erase(it);
+    server->http_server->cmd_maps.erase(name);
     return 0;
 }
 
@@ -88,11 +113,47 @@ rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 int get_global_server_cmd(rpc_pb_server_t * server) 
 {
     server->cmd_maps = (*g_server_cmd_maps)[server->server_name];
+    server->http_server->cmd_maps = (*g_server_http_cmd_maps)[server->server_name];
     return server->cmd_maps.size();
 }
 
 static int proc_rpc_pb(conn_info_t *conn);
 
+int init_server(
+        rpc_pb_server_t *self, 
+        std::string const &server_name, 
+        char const *ip,
+        int port,
+        bool use_global_cmd
+    )
+{
+    self->server_name =server_name;
+    server_t *server_base = new server_t();
+    int ret = 0;
+    ret = init_server(server_base, ip, port);
+    if (ret) {
+        delete server_base;
+        LOG(ERROR)<<"init server_baser in rpc server failed, [ret:"<<ret<<"]";
+        return -1;
+    }
+    self->server = server_base; 
+
+    server_t *server_base2 = new server_t();
+    ret = init_server(server_base2, ip, port+10000);
+    if (ret) {
+        delete server_base2;
+        LOG(ERROR)<<"init server_baser in http server failed, [ret:"<<ret<<"]";
+        return -1;
+    }
+
+    http_server_t *http_server = new http_server_t();
+    http_server->server = server_base2; 
+    self->http_server = http_server;
+    if (use_global_cmd) {
+        get_global_server_cmd(self);
+    }
+    return 0;
+}
 
 int start_server(rpc_pb_server_t *server)
 {
@@ -220,6 +281,5 @@ static int proc_rpc_pb(conn_info_t *conn)
     } while(1);
     return 0;
 }
-
 
 }

@@ -21,6 +21,8 @@
 #include <string>
 #include <map>
 #include "svrkit/rpc_base_pb.pb.h"
+#include "http_server.h"
+#include "pb2json.h"
 
 namespace conet
 {
@@ -46,6 +48,7 @@ struct rpc_pb_cmd_t
 struct rpc_pb_server_t
 {
     struct server_t * server;
+    http_server_t *http_server;
     std::string server_name;
     std::map<std::string, rpc_pb_cmd_t> cmd_maps;
 };
@@ -62,6 +65,14 @@ rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name);
 
 rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name);
 
+
+int init_server(
+        rpc_pb_server_t *self, 
+        std::string const &server_name, 
+        char const *ip,
+        int port,
+        bool use_global_cmd=true
+    );
 
 int start_server(rpc_pb_server_t *server);
 
@@ -92,16 +103,57 @@ int func2(void *arg, rpc_pb_ctx_t *ctx, std::string * req, std::string *resp,  \
     return ret; \
 } 
 
+#define RPC_PB_HTTP_FUNC_WRAP(cmd, func, func2) \
+int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) \
+{ \
+    typeof(conet::get_request_type_from_rpc_pb_func(&func)) req1; \
+    int ret = conet::json2pb(req->body, req->content_length, &req1, NULL); \
+    if(!ret) { \
+        conet::response_to(resp, 200, "{code:1, errmsg:\"param error\"}"); \
+        return -1; \
+    } \
+    req1.ParseFromMessage(req_msg); \
+    \
+    typeof(conet::get_response_type_from_rpc_pb_func(&func)) resp1; \
+    ret = 0; \
+    rpc_pb_ctx_t pb_ctx;  \
+    pb_ctx.to_close = ctx->to_close;  \
+    pb_ctx.conn_info = ctx->conn_info;  \
+    pb_ctx.server = ctx->server->extend;  \
+    conet_rpc_pb::CmdBase cmdbase; \
+    cmdbase.set_type(conet_rpc_pb::CmdBase::REQEST_TYPE); \
+    cmdbase.set_server_name(ctx->server->server_name); \
+    cmdbase.set_cmd_name(cmd); \
+    cmdbase.set_seq_id(time(NULL)); \
+    pb_ctx.req = &cmd_base; \
+    std::string errmsg; \
+    ret = func(arg, ctx, &req1, &resp1, &errmsg); \
+    if (ret) { \
+        conet::response_format(resp, 200, "{code:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
+        return -1; \
+    } else {\
+        std::string body; \
+        conet::pb2json(&resp1, &body); \
+        conet::response_format(resp, 200, "{code:0, body:%s}", body.c_str()); \
+    } \
+    return 0; \
+} 
+
+
 
 #define REGISTRY_RPC_PB_FUNC(server, cmd, func, arg) \
 RPC_PB_FUNC_WRAP(func, rpc_pb_serve_stub_##server##_##cmd) \
+RPC_PB_HTTP_FUNC_WRAP(cmd, func, rpc_pb_http_serve_stub_##server##_##cmd) \
 int rpc_pb_registry_cmd_##server##_##cmd(); \
 static int i_rpc_pb_registry_cmd ## __LINE__ = rpc_pb_registry_cmd_##server##_##cmd();\
 int rpc_pb_registry_cmd_##server##_##cmd() \
 { \
-    conet::registry_cmd(#server, #cmd, rpc_pb_serve_stub_##server##_##cmd, arg); \
+    conet::registry_cmd(#server, #cmd, rpc_pb_serve_stub_##server##_##cmd, \
+            rpc_pb_http_serve_stub_##server##_##cmd, \
+            arg); \
     return 1; \
 } \
+
 
 }
 #endif /* end of include guard */ 

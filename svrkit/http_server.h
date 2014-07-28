@@ -37,7 +37,12 @@ struct http_response_t
     std::string body;
 };
 
+
+void response_to(http_response_t *resp, int http_code, std::string const &body);
+void response_format(http_response_t *resp, int http_code, char const *fmt, ...);
+
 void init_http_response(http_response_t *self);
+
 int output_response(http_response_t *resp, int fd);
 
 struct http_ctx_t
@@ -67,14 +72,12 @@ struct http_server_t
     struct {
         unsigned int enable_keepalive:1;
     };
+    void *extend;
 };
 
 http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name);
 int start_server(http_server_t *server);
 int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg );
-
-
-
 }
 
 
