@@ -21,25 +21,81 @@
 #include "pb2json.h"
 #include "protobuf/descriptor.h"
 #include "jsoncpp/json.h"
+#include "jsoncpp/reader.h"
+#include "jsoncpp/value.h"
+#include "jsoncpp/writer.h"
 #include "core/incl/auto_var.h"
 
 namespace 
 {
 
-std::string hex_encode(const std::string& input)
+void url_encode(std::string const & src, std::string * out)
 {
-	static const char* const lut = "0123456789abcdef";
-	size_t len = input.length();
-
-	std::string output;
-	output.reserve(2 * len);
-	for (size_t i = 0; i < len; ++i)
-	{
-		const unsigned char c = input[i];
-		output.push_back(lut[c >> 4]);
-		output.push_back(lut[c & 15]);
-	}
-	return output;
+    std::string &dst = *out;
+    char hex[] = "0123456789ABCDEF";
+    for (size_t i = 0; i < src.size(); ++i)
+    {
+        unsigned char cc = src[i];
+        if (isascii(cc))
+        {
+            if (cc == ' ')
+            {
+                dst += "%20";
+            }
+            else
+                dst += cc;
+        }
+        else
+        {
+            unsigned char c = static_cast<unsigned char>(src[i]);
+            dst += '%';
+            dst += hex[c / 16];
+            dst += hex[c % 16];
+        }
+    }
+}
+ 
+ 
+void url_decode(const std::string& szToDecode, std::string *out)
+{
+    std::string &result= *out;
+    int hex = 0;
+    for (size_t i = 0; i < szToDecode.length(); ++i)
+    {
+        switch (szToDecode[i])
+        {
+        case '+':
+            result += ' ';
+            break;
+        case '%':
+            if (isxdigit(szToDecode[i + 1]) && isxdigit(szToDecode[i + 2]))
+            {
+                std::string hexStr = szToDecode.substr(i + 1, 2);
+                hex = strtol(hexStr.c_str(), 0, 16);
+                //字母和数字[0-9a-zA-Z]、一些特殊符号[$-_.+!*'(),] 、以及某些保留字[$&+,/:;=?@]
+                //可以不经过编码直接用于URL
+                if (!((hex >= 48 && hex <= 57) || //0-9
+                    (hex >=97 && hex <= 122) ||   //a-z
+                    (hex >=65 && hex <= 90) ||    //A-Z
+                    //一些特殊符号及保留字[$-_.+!*'(),]  [$&+,/:;=?@]
+                    hex == 0x21 || hex == 0x24 || hex == 0x26 || hex == 0x27 || hex == 0x28 || hex == 0x29
+                    || hex == 0x2a || hex == 0x2b|| hex == 0x2c || hex == 0x2d || hex == 0x2e || hex == 0x2f
+                    || hex == 0x3A || hex == 0x3B|| hex == 0x3D || hex == 0x3f || hex == 0x40 || hex == 0x5f
+                    ))
+                {
+                    result += char(hex);
+                    i += 2;
+                }
+                else result += '%';
+            }else {
+                result += '%';
+            }
+            break;
+        default:
+            result += szToDecode[i];
+            break;
+        }
+    }
 }
 
 int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root);
@@ -87,7 +143,7 @@ void parse_repeated_field(
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
         {
             for(size_t i = 0 ; i != count ; ++i) { 
-                Json::Value child;
+                Json::Value child(Json::objectValue);
                 AUTO_VAR(val,  =,  &(ref->GetRepeatedMessage(*msg, field, i)));
                 parse_msg(val,  &child);
                 root.append(child);
@@ -126,18 +182,13 @@ int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
         
 		const char *name = field->name().c_str();
 		if(field->is_repeated()) {
-            Json::Value childs;
+            Json::Value childs(Json::arrayValue);
             parse_repeated_field(msg, ref, field, &childs);
 			root[name] = childs; 
         }
 
 		if(!field->is_repeated() && ref->HasField(*msg, field))
 		{
-
-			const google::protobuf::Message *value9;
-
-			const google::protobuf::EnumValueDescriptor *value10;
-
 			switch (field->cpp_type())
 			{
 
@@ -161,7 +212,7 @@ int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
                 {
                     std::string val;
 					if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-						val = hex_encode(ref->GetString(*msg,field));
+                        url_encode(ref->GetString(*msg, field), &val);
 					} else {
 						val = ref->GetString(*msg,field);
 					}
@@ -170,7 +221,7 @@ int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
                 }
 				case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
                 {
-                    Json::Value child;
+                    Json::Value child(Json::objectValue);
 					AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
 
                     parse_msg(val,  &child);
@@ -192,150 +243,6 @@ int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
 	}
 	return 0; 
 }
-
-void json2pb(Json::Value *root, google::protobuf::Message* msg);
-
-void json2field(Json::Value *root, 
-        google::protobuf::Message *msg, 
-        const google::protobuf::FieldDescriptor *field)
-{
-	const Reflection *ref = msg->GetReflection();
-	const bool repeated = field->is_repeated();
-
-	switch (field->cpp_type())
-	{
-
-#define _SET_OR_ADD(sfunc, afunc, value)			\
-		do {						\
-			if (repeated)				\
-				ref->afunc(&msg, field, value);	\
-			else					\
-				ref->sfunc(&msg, field, value);	\
-		} while (0)
-
-#define _CONVERT(type, ctype, fmt, sfunc, afunc) 		\
-		case FieldDescriptor::type: {			\
-			ctype value;				\
-			int r = json_unpack_ex(jf, &error, JSON_STRICT, fmt, &value); \
-			if (r) throw j2pb_error(field, std::string("Failed to unpack: ") + error.text); \
-			_SET_OR_ADD(sfunc, afunc, value);	\
-			break;					\
-		}
-
-
-        case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-            {
-                double value = root[
-
-            }
-            break;
-
-		_CONVERT(CPPTYPE_DOUBLE, double, "f", SetDouble, AddDouble);
-		_CONVERT(CPPTYPE_FLOAT, double, "f", SetFloat, AddFloat);
-		_CONVERT(CPPTYPE_INT64, json_int_t, "I", SetInt64, AddInt64);
-		_CONVERT(CPPTYPE_UINT64, json_int_t, "I", SetUInt64, AddUInt64);
-		_CONVERT(CPPTYPE_INT32, json_int_t, "I", SetInt32, AddInt32);
-		_CONVERT(CPPTYPE_UINT32, json_int_t, "I", SetUInt32, AddUInt32);
-		_CONVERT(CPPTYPE_BOOL, int, "b", SetBool, AddBool);
-
-		case FieldDescriptor::CPPTYPE_STRING: {
-			if (!json_is_string(jf))
-				throw j2pb_error(field, "Not a string");
-			const char * value = json_string_value(jf);
-			if(field->type() == FieldDescriptor::TYPE_BYTES)
-				_SET_OR_ADD(SetString, AddString, b64_decode(value));
-			else
-				_SET_OR_ADD(SetString, AddString, value);
-			break;
-		}
-		case FieldDescriptor::CPPTYPE_MESSAGE: {
-			Message *mf = (repeated)?
-				ref->AddMessage(&msg, field):
-				ref->MutableMessage(&msg, field);
-			_json2pb(*mf, jf);
-			break;
-		}
-		case FieldDescriptor::CPPTYPE_ENUM: {
-			const EnumDescriptor *ed = field->enum_type();
-			const EnumValueDescriptor *ev = 0;
-			if (json_is_integer(jf)) {
-				ev = ed->FindValueByNumber(json_integer_value(jf));
-			} else if (json_is_string(jf)) {
-				ev = ed->FindValueByName(json_string_value(jf));
-			} else
-				throw j2pb_error(field, "Not an integer or string");
-			if (!ev)
-				throw j2pb_error(field, "Enum value not found");
-			_SET_OR_ADD(SetEnum, AddEnum, ev);
-			break;
-		}
-		default:
-			break;
-	}
-}
-
-int json2pb(Json::Value const *root, google::protobuf::Message *msg)
-{
-	const Descriptor *d = msg->GetDescriptor();
-	const Reflection *ref = msg->GetReflection();
-	if (!d || !ref) return -1;
-
-	for (typeof(root->begin()) it = root->begin(), iend = root->end();
-            it != iend; ++it)
-	{
-		const char *name = it->memberName();
-
-		const FieldDescriptor *field = d->FindFieldByName(name);
-		if (!field)
-			field = ref->FindKnownExtensionByName(name);
-
-		if (!field) return -2;
-
-		int r = 0;
-		if (field->is_repeated()) {
-			if (!json_is_array(jf))
-				throw j2pb_error(field, "Not array");
-			for (size_t j = 0; j < json_array_size(jf); j++)
-				_json2field(msg, field, json_array_get(jf, j));
-		} else
-			_json2field(msg, field, jf);
-	}
-}
-
-void json2pb(Message &msg, const char *buf, size_t size)
-{
-	json_t *root;
-	json_error_t error;
-
-	root = json_loadb(buf, size, 0, &error);
-
-	if (!root)
-		throw j2pb_error(std::string("Load failed: ") + error.text);
-
-	json_autoptr _auto(root);
-
-	if (!json_is_object(root))
-		throw j2pb_error("Malformed JSON: not an object");
-
-	_json2pb(msg, root);
-}
-
-int json_dump_std_string(const char *buf, size_t size, void *data)
-{
-	std::string *s = (std::string *) data;
-	s->append(buf, size);
-	return 0;
-}
-
-std::string pb2json(const Message &msg)
-{
-	std::string r;
-
-	json_t *root = _pb2json(msg);
-	json_dump_callback(root, json_dump_std_string, &r, 0);
-	return r;
-}
-
 }
 
 namespace conet
@@ -344,9 +251,268 @@ namespace conet
 void pb2json(const google::protobuf::Message *msg, std::string *out)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
-    Json::Value root;
+    Json::Value root(Json::objectValue);
     parse_msg(msg, &root);
     *out = root.toStyledString();
+}
+
+#define SET_ERROR_INFO(error_var, error_val)    \
+        do { if (error_var) *error_var = error_val; } while (0)
+
+int json2pb(
+    Json::Value& json_value,
+    google::protobuf::Message* message,
+    std::string* error,
+    bool urlencoded)
+{
+    if (json_value.type() != Json::objectValue) {
+        SET_ERROR_INFO(error, "type of json_value is not object.");
+        return -10;
+    }
+
+    using namespace std;
+    using namespace google::protobuf;
+
+    const Reflection* reflection = message->GetReflection();
+    const Descriptor* descriptor = message->GetDescriptor();
+
+    vector<const FieldDescriptor*> fields;
+    for (int i = 0; i < descriptor->extension_range_count(); i++) {
+        const Descriptor::ExtensionRange* ext_range = descriptor->extension_range(i);
+        for (int tag_number = ext_range->start; tag_number < ext_range->end; tag_number++) {
+            const FieldDescriptor* field = reflection->FindKnownExtensionByNumber(tag_number);
+            if (!field) continue;
+            fields.push_back(field);
+        }
+    }
+    for (int i = 0; i < descriptor->field_count(); i++) {
+        fields.push_back(descriptor->field(i));
+    }
+
+    for (size_t i = 0; i < fields.size(); i++) {
+        const FieldDescriptor* field = fields[i];
+        Json::Value value = json_value[field->name()];
+
+        if (value.isNull()) {
+            if (field->is_required()) {
+                SET_ERROR_INFO(error, "missed required field " + field->full_name() + ".");
+                return -11;
+            }
+            continue;
+        }
+        if (field->is_repeated()) {
+            if (!value.isArray()) {
+                SET_ERROR_INFO(error, "invalid type for array field " + field->full_name() + ".");
+                return -12;
+            }
+        }
+
+#define VALUE_TYPE_CHECK(value, jsontype)                                   \
+                if (!value.is##jsontype()) {                                \
+                    SET_ERROR_INFO(error,                                   \
+                            "invalid type for field " +                     \
+                            field->full_name() + ".");                      \
+                    return -13;                                           \
+                }                                                           \
+
+        switch (field->cpp_type()) {
+#define CASE_FIELD_TYPE(cpptype, method, jsontype)                          \
+            case FieldDescriptor::CPPTYPE_##cpptype: {                      \
+                if (field->is_repeated()) {                                 \
+                    for (int index = 0;                                     \
+                        index < static_cast<int>(value.size());             \
+                        index++) {                                          \
+                        Json::Value item = value[Json::Value::ArrayIndex(index)];  \
+                        VALUE_TYPE_CHECK(item, jsontype);                   \
+                        reflection->Add##method(message, field,             \
+                            item.as##jsontype());                           \
+                    }                                                       \
+                } else {                                                    \
+                    VALUE_TYPE_CHECK(value, jsontype);                      \
+                    reflection->Set##method(message, field,                 \
+                        value.as##jsontype());                              \
+                }                                                           \
+                break;                                                      \
+            }                                                               \
+
+            CASE_FIELD_TYPE(INT32,  Int32,  Int);
+            CASE_FIELD_TYPE(UINT32, UInt32, UInt);
+            CASE_FIELD_TYPE(FLOAT,  Float,  Double);
+            CASE_FIELD_TYPE(DOUBLE, Double, Double);
+            CASE_FIELD_TYPE(BOOL,   Bool,   Bool);
+#undef CASE_FIELD_TYPE
+
+#define CASE_64BIT_INT_FIELD(cpptype, method, jsontype, valuetype, func)          \
+            case FieldDescriptor::CPPTYPE_##cpptype: {                      \
+                if (field->is_repeated()) {                                 \
+                    for (int index = 0;                                     \
+                        index < static_cast<int>(value.size());             \
+                        index++) {                                          \
+                        Json::Value item = value[Json::Value::ArrayIndex(index)];  \
+                        if (item.is##jsontype()) {                          \
+                            reflection->Add##method(message, field,         \
+                                item.as##jsontype());                       \
+                        } else if (item.isString()) {                       \
+                            valuetype number_value;                         \
+                            std::string txt = item.asString();   \
+                            char *p = (char *) (txt.c_str()+txt.size());  \
+                            number_value = func(txt.c_str(), &p,10); \
+                            reflection->Add##method(message, field,     \
+                                    number_value);                          \
+                        } else {                                            \
+                            SET_ERROR_INFO(error, "invalid type field " +   \
+                                    field->full_name() + ".");              \
+                            return -15;                                   \
+                        }                                                   \
+                    }                                                       \
+                } else {                                                    \
+                    if (value.is##jsontype()) {                             \
+                        reflection->Set##method(message, field,             \
+                            value.as##jsontype());                          \
+                    } else if (value.isString()) {                          \
+                        valuetype number_value;                             \
+                        std::string txt = value.asString();   \
+                        char *p = (char *) (txt.c_str()+txt.size());  \
+                        number_value = func(txt.c_str(), &p,10); \
+                        reflection->Set##method(message, field,         \
+                                number_value);                              \
+                    } else {                                                \
+                        SET_ERROR_INFO(error, "invalid type for field " +   \
+                                field->full_name() + ".");                  \
+                        return -17;                                       \
+                    }                                                       \
+                }                                                           \
+                break;                                                      \
+            }                                                               \
+
+            CASE_64BIT_INT_FIELD(INT64,  Int64,  Int64,  int64_t, strtoll);
+            CASE_64BIT_INT_FIELD(UINT64, UInt64, UInt64, uint64_t, strtoull);
+#undef CASE_64BIT_INT_FIELD
+
+            case FieldDescriptor::CPPTYPE_STRING: {
+                if (field->is_repeated()) {
+                    for (int index = 0;
+                        index < static_cast<int>(value.size());
+                        index++) {
+                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        VALUE_TYPE_CHECK(item, String);
+                        string str = item.asString();
+                        if ((field->type() == FieldDescriptor::TYPE_BYTES || urlencoded)) {
+                            std::string out;
+                            url_decode(str, &out);
+                            str = out;
+                        }
+                        reflection->AddString(message, field, str);
+                    }
+                } else {
+                    VALUE_TYPE_CHECK(value, String);
+                    string str = value.asString();
+                    if ((field->type() == FieldDescriptor::TYPE_BYTES || urlencoded)) {
+                            std::string out;
+                            url_decode(str, &out);
+                            str = out;
+                    }
+                    reflection->SetString(
+                        message, field, str);
+                }
+                break;
+            }
+
+            case FieldDescriptor::CPPTYPE_ENUM: {
+                if (field->is_repeated()) {
+                    for (int index = 0;
+                        index < static_cast<int>(value.size());
+                        index++) {
+                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        if (!item.isInt()) {
+                            SET_ERROR_INFO(error,
+                                    "invalid type for field " + field->full_name() + ".");
+                            return -20;
+                        }
+                        const EnumValueDescriptor * enum_value_descriptor =
+                            field->enum_type()->FindValueByNumber(item.asInt());
+                        if (!enum_value_descriptor) {
+                            SET_ERROR_INFO(error,
+                                    "invalid value for enum field " + field->full_name() + ".");
+                            return -21;
+                        }
+                        reflection->AddEnum(
+                            message, field,
+                            enum_value_descriptor);
+                    }
+                } else {
+                    if (!value.isInt()) {
+                        SET_ERROR_INFO(error,
+                                "invalid type for field " + field->full_name() + ".");
+                        return -22;
+                    }
+                    const EnumValueDescriptor * enum_value_descriptor =
+                        field->enum_type()->FindValueByNumber(value.asInt());
+                    if (!enum_value_descriptor) {
+                        SET_ERROR_INFO(error,
+                                "invalid value for enum field " + field->full_name() + ".");
+                        return -23;
+                    }
+                    reflection->SetEnum(
+                        message, field,
+                        enum_value_descriptor);
+                }
+                break;
+            }
+
+            case FieldDescriptor::CPPTYPE_MESSAGE: {
+                if (field->is_repeated()) {
+                    for (int index = 0;
+                        index < static_cast<int>(value.size());
+                        index++) {
+                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        if (item.isObject()) {
+                            if (!json2pb(item,
+                                    reflection->AddMessage(message, field),
+                                    error, urlencoded))
+                                return -24;
+
+                        } else {
+                            SET_ERROR_INFO(error,
+                                    "invalid type for field " + field->full_name() + ".");
+                            return -25;
+                        }
+                    }
+                } else {
+                    if (!json2pb(value,
+                            reflection->MutableMessage(message, field),
+                            error, urlencoded))
+                        return -26;
+                }
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+int json2pb(
+    char const *txt, size_t len, 
+    google::protobuf::Message* message,
+    std::string* error,
+    bool urlencoded) 
+{
+    Json::Value root;
+    Json::Reader reader;
+    if (!reader.parse(txt, txt+len,  root)) {
+        SET_ERROR_INFO(error, "json string format error.");
+        return -1;
+    }
+
+    return json2pb(root, message, error, urlencoded);
+}
+
+int json2pb(std::string const & val,
+    google::protobuf::Message* message,
+    std::string* error, bool urlencoded)
+{
+
+    return json2pb(val.c_str(), val.size(), message, error, urlencoded);
 }
 
 }

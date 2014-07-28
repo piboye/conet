@@ -23,7 +23,17 @@
 
 namespace conet
 {
-    void pb2json(const google::protobuf::Message *msg, std::string *out);
+
+void pb2json(const google::protobuf::Message *msg, std::string *out);
+
+int json2pb( char const *txt, size_t len, 
+    google::protobuf::Message* message,
+    std::string* error, bool urlencoded=true);
+
+int json2pb(std::string const & val,
+    google::protobuf::Message* message,
+    std::string* error, bool urlencoded=true);
+
 }
 
 #endif /* end of include guard */
