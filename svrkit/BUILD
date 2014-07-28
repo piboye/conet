@@ -67,6 +67,8 @@ cc_library(
     srcs = [
         "rpc_pb_server.cpp",
         "pb2json.cpp",
+        "query_string.cpp",
+        "url_encode.cpp",
     ],
     deps =[
         ":rpc_base_pb_proto",
@@ -82,8 +84,13 @@ cc_test(
     name='test',
     srcs =[
         'http_parser_test.cpp',
+        'query_string_test.cpp',
+        'query_string.cpp',
+        "url_encode.cpp",
     ],
-    deps=[':http_parser']
+    deps=[':http_parser',
+        "//thirdparty/jsoncpp:jsoncpp",
+         ],
 );
 
 

@@ -23,6 +23,7 @@
 #include "svrkit/rpc_base_pb.pb.h"
 #include "http_server.h"
 #include "pb2json.h"
+#include "query_string.h"
 
 namespace conet
 {
@@ -107,9 +108,16 @@ int func2(void *arg, rpc_pb_ctx_t *ctx, std::string * req, std::string *resp,  \
 int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) \
 { \
     typeof(conet::get_request_type_from_rpc_pb_func(&func)) req1; \
-    int ret = conet::json2pb(req->body, req->content_length, &req1, NULL); \
+    int ret = 0; \
+    if (req->method == conet::METHOD_GET) {  \
+        Json::Value query(Json::objectValue); \
+        conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); \
+        ret = conet::json2pb(query, &req1, NULL); \
+    } else { \
+        ret = conet::json2pb(req->body, req->content_length, &req1, NULL); \
+    } \
     if(ret) { \
-        conet::response_format(resp, 200, "{code:1, errmsg:\"param error, ret:%d\"}", ret); \
+        conet::response_format(resp, 200, "{ret:1, errmsg:\"param error, ret:%d\"}", ret); \
         return -1; \
     } \
     \
@@ -128,12 +136,12 @@ int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *res
     std::string errmsg; \
     ret = func(arg, &pb_ctx, &req1, &resp1, &errmsg); \
     if (ret) { \
-        conet::response_format(resp, 200, "{code:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
+        conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
         return -1; \
     } else {\
         std::string body; \
         conet::pb2json(&resp1, &body); \
-        conet::response_format(resp, 200, "{code:0, body:%s}", body.c_str()); \
+        conet::response_format(resp, 200, "{ret:0, body:%s}", body.c_str()); \
     } \
     return 0; \
 } 

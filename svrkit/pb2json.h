@@ -20,6 +20,8 @@
 #define PB2JSON_H
 #include "protobuf/message.h"
 #include <string>
+#include "jsoncpp/json.h"
+#include "jsoncpp/value.h"
 
 namespace conet
 {
@@ -28,11 +30,18 @@ void pb2json(const google::protobuf::Message *msg, std::string *out);
 
 int json2pb( char const *txt, size_t len, 
     google::protobuf::Message* message,
-    std::string* error, bool urlencoded=true);
+    std::string* error, bool urlencoded=false);
+
+int json2pb(
+    Json::Value& json_value,
+    google::protobuf::Message* message,
+    std::string* error,
+    bool urlencoded=false);
+
 
 int json2pb(std::string const & val,
     google::protobuf::Message* message,
-    std::string* error, bool urlencoded=true);
+    std::string* error, bool urlencoded=false);
 
 }
 
