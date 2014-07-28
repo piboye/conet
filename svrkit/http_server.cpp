@@ -71,7 +71,7 @@ int output_response(http_response_t *resp, int fd)
 {
     std::string out;
     char buf[100];
-    int len = snprintf(buf, sizeof(buf), "HTTP/1.1 %d\r\n", resp->http_code);    
+    int len = snprintf(buf, sizeof(buf), "HTTP/1.0 %d\r\n", resp->http_code);    
     out.assign(buf, len);
     for (int i=0, n = (int)resp->headers.size(); i<n; ++i)
     {
@@ -127,10 +127,10 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
     if (cmd == NULL) {
         LOG(ERROR)<<"no found path cmd, [path:"<<path<<"]";
         ctx.to_close = 1;
+        resp.keepalive = 0;
         response_to(&resp, 404, "");
-        return 0;
+        return -1;
     } else {
-    
         ret = cmd->proc(cmd->arg, &ctx, req, &resp);
         if (ret) {
             ctx.to_close = 1;

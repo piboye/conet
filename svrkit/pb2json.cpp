@@ -28,10 +28,10 @@
 #include "url_encode.h"
 
 using namespace conet;
-namespace 
+namespace conet
 {
 
-int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root);
+int pb2json(const google::protobuf::Message *msg, Json::Value * a_root);
 
 
 void parse_repeated_field(
@@ -78,7 +78,7 @@ void parse_repeated_field(
             for(size_t i = 0 ; i != count ; ++i) { 
                 Json::Value child(Json::objectValue);
                 AUTO_VAR(val,  =,  &(ref->GetRepeatedMessage(*msg, field, i)));
-                parse_msg(val,  &child);
+                pb2json(val,  &child);
                 root.append(child);
             }
             break;
@@ -97,7 +97,7 @@ void parse_repeated_field(
     return;
 }
 
-int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
+int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 {
 	const google::protobuf::Descriptor *d = msg->GetDescriptor();
 	if(!d)  return -1;
@@ -157,7 +157,7 @@ int parse_msg(const google::protobuf::Message *msg, Json::Value * a_root)
                     Json::Value child(Json::objectValue);
 					AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
 
-                    parse_msg(val,  &child);
+                    pb2json(val,  &child);
                     root[name] = child;
 					break;
                 }
@@ -185,7 +185,7 @@ void pb2json(const google::protobuf::Message *msg, std::string *out)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
     Json::Value root(Json::objectValue);
-    parse_msg(msg, &root);
+    pb2json(msg, &root);
     *out = root.toStyledString();
 }
 

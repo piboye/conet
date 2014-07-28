@@ -26,6 +26,7 @@
 namespace conet
 {
 
+int  pb2json(const google::protobuf::Message *msg, Json::Value * a_root);
 void pb2json(const google::protobuf::Message *msg, std::string *out);
 
 int json2pb( char const *txt, size_t len, 

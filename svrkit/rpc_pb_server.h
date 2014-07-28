@@ -139,9 +139,12 @@ int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *res
         conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
         return -1; \
     } else {\
-        std::string body; \
+        Json::Value root(Json::objectValue); \
+        Json::Value body(Json::objectValue);  \
+        root["ret"]=0; \
         conet::pb2json(&resp1, &body); \
-        conet::response_format(resp, 200, "{ret:0, body:%s}", body.c_str()); \
+        root["body"]=body; \
+        conet::response_to(resp, 200, root.toStyledString()); \
     } \
     return 0; \
 } 
