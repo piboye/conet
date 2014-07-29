@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboyeliu
  *   Organization:  
  *
  * =====================================================================================
@@ -333,6 +333,11 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
         }
     }
 
+    if (isalpha(buff[0])) {
+        prev_pos = cur_len;
+        return HTTP_PROTOCOL_DATA;
+    }
+
 
     len = ntohl(*(uint32_t *)(buff));
 
@@ -381,6 +386,10 @@ int PacketStream::read_packet(char **pack, int * pack_len)
         cur_len += ret;
     }
 
+    if (isalpha(buff[0])) {
+        prev_pos = cur_len;
+        return HTTP_PROTOCOL_DATA;
+    }
 
     len = ntohl(*(uint32_t *)(buff));
 

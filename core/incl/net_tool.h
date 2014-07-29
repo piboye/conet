@@ -56,6 +56,9 @@ int read_data(int fd, char *buff, size_t len, int timeout);
 class PacketStream
 {
 public:
+    enum {
+        HTTP_PROTOCOL_DATA=-10000,
+    };
     int fd;
     int max_size;
     char *buff;
@@ -77,7 +80,7 @@ public:
 
     ~PacketStream()
     {
-        free(buff);
+        if (buff) free(buff);
     }
 
 };

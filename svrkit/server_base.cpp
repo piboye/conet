@@ -161,6 +161,7 @@ int server_main(void *arg)
         ++server->cur_conn_num;
 
         conn_info_t *conn_info = new conn_info_t();
+        memset(conn_info, 0, sizeof(conn_info_t));
         conn_info->server = server;
         memcpy(&conn_info->addr, &addr,len);
         conn_info->fd = fd;

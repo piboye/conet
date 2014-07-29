@@ -75,6 +75,10 @@ struct http_server_t
     void *extend;
 };
 
+int http_server_proc(conn_info_t *conn);
+int http_server_proc2(conn_info_t *conn, 
+        server_t *base_server, http_server_t *http_server);
+
 http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name);
 int start_server(http_server_t *server);
 int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg );
