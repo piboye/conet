@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>conet rpc list</title>
+    <script src="/js/jquery.js"></script>
+    <script src="/js/semantic.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/semantic.min.css">
+</head>
+<body>
+<script type="text/javascript">
+$(function() {
+    $.getJSON("/rpc/list", function(result) {
+        $.each(result.list, function(i, name){
+            $("#rpc_list").append($(
+                    '<div class="ui list">  ' +
+                        '<div class="item">  '  +
+                        '<div class="header"> <a href="/rpc/form.html?method=' + name + '">'+ name + '</a>' +
+                           '</div>' +
+                         '</div>' +
+                     '</div>' 
+            ));
+        });
+    });
+});
+</script>
+
+<div class="ui">
+    <div class="row">
+        <h3 class="ui header">
+            Server supported rpc command
+        </h3>
+        <div class="field ui three column grid">
+          <div class="column"> </div>
+          <div id="rpc_list" class="column"> </div>
+        </div>
+    </div>
+</div>
+    
+</body>
+</html>

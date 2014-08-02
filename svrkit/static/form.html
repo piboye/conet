@@ -1,0 +1,62 @@
+<html>
+<head>
+    <title>conet rpc form</title>
+    <script src="/js/jquery.js"></script>
+    <script src="/js/semantic.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/semantic.min.css">
+</head>
+<body>
+<script type="text/javascript">
+$(function() {
+    var getUrlParam = function(name) {
+        var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)"); 
+        var r = window.location.search.substr(1).match(reg); 
+        if (r!=null) return unescape(r[2]); return null; 
+    };
+    var method_name = getUrlParam("method");
+
+    $("#t1").text("Rpc Command ["+method_name+"]");
+
+    $.getJSON("/rpc/req_def_val/"+method_name, function(result) {
+        $("#request").text(JSON.stringify(result.req));
+    });
+
+    $("#send").click(function() {
+        var req = "" + $("#request").val();
+        console.log(req);
+        $.post("/rpc/call/"+method_name, req, function(data, status) {
+            $("#response").text(JSON.stringify(data.body));
+        }, 'json');
+    });
+});
+</script>
+
+<div class="ui">
+    <div class="row">
+        <h3 class="ui header" id="t1">
+            Send Rpc Command
+        </h3>
+        <div class="field">
+            <div class="ui form">
+                <div class="field">
+                    <label>Request</label>
+                    <textarea id="request"> </textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div id="send" class="ui button">Send</div>
+    </div>
+    <div class="row">
+        <div class="ui form">
+            <div class="field">
+                <label>Response</label>
+                <textarea id="response"> </textarea>
+            </div>
+        </div>
+    </div>
+</div>
+    
+</body>
+</html>

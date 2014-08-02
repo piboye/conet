@@ -19,6 +19,7 @@
 #include "rpc_pb_server.h"
 #include "net_tool.h"
 #include "core/incl/auto_var.h"
+#include "svrkit/static_resource.h"
 
 using namespace conet_rpc_pb;
 
@@ -38,27 +39,6 @@ void clear_g_server_maps(void)
     g_server_http_cmd_maps = NULL;
 }
 
-int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, std::string *req, std::string *rsp, std::string *errmsg)
-{
-    google::protobuf::Message * req1 = self->req_msg->New();
-    if(!req1->ParseFromString(*req)) { 
-        delete req1;
-        return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
-    } 
- 
-    google::protobuf::Message * rsp1 = self->rsp_msg->New();
-    int ret = 0; 
-    ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
-    if (ret) { 
-        delete req1;
-        delete rsp1;
-        return ret; 
-    } 
-    rsp1->SerializeToString(rsp); 
-    delete req1;
-    delete rsp1;
-    return ret;
-}
 
 int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
 { 
@@ -112,6 +92,102 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     return 0; 
 } 
 
+int http_get_rpc_req_default_value(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
+{ 
+    rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
+    Json::Value root(Json::objectValue); 
+    Json::Value body(Json::objectValue);  
+    pb2json(self->req_msg->GetDescriptor(), &body);
+    root["ret"]=0; 
+    root["req"]=body; 
+    conet::response_to(resp, 200, root.toStyledString()); 
+    return 0;
+}
+
+int http_get_rpc_req_proto(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
+{ 
+    rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
+    std::string proto = self->req_msg->GetDescriptor()->DebugString();
+    conet::response_to(resp, 200, proto);
+    return 0;
+}
+
+int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
+{ 
+    rpc_pb_server_t *self = (rpc_pb_server_t *) arg;
+    Json::Value root(Json::objectValue); 
+    Json::Value list(Json::arrayValue);  
+
+
+    AUTO_VAR(it, =, self->cmd_maps.begin());
+    for(; it != self->cmd_maps.end(); ++it) {
+        list.append(Json::Value(it->first));        
+    }
+
+    root["ret"]=0; 
+    root["list"]=list; 
+    conet::response_to(resp, 200, root.toStyledString()); 
+    return 0;
+}
+
+
+int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
+        std::string *req, std::string *rsp, std::string *errmsg)
+{
+    google::protobuf::Message * req1 = self->req_msg->New();
+    if(!req1->ParseFromString(*req)) { 
+        delete req1;
+        return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
+    } 
+ 
+    google::protobuf::Message * rsp1 = self->rsp_msg->New();
+    int ret = 0; 
+    ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
+    if (ret) { 
+        delete req1;
+        delete rsp1;
+        return ret; 
+    } 
+    rsp1->SerializeToString(rsp); 
+    delete req1;
+    delete rsp1;
+    return ret;
+}
+
+
+int registry_rpc_cmd_http_api(std::string const & method_name, rpc_pb_cmd_t *cmd,
+        std::map<std::string, http_cmd_t> *maps) 
+{
+    {
+        http_cmd_t item; 
+        item.name = method_name;
+        item.proc = rpc_pb_http_call_cb;
+        item.arg = cmd;
+
+        maps->insert(std::make_pair(std::string("/rpc/call/") + method_name, item));
+    }
+
+    {
+        http_cmd_t item; 
+        item.name = method_name;
+        item.proc = http_get_rpc_req_default_value;
+        item.arg = cmd;
+
+        maps->insert(std::make_pair(std::string("/rpc/req_def_val/") + method_name, item));
+    }
+
+    {
+        http_cmd_t item; 
+        item.name = method_name;
+        item.proc = http_get_rpc_req_proto;
+        item.arg = cmd;
+
+        maps->insert(std::make_pair(std::string("/rpc/req_proto/") + method_name, item));
+    }
+        
+        return 0;
+}
+
 int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
 {
     if (NULL == g_server_cmd_maps) {
@@ -126,13 +202,9 @@ int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
     maps.insert(std::make_pair(method_name, cmd));
 
 
-    { // registry http cmd
-        std::map<std::string, http_cmd_t> & maps = (*g_server_http_cmd_maps)[server_name];
-        http_cmd_t item; 
-        item.name = method_name;
-        item.proc = rpc_pb_http_call_cb;
-        item.arg = cmd;
-        maps.insert(std::make_pair(std::string("/rpc/") + method_name, item));
+    { // registry http api
+        std::map<std::string, http_cmd_t> * maps = &(*g_server_http_cmd_maps)[server_name];
+        registry_rpc_cmd_http_api(method_name, cmd, maps); 
     }
     return 0;
 }
@@ -147,12 +219,8 @@ int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
     server->cmd_maps.insert(std::make_pair(method_name, cmd));
 
     if (server->http_server) {
-        AUTO_VAR(&maps, =, server->http_server->cmd_maps);
-        http_cmd_t item; 
-        item.name = method_name;
-        item.proc = rpc_pb_http_call_cb;
-        item.arg = cmd;
-        maps.insert(std::make_pair(std::string("/rpc/") + method_name, item));
+        AUTO_VAR(maps, =, &server->http_server->cmd_maps);
+        registry_rpc_cmd_http_api(method_name, cmd, maps); 
     }
 
     return 0;
@@ -188,6 +256,45 @@ int get_global_server_cmd(rpc_pb_server_t * server)
 }
 
 static int proc_rpc_pb(conn_info_t *conn);
+
+
+int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
+{
+    std::string *data = (std::string *) arg; 
+    //LOG(ERROR)<<"static file size:"<< data->size(); 
+    conet::response_to(resp, 200, *data);
+}
+
+#define REGISTRY_STATIC_RESOURCE(http_server, path, res) \
+    { \
+        http_cmd_t item;  \
+        item.name = path; \
+        item.proc = http_get_static_resource; \
+        item.arg = new std::string(RESOURCE_svrkit_static_##res, sizeof(RESOURCE_svrkit_static_##res)); \
+ \
+        http_server->cmd_maps.insert(std::make_pair(path, item)); \
+    } \
+
+int registry_http_rpc_default_api(rpc_pb_server_t *server)
+{
+    {
+        std::string path = std::string("/rpc/list"); 
+        http_cmd_t item; 
+        item.name = path;
+        item.proc = http_get_rpc_list;
+        item.arg = server;
+
+        server->http_server->cmd_maps.insert(std::make_pair(path, item));
+    }
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/", list_html);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/list.html", list_html);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/form.html", form_html);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/jquery.js", jquery_js);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/semantic.min.js", semantic_min_js);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/css/semantic.min.css", semantic_min_css);
+
+   return 0; 
+}
 
 int init_server(
         rpc_pb_server_t *self, 
@@ -225,6 +332,7 @@ int init_server(
     if (use_global_cmd) {
         get_global_server_cmd(self);
     }
+    registry_http_rpc_default_api(self);
     return 0;
 }
 
@@ -264,7 +372,7 @@ static int proc_rpc_pb(conn_info_t *conn)
     PacketStream stream;
     stream.init(fd, max_size);
     std::vector<char> out_buf;
-    uint32_t out_len = max_size;
+    //uint32_t out_len = max_size;
     std::string errmsg;
     std::string resp;
     do
@@ -344,7 +452,6 @@ static int proc_rpc_pb(conn_info_t *conn)
         resp.resize(0);
         errmsg.resize(0);
 
-        //int retcode = cmd->proc(cmd->arg, &ctx, req, &resp, &errmsg);
         int retcode = 0;
         retcode = rpc_pb_call_cb(cmd, &ctx, req, &resp, &errmsg);
 

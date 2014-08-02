@@ -26,23 +26,43 @@
 #include "thirdparty/gflags/gflags.h"
 #include "svrkit/ip_list.h"
 
-DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
+DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 using namespace conet;
 
 rpc_pb_server_t g_server;
 
 
-int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
+class EchoServer
+{
+public:
+
+std::string m_pre;
+
+int proc_echo_impl(rpc_pb_ctx_t *ctx,
         EchoReq *req, EchoResp *resp, std::string *errmsg) 
 {
-   resp->set_msg(req->msg()); 
+   resp->set_msg(m_pre + req->msg()); 
    //LOG(ERROR)<<req->GetDescriptor()->DebugString();
    //LOG(INFO)<<req->msg();
    return 0;
 }
 
-REGISTRY_RPC_PB_FUNC(echo, echo, proc_echo_impl, NULL)
+};
+
+EchoServer echo_server;
+
+REGISTRY_RPC_PB_FUNC("echo", "echo", &EchoServer::proc_echo_impl, &echo_server);
+
+int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
+        EchoReq *req, EchoResp *resp, std::string *errmsg) 
+{
+   resp->set_msg(req->msg()); 
+   //LOG(INFO)<<req->msg();
+   return 0;
+}
+
+REGISTRY_RPC_PB_FUNC("echo", "echo2", &proc_echo_impl, NULL);
 
 
 int main(int argc, char * argv[])
@@ -65,6 +85,7 @@ int main(int argc, char * argv[])
     }
     fprintf(stdout, "listen to %s\n, success\n", FLAGS_server_addr.c_str());
 
+    echo_server.m_pre = "fuck";
     start_server(&g_server);
     while (conet::get_epoll_pend_task_num() >0) {
         conet::dispatch();

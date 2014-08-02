@@ -42,11 +42,11 @@ struct rpc_pb_ctx_t
 
 typedef int (*rpc_pb_callback)(void *, rpc_pb_ctx_t *ctx, google::protobuf::Message * req, google::protobuf::Message *resp, std::string * errmsg);
 
-template <typename R1, typename R2>
-R1 get_request_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2 *resp, std::string *errmsg));
+template <typename T1, typename R1, typename R2>
+R1 get_request_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R1 *req, R2 *resp, std::string *errmsg));
 
-template <typename R1, typename R2>
-R2 get_response_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
+template <typename T1, typename R1, typename R2>
+R2 get_response_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
 
 
 
@@ -94,89 +94,43 @@ int init_server(
 
 int start_server(rpc_pb_server_t *server);
 
+template <typename T1, typename R1, typename R2>
+int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
+        int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)
+{
+    rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
+    cmd->method_name = method_name; 
+    cmd->req_msg = new typeof(R1);
+    cmd->rsp_msg = new typeof(R2);
+    cmd->proc = (rpc_pb_callback)(func); 
+    cmd->arg = (void *)arg; 
+    conet::registry_cmd(server_name, cmd); 
+    return 1; 
+}
+
+template <typename T1, typename R1, typename R2>
+int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
+        int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), T1* arg)
+{
+    rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
+    cmd->method_name = method_name; 
+    cmd->req_msg = new typeof(R1);
+    cmd->rsp_msg = new typeof(R2);
+
+    //cmd->proc = (rpc_pb_callback)(func);  // 这会引起告警， 换成下面的方式就不会, i hate c++ !!!
+    memcpy(&(cmd->proc), &(func), sizeof(void *));
+
+    cmd->arg = (void *)arg; 
+    conet::registry_cmd(server_name, cmd); 
+    return 1; 
+}
 
 
-//server stub
-#define RPC_PB_FUNC_WRAP(func, func2) \
-int func2(void *arg, rpc_pb_ctx_t *ctx, std::string * req, std::string *resp,  \
-        std::string *errmsg) \
-{ \
-    typeof(conet::get_request_type_from_rpc_pb_func(&func)) req1; \
-    if(!req1.ParseFromString(*req)) { \
-        return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); \
-    } \
- \
-    typeof(conet::get_response_type_from_rpc_pb_func(&func)) resp1; \
-    int ret = 0; \
-    ret = func(arg, ctx, &req1, &resp1, errmsg); \
-    if (ret) { \
-        return ret; \
-    } \
-    resp1.SerializeToString(resp); \
-    return ret; \
-} 
+#define CONET_MACRO_CONCAT_IMPL(a, b) a##b
+#define CONET_MACRO_CONCAT(a, b) CONET_MACRO_CONCAT_IMPL(a,b)
 
-#define RPC_PB_HTTP_FUNC_WRAP(cmd, func, func2) \
-int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) \
-{ \
-    typeof(conet::get_request_type_from_rpc_pb_func(&func)) req1; \
-    int ret = 0; \
-    if (req->method == conet::METHOD_GET) {  \
-        Json::Value query(Json::objectValue); \
-        conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); \
-        ret = conet::json2pb(query, &req1, NULL); \
-    } else { \
-        ret = conet::json2pb(req->body, req->content_length, &req1, NULL); \
-    } \
-    if(ret) { \
-        conet::response_format(resp, 200, "{ret:1, errmsg:\"param error, ret:%d\"}", ret); \
-        return -1; \
-    } \
-    \
-    typeof(conet::get_response_type_from_rpc_pb_func(&func)) resp1; \
-    ret = 0; \
-    rpc_pb_ctx_t pb_ctx;  \
-    pb_ctx.to_close = ctx->to_close;  \
-    pb_ctx.conn_info = ctx->conn_info;  \
-    pb_ctx.server = (conet::rpc_pb_server_t *)ctx->server->extend;  \
-    conet_rpc_pb::CmdBase cmdbase; \
-    cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); \
-    cmdbase.set_server_name(ctx->server->server_name); \
-    cmdbase.set_cmd_name(#cmd); \
-    cmdbase.set_seq_id(time(NULL)); \
-    pb_ctx.req = &cmdbase; \
-    std::string errmsg; \
-    ret = func(arg, &pb_ctx, &req1, &resp1, &errmsg); \
-    if (ret) { \
-        conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); \
-        return -1; \
-    } else {\
-        Json::Value root(Json::objectValue); \
-        Json::Value body(Json::objectValue);  \
-        root["ret"]=0; \
-        conet::pb2json(&resp1, &body); \
-        root["body"]=body; \
-        conet::response_to(resp, 200, root.toStyledString()); \
-    } \
-    return 0; \
-} 
-
-
-
-#define REGISTRY_RPC_PB_FUNC(server, a_method_name, func, a_arg) \
-static int rpc_pb_registry_cmd_##server##_##a_method_name(); \
-static int i_rpc_pb_registry_cmd ## __LINE__ = rpc_pb_registry_cmd_##server##_##a_method_name();\
-int rpc_pb_registry_cmd_##server##_##a_method_name() \
-{ \
-    rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); \
-    cmd->method_name = #a_method_name; \
-    cmd->req_msg = new typeof(conet::get_request_type_from_rpc_pb_func(func)); \
-    cmd->rsp_msg = new typeof(conet::get_response_type_from_rpc_pb_func(func));  \
-    cmd->proc = (rpc_pb_callback)(&func); \
-    cmd->arg = a_arg; \
-    conet::registry_cmd(#server, cmd); \
-    return 1; \
-} \
+#define REGISTRY_RPC_PB_FUNC(server, method_name, func, arg) \
+    static int CONET_MACRO_CONCAT(i_rpc_pb_registry_cmd, __LINE__) = conet::registry_rpc_pb_cmd(server, method_name, func, arg)
 
 
 }

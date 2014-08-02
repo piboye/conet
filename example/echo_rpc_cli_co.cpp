@@ -43,16 +43,14 @@ int proc_send(void *arg)
     int ret = 0;
     char *line= NULL;
     size_t len = 0;
-    /*
     FILE *fp = fopen(FLAGS_data_file.c_str(), "r");
     if (!fp) {
         fprintf(stderr, "open file:%s failed!\n", FLAGS_data_file.c_str());
         return -1;
     }
     while( (ret = getline(&line, &len, fp)) >= 0) {
-    */
-    line = "hello";
-    for (int i=0; i<100000; ++i) {
+    //line = "hello";
+    //for (int i=0; i<100000; ++i) {
         EchoReq req;
 
         EchoResp resp;

@@ -62,6 +62,18 @@ proto_library(
     ],
 );
 
+
+resource_library(
+    name = 'static_resource',
+    srcs = [
+        'static/list.html',
+        'static/form.html',
+        'static/jquery.js',
+        'static/semantic.min.js',
+        'static/semantic.min.css',
+    ]
+);
+
 cc_library(
     name = 'rpc_pb_server',
     srcs = [
@@ -75,6 +87,7 @@ cc_library(
         ":server_base",
         ":http_server",
         ":client_base",
+        ':static_resource',
         "//thirdparty/jsoncpp:jsoncpp",
     ],
     link_all_symbols = True,

@@ -31,72 +31,6 @@ using namespace conet;
 namespace conet
 {
 
-int pb2json(const google::protobuf::Message *msg, Json::Value * a_root);
-
-
-void parse_repeated_field(
-        const google::protobuf::Message *msg, 
-        const google::protobuf::Reflection * ref,
-        const google::protobuf::FieldDescriptor *field,
-        Json::Value *a_root
-        )
-{
-	size_t count = ref->FieldSize(*msg,field);
-    Json::Value & root = *a_root;
-
-    switch (field->cpp_type())
-    {
-     #define ENCODE_BASE_REP(t, f, t2) \
-				case google::protobuf::FieldDescriptor::CPPTYPE_##t: \
-                    {  \
-                       for(size_t i = 0 ; i != count ; ++i) { \
-                        t2 val  =  ref->GetRepeated##f(*msg, field, i); \
-                        root.append(Json::Value(val)); \
-                       } \
-                    } \
-                    break \
-
-        ENCODE_BASE_REP(DOUBLE, Double, double);
-        ENCODE_BASE_REP(FLOAT, Float, double);
-        ENCODE_BASE_REP(INT64, Int64, Json::Int);
-        ENCODE_BASE_REP(UINT64, UInt64, Json::UInt);
-        ENCODE_BASE_REP(INT32, Int32, int32_t);
-        ENCODE_BASE_REP(UINT32, UInt32, uint32_t);
-        ENCODE_BASE_REP(BOOL, Bool, bool);
-
-        case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        {
-            std::string val;
-            for(size_t i = 0 ; i != count ; ++i) { 
-                val = ref->GetRepeatedString(*msg,field, i);
-                root.append(Json::Value(val));
-            }
-            break;
-        }
-        case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-        {
-            for(size_t i = 0 ; i != count ; ++i) { 
-                Json::Value child(Json::objectValue);
-                AUTO_VAR(val,  =,  &(ref->GetRepeatedMessage(*msg, field, i)));
-                pb2json(val,  &child);
-                root.append(child);
-            }
-            break;
-        }
-        case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-        {
-            for(size_t i = 0 ; i != count ; ++i) { 
-                root.append(Json::Value(ref->GetRepeatedEnum(*msg,field, i)->number()));
-            }
-            break;
-        }
-        default:
-            break;
-    }
-
-    return;
-}
-
 int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 {
 	const google::protobuf::Descriptor *d = msg->GetDescriptor();
@@ -114,11 +48,6 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 		if(!ref)return -3;
         
 		const char *name = field->name().c_str();
-		if(field->is_repeated()) {
-            Json::Value childs(Json::arrayValue);
-            parse_repeated_field(msg, ref, field, &childs);
-			root[name] = childs; 
-        }
 
 		if(!field->is_repeated() && ref->HasField(*msg, field))
 		{
@@ -127,7 +56,15 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 
             #define ENCODE_BASE(t, f, t2) \
 				case google::protobuf::FieldDescriptor::CPPTYPE_##t: \
-                    {  \
+		            if(field->is_repeated()) { \
+                        Json::Value childs(Json::arrayValue);  \
+	                    size_t count = ref->FieldSize(*msg,field); \
+                        for(size_t i = 0; i != count ; ++i) { \
+                            t2 val  =  ref->GetRepeated##f(*msg, field, i); \
+                            childs.append(Json::Value(val)); \
+                        } \
+                        root[name] = childs; \
+                    } else {  \
                         t2 val  =  ref->Get##f(*msg, field); \
                         root[name] = val; \
                     } \
@@ -135,37 +72,76 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
                 
                 ENCODE_BASE(DOUBLE, Double, double);
                 ENCODE_BASE(FLOAT, Float, double);
-                ENCODE_BASE(INT64, Int64, Json::Int);
-                ENCODE_BASE(UINT64, UInt64, Json::UInt);
+                ENCODE_BASE(INT64, Int64, Json::Int64);
+                ENCODE_BASE(UINT64, UInt64, Json::UInt64);
                 ENCODE_BASE(INT32, Int32, int32_t);
                 ENCODE_BASE(UINT32, UInt32, uint32_t);
                 ENCODE_BASE(BOOL, Bool, bool);
 
+#undef ENCODE_BASE
+
 				case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
                 {
-                    std::string val;
-					if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-                        url_encode(ref->GetString(*msg, field), &val);
-					} else {
-						val = ref->GetString(*msg,field);
-					}
-                    root[name] = val;
+		            if(field->is_repeated()) 
+                    { 
+                        Json::Value childs(Json::arrayValue);  
+	                    size_t count = ref->FieldSize(*msg,field); 
+                        for(size_t i = 0 ; i != count ; ++i) { 
+                            std::string val  =  ref->GetRepeatedString(*msg, field, i); 
+                            if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+                                url_encode(ref->GetString(*msg, field), &val);
+                            } else {
+                                val = ref->GetString(*msg,field);
+                            }
+                            childs.append(Json::Value(val)); 
+                        } 
+                        root[name] = childs; 
+                    } else {  
+                        std::string val;
+                        if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+                            url_encode(ref->GetString(*msg, field), &val);
+                        } else {
+                            val = ref->GetString(*msg,field);
+                        }
+                        root[name] = val;
+                    }
 					break;
                 }
 				case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
                 {
-                    Json::Value child(Json::objectValue);
-					AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
-
-                    pb2json(val,  &child);
-                    root[name] = child;
-					break;
-                }
+                    if(field->is_repeated()) { 
+                        Json::Value childs(Json::arrayValue);  
+                        size_t count = ref->FieldSize(*msg,field); 
+                        for(size_t i = 0 ; i != count ; ++i) { 
+                            Json::Value child2(Json::objectValue);
+                            AUTO_VAR(val, =,  &ref->GetRepeatedMessage(*msg, field, i)); 
+                            pb2json(val, &child2);
+                            childs.append(child2);
+                        } 
+                        root[name] = childs; 
+                     } else {  
+                          Json::Value child(Json::objectValue);
+                          AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
+                          pb2json(val,  &child);
+                          root[name] = child;
+                     }
+                     break;
+                 }
 				case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
                 {
-					AUTO_VAR(val, =, ref->GetEnum(*msg,field));
-                    root[name] = val->number();
-					break;
+                    if(field->is_repeated()) { 
+                        Json::Value childs(Json::arrayValue);  
+                        size_t count = ref->FieldSize(*msg,field); 
+                        for(size_t i = 0 ; i != count ; ++i) { 
+                            AUTO_VAR(val, =, ref->GetRepeatedEnum(*msg,field, i));
+                            childs.append(val->number());
+                        } 
+                        root[name] = childs; 
+                     } else {  
+                        AUTO_VAR(val, =, ref->GetEnum(*msg,field));
+                        root[name] = val->number();
+                     }
+					 break;
                 }
 				default:
 					break;
@@ -432,3 +408,96 @@ int json2pb(std::string const & val,
 
 }
 
+namespace conet
+{
+
+int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
+{
+	size_t count = d->field_count();
+
+    Json::Value &root = *a_root;
+
+	for (size_t i = 0; i != count ; ++i)
+	{
+		const google::protobuf::FieldDescriptor *field = d->field(i);
+		if(!field) return -2;
+
+		const char *name = field->name().c_str();
+
+		if(!field->is_repeated())
+		{
+			switch (field->cpp_type())
+			{
+
+            #define ENCODE_BASE(t, f, t2) \
+				case google::protobuf::FieldDescriptor::CPPTYPE_##t: \
+                    if (field->is_repeated()) {            \
+                        Json::Value childs(Json::arrayValue); \
+                        t2 val  =  field->default_value_##f(); \
+                        childs.append(val); \
+                        root[name] = childs; \
+                    } else { \
+                        t2 val  =  field->default_value_##f(); \
+                        root[name] = val; \
+                    } \
+                    break \
+                
+                ENCODE_BASE(DOUBLE, double, double);
+                ENCODE_BASE(FLOAT, float, double);
+                ENCODE_BASE(INT64, int64, Json::Int64);
+                ENCODE_BASE(UINT64, uint64, Json::UInt64);
+                ENCODE_BASE(INT32, int32, int32_t);
+                ENCODE_BASE(UINT32, int32, uint32_t);
+                ENCODE_BASE(BOOL, bool, bool);
+                ENCODE_BASE(STRING, string, std::string);
+            #undef ENCODE_BASE
+
+				case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+                {
+                    if (field->is_repeated()) {            
+                        Json::Value childs(Json::arrayValue); 
+                        Json::Value child(Json::objectValue);
+                        AUTO_VAR(val,  =,  field->message_type());
+                        pb2json(val, &child);
+                        childs.append(child);
+                        root[name] = child;
+                    } else {
+                        Json::Value child(Json::objectValue);
+                        AUTO_VAR(val,  =,  field->message_type());
+                        pb2json(val, &child);
+                        root[name] = child;
+                    }
+					break;
+                }
+				case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+                {
+                    if (field->is_repeated()) {            
+                        Json::Value childs(Json::arrayValue); 
+                        AUTO_VAR(val, =, field->default_value_enum());
+                        childs.append(Json::Value(val->number()));
+                        root[name] = childs;
+                    } else {
+                        AUTO_VAR(val, =, field->default_value_enum());
+                        root[name] = val->number();
+                    }
+					break;
+                }
+				default:
+                    assert(!"error filed type");
+					break;
+			}
+
+		}
+
+	}
+	return 0; 
+}
+void pb2json(const google::protobuf::Descriptor *d, std::string *out)
+{
+	GOOGLE_PROTOBUF_VERIFY_VERSION;
+    Json::Value root(Json::objectValue);
+    pb2json(d, &root);
+    *out = root.toStyledString();
+}
+
+}
