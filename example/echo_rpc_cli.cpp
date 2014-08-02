@@ -23,7 +23,7 @@
 #include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
 
-DEFINE_string(server_addr, "", "server address");
+DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 
 int main(int argc, char * argv[])
 {

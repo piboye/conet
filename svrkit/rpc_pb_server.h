@@ -24,9 +24,12 @@
 #include "http_server.h"
 #include "pb2json.h"
 #include "query_string.h"
+#include "protobuf/descriptor.h"
+#include "protobuf/message.h"
 
 namespace conet
 {
+
 struct rpc_pb_server_t;
 struct rpc_pb_ctx_t
 {
@@ -37,28 +40,42 @@ struct rpc_pb_ctx_t
     void * arg;
 };
 
-   typedef int (*rpc_pb_callback)(void *, rpc_pb_ctx_t *ctx, std::string * req, std::string *resp, std::string * errmsg);
+typedef int (*rpc_pb_callback)(void *, rpc_pb_ctx_t *ctx, google::protobuf::Message * req, google::protobuf::Message *resp, std::string * errmsg);
+
+template <typename R1, typename R2>
+R1 get_request_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2 *resp, std::string *errmsg));
+
+template <typename R1, typename R2>
+R2 get_response_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
+
+
 
 struct rpc_pb_cmd_t
 {
+
    rpc_pb_callback proc;
+
    void *arg; 
-   std::string name;
+   
+   std::string method_name;
+   google::protobuf::Message * req_msg;
+   google::protobuf::Message * rsp_msg;
 };
+
 
 struct rpc_pb_server_t
 {
     struct server_t * server;
     http_server_t *http_server;
     std::string server_name;
-    std::map<std::string, rpc_pb_cmd_t> cmd_maps;
+    std::map<std::string, rpc_pb_cmd_t*> cmd_maps;
 };
 
 int get_global_server_cmd(rpc_pb_server_t * server);
 
-int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg);
+int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd);
 
-int registry_cmd(rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg );
+int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd);
 
 
 int unregistry_cmd(rpc_pb_server_t *server, std::string const &name);
@@ -78,11 +95,6 @@ int init_server(
 int start_server(rpc_pb_server_t *server);
 
 
-template <typename R1, typename R2>
-R1 get_request_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2 *resp, std::string *errmsg));
-
-template <typename R1, typename R2>
-R2 get_response_type_from_rpc_pb_func( int (*fun2) (void *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
 
 //server stub
 #define RPC_PB_FUNC_WRAP(func, func2) \
@@ -151,16 +163,18 @@ int func2(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *res
 
 
 
-#define REGISTRY_RPC_PB_FUNC(server, cmd, func, arg) \
-RPC_PB_FUNC_WRAP(func, rpc_pb_serve_stub_##server##_##cmd) \
-RPC_PB_HTTP_FUNC_WRAP(cmd, func, rpc_pb_http_serve_stub_##server##_##cmd) \
-int rpc_pb_registry_cmd_##server##_##cmd(); \
-static int i_rpc_pb_registry_cmd ## __LINE__ = rpc_pb_registry_cmd_##server##_##cmd();\
-int rpc_pb_registry_cmd_##server##_##cmd() \
+#define REGISTRY_RPC_PB_FUNC(server, a_method_name, func, a_arg) \
+static int rpc_pb_registry_cmd_##server##_##a_method_name(); \
+static int i_rpc_pb_registry_cmd ## __LINE__ = rpc_pb_registry_cmd_##server##_##a_method_name();\
+int rpc_pb_registry_cmd_##server##_##a_method_name() \
 { \
-    conet::registry_cmd(#server, #cmd, rpc_pb_serve_stub_##server##_##cmd, \
-            rpc_pb_http_serve_stub_##server##_##cmd, \
-            arg); \
+    rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); \
+    cmd->method_name = #a_method_name; \
+    cmd->req_msg = new typeof(conet::get_request_type_from_rpc_pb_func(func)); \
+    cmd->rsp_msg = new typeof(conet::get_response_type_from_rpc_pb_func(func));  \
+    cmd->proc = (rpc_pb_callback)(&func); \
+    cmd->arg = a_arg; \
+    conet::registry_cmd(#server, cmd); \
     return 1; \
 } \
 

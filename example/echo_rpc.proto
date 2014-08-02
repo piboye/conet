@@ -1,6 +1,6 @@
 message EchoReq
 {
-    optional bytes msg = 1;
+    optional bytes msg = 1; // request message
 }
 
 message EchoResp

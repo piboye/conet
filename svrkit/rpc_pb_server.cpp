@@ -25,7 +25,7 @@ using namespace conet_rpc_pb;
 namespace conet
 {
 
-static std::map<std::string , std::map<std::string, rpc_pb_cmd_t> > *g_server_cmd_maps=NULL;
+static std::map<std::string , std::map<std::string, rpc_pb_cmd_t*> > *g_server_cmd_maps=NULL;
 
 static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
 
@@ -38,51 +38,121 @@ void clear_g_server_maps(void)
     g_server_http_cmd_maps = NULL;
 }
 
-int registry_cmd(std::string const & server_name, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg)
+int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, std::string *req, std::string *rsp, std::string *errmsg)
+{
+    google::protobuf::Message * req1 = self->req_msg->New();
+    if(!req1->ParseFromString(*req)) { 
+        delete req1;
+        return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
+    } 
+ 
+    google::protobuf::Message * rsp1 = self->rsp_msg->New();
+    int ret = 0; 
+    ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
+    if (ret) { 
+        delete req1;
+        delete rsp1;
+        return ret; 
+    } 
+    rsp1->SerializeToString(rsp); 
+    delete req1;
+    delete rsp1;
+    return ret;
+}
+
+int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
+{ 
+    rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
+
+    google::protobuf::Message * req1 = self->req_msg->New();
+    int ret = 0; 
+    if (req->method == conet::METHOD_GET) {  
+        Json::Value query(Json::objectValue); 
+        conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); 
+        ret = conet::json2pb(query, req1, NULL); 
+    } else { 
+        ret = conet::json2pb(req->body, req->content_length, req1, NULL); 
+    } 
+
+    if(ret) { 
+        conet::response_format(resp, 200, "{ret:1, errmsg:\"param error, ret:%d\"}", ret); 
+        delete req1;
+        return -1; 
+    } 
+    
+    google::protobuf::Message * rsp1 = self->rsp_msg->New();
+    ret = 0; 
+    rpc_pb_ctx_t pb_ctx;  
+    pb_ctx.to_close = ctx->to_close;  
+    pb_ctx.conn_info = ctx->conn_info;  
+    pb_ctx.server = (conet::rpc_pb_server_t *)ctx->server->extend;  
+    conet_rpc_pb::CmdBase cmdbase; 
+    cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); 
+    cmdbase.set_server_name(ctx->server->server_name); 
+    cmdbase.set_cmd_name(self->method_name);
+    cmdbase.set_seq_id(time(NULL)); 
+    pb_ctx.req = &cmdbase; 
+    std::string errmsg; 
+    ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
+    if (ret) { 
+        conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); 
+        delete req1;
+        delete rsp1;
+        return -1; 
+    } else {\
+        Json::Value root(Json::objectValue); 
+        Json::Value body(Json::objectValue);  
+        root["ret"]=0; 
+        conet::pb2json(rsp1, &body); 
+        root["body"]=body; 
+        conet::response_to(resp, 200, root.toStyledString()); 
+    } 
+    delete req1;
+    delete rsp1;
+    return 0; 
+} 
+
+int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
 {
     if (NULL == g_server_cmd_maps) {
         g_server_cmd_maps = new typeof(*g_server_cmd_maps);
         g_server_http_cmd_maps = new typeof(*g_server_http_cmd_maps);
         atexit(clear_g_server_maps);
     }
-    std::map<std::string, rpc_pb_cmd_t> & maps = (*g_server_cmd_maps)[server_name];
-    rpc_pb_cmd_t item; 
-    item.name = name;
-    item.proc = proc;
-    item.arg = arg;
-    maps.insert(std::make_pair(name, item));
+
+    std::string const & method_name = cmd->method_name;
+
+    std::map<std::string, rpc_pb_cmd_t*> & maps = (*g_server_cmd_maps)[server_name];
+    maps.insert(std::make_pair(method_name, cmd));
 
 
     { // registry http cmd
         std::map<std::string, http_cmd_t> & maps = (*g_server_http_cmd_maps)[server_name];
         http_cmd_t item; 
-        item.name = name;
-        item.proc = hproc;
-        item.arg = arg;
-        maps.insert(std::make_pair(std::string("/rpc/") + name, item));
+        item.name = method_name;
+        item.proc = rpc_pb_http_call_cb;
+        item.arg = cmd;
+        maps.insert(std::make_pair(std::string("/rpc/") + method_name, item));
     }
     return 0;
 }
 
-int registry_cmd(rpc_pb_server_t *server, std::string const & name,  rpc_pb_callback proc, http_callback hproc, void *arg )
+int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
 {
+    std::string const & method_name = cmd->method_name;
 
-    if (server->cmd_maps.find(name) != server->cmd_maps.end()) {
+    if (server->cmd_maps.find(method_name) != server->cmd_maps.end()) {
         return -1;
     }
-    rpc_pb_cmd_t item; 
-    item.name = name;
-    item.proc = proc;
-    item.arg = arg;
-    server->cmd_maps.insert(std::make_pair(name, item));
+    server->cmd_maps.insert(std::make_pair(method_name, cmd));
 
     if (server->http_server) {
         AUTO_VAR(&maps, =, server->http_server->cmd_maps);
         http_cmd_t item; 
-        item.name = name;
-        item.proc = hproc;
-        item.arg = arg;
-        maps.insert(std::make_pair(name, item));
+        item.name = method_name;
+        item.proc = rpc_pb_http_call_cb;
+        item.arg = cmd;
+        maps.insert(std::make_pair(std::string("/rpc/") + method_name, item));
     }
 
     return 0;
@@ -106,7 +176,7 @@ rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
     if (it == server->cmd_maps.end()) {
         return NULL;
     }
-    return &it->second;
+    return it->second;
 }
 
 
@@ -266,7 +336,9 @@ static int proc_rpc_pb(conn_info_t *conn)
         resp.resize(0);
         errmsg.resize(0);
 
-        int retcode = cmd->proc(cmd->arg, &ctx, req, &resp, &errmsg);
+        //int retcode = cmd->proc(cmd->arg, &ctx, req, &resp, &errmsg);
+        int retcode = 0;
+        retcode = rpc_pb_call_cb(cmd, &ctx, req, &resp, &errmsg);
 
         cmd_base.set_type(CmdBase::RESPONSE_TYPE);
         cmd_base.set_ret(retcode);
