@@ -208,6 +208,7 @@ int init_server(
     }
     self->server = server_base; 
 
+    /*
     server_t *server_base2 = new server_t();
     ret = init_server(server_base2, ip, port+10000);
     if (ret) {
@@ -215,9 +216,10 @@ int init_server(
         LOG(ERROR)<<"init server_baser in http server failed, [ret:"<<ret<<"]";
         return -1;
     }
+    */
 
     http_server_t *http_server = new http_server_t();
-    http_server->server = server_base2; 
+    http_server->server = server_base; 
     http_server->extend = self;
     self->http_server = http_server;
     if (use_global_cmd) {
@@ -235,7 +237,7 @@ int start_server(rpc_pb_server_t *server)
     }
     int ret =  0;
     ret = start_server(server->server);
-    start_server(server->http_server);
+    //start_server(server->http_server);
     return ret;
 }
 
@@ -292,8 +294,14 @@ static int proc_rpc_pb(conn_info_t *conn)
         }
 
         if (ret <0) {
-            LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
-            break;
+            if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
+                conn->extend = &stream;
+                http_server_proc2(conn, server_base, server->http_server);
+                break;
+            } else {
+                LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
+                break;
+            }
         }
 
         if (!cmd_base.ParseFromArray(data, packet_len)) 

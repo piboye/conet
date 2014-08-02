@@ -103,14 +103,14 @@ http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name)
     return &it->second;
 }
 
-int http_server_main(conn_info_t *conn, http_request_t *req)
+int http_server_main(conn_info_t *conn, http_request_t *req,
+        server_t *server_base,
+        http_server_t *http_server
+        )
 {
     std::string path;
     ref_str_to(&req->path, &path);
     int ret = 0;
-
-    server_t * server_base= conn->server; 
-    http_server_t * http_server = (http_server_t *) server_base->extend;
 
     http_response_t resp;
     init_http_response(&resp);
@@ -129,7 +129,6 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
         ctx.to_close = 1;
         resp.keepalive = 0;
         response_to(&resp, 404, "");
-        return -1;
     } else {
         ret = cmd->proc(cmd->arg, &ctx, req, &resp);
         if (ret) {
@@ -152,36 +151,66 @@ int http_server_main(conn_info_t *conn, http_request_t *req)
 int http_server_proc(conn_info_t *conn) 
 {
 
+    server_t *base_server = conn->server;
+    http_server_t *http_server = (http_server_t *) conn->extend;
+    return http_server_proc2(conn, base_server, http_server);
+}
+
+int http_server_proc2(conn_info_t *conn, 
+        server_t *base_server, http_server_t *http_server) 
+{
+
     int fd  = conn->fd;
 
     http_request_t req;
     http_request_init(&req);
 
     int len = 4*1024;
-    char *buf = (char *)malloc(len);
-
+    char *buf = NULL;
     ssize_t nparsed = 0;
     ssize_t end =  0;
     int ret = 0;
+    ssize_t recved = 0;
+
+    PacketStream *stream = (PacketStream *) conn->extend;
+    if (NULL == stream) {
+        buf = (char *)malloc(len);
+    } else  {
+        recved = stream->prev_pos;
+        if (stream->max_size < len) {
+            buf = (char *)malloc(len);
+            memcpy(buf, stream->buff, recved);
+        }  else {
+            buf = stream->buff;    
+            len = stream->max_size;
+            stream->buff = NULL;
+        }
+        conn->extend = NULL;
+    }
+
+    uint64_t cnt = 0; 
     do 
     {
-        ssize_t recved;
 
-        recved = recv(fd, buf+nparsed, len-nparsed, 0);
-        if (recved == 0) {
-            if (nparsed == 0) {
-                ret = 0;
+        if (cnt > 0) {
+            recved = recv(fd, buf+nparsed, len-nparsed, 0);
+            if (recved == 0) {
+                if (nparsed == 0) {
+                    ret = 0;
+                    break;
+                }
+                ret = -2;
+                LOG(ERROR)<<"recv failed";
                 break;
             }
-            ret = -2;
-            LOG(ERROR)<<"recv failed";
-            break;
+            if (recved < 0) {
+                LOG(ERROR)<<"recv failed [ret="<<ret<<"]";
+                ret = -2;
+                break;
+            }
         }
-        if (recved < 0) {
-            LOG(ERROR)<<"recv failed [ret="<<ret<<"]";
-            ret = -2;
-            break;
-        }
+        ++cnt;
+
         end = recved + nparsed;
 
         nparsed += http_request_parse(&req, buf, end, nparsed);
@@ -190,7 +219,7 @@ int http_server_proc(conn_info_t *conn)
         {
             case 1: // finished;
                 {
-                    ret = http_server_main(conn, &req);
+                    ret = http_server_main(conn, &req, base_server, http_server);
                     nparsed = 0;
                     break;
                 }

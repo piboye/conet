@@ -53,6 +53,7 @@ struct conn_info_t
     int fd;
     struct sockaddr_in addr;
     coroutine_t *co;
+    void *extend;
 };
 
 int init_server(server_t *server, const char *ip, int port, int max_packet_size=102400, int max_conn_num=10000);
