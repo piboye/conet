@@ -20,6 +20,7 @@
 #include "net_tool.h"
 #include "core/incl/auto_var.h"
 #include "svrkit/static_resource.h"
+#include "glog/logging.h"
 
 using namespace conet_rpc_pb;
 

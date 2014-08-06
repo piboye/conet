@@ -19,7 +19,7 @@
 #include <string>
 
 #include "pb2json.h"
-#include "protobuf/descriptor.h"
+#include "google/protobuf/descriptor.h"
 #include "jsoncpp/json.h"
 #include "jsoncpp/reader.h"
 #include "jsoncpp/value.h"

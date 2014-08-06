@@ -24,8 +24,8 @@
 #include "http_server.h"
 #include "pb2json.h"
 #include "query_string.h"
-#include "protobuf/descriptor.h"
-#include "protobuf/message.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace conet
 {

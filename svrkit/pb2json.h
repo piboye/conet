@@ -18,7 +18,7 @@
 
 #ifndef PB2JSON_H
 #define PB2JSON_H
-#include "protobuf/message.h"
+#include "google/protobuf/message.h"
 #include <string>
 #include "jsoncpp/json.h"
 #include "jsoncpp/value.h"

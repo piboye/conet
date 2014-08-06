@@ -89,6 +89,7 @@ cc_library(
         ":client_base",
         ':static_resource',
         "//thirdparty/jsoncpp:jsoncpp",
+        "//thirdparty/protobuf:protobuf",
     ],
     link_all_symbols = True,
 );

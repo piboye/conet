@@ -23,6 +23,7 @@
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
+#include "thirdparty/glog/logging.h"
 #include "conet_all.h"
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");

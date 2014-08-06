@@ -1,4 +1,4 @@
 cc_config(
 warnings = ['-Wall'],
-extra_incs='thirdparty',
+extra_incs=['thirdparty/protobuf/', 'thirdparty'],
 )
