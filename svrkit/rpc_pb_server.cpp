@@ -291,8 +291,8 @@ int registry_http_rpc_default_api(rpc_pb_server_t *server)
     REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/list.html", list_html);
     REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/form.html", form_html);
     REGISTRY_STATIC_RESOURCE(server->http_server, "/js/jquery.js", jquery_js);
-    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/semantic.min.js", semantic_min_js);
-    REGISTRY_STATIC_RESOURCE(server->http_server, "/css/semantic.min.css", semantic_min_css);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/bootstrap.min.js", bootstrap_min_js);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/css/bootstrap.min.css", bootstrap_min_css);
 
    return 0; 
 }
