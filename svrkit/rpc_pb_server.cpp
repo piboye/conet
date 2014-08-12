@@ -413,7 +413,10 @@ static int proc_rpc_pb(conn_info_t *conn)
                 break;
             }
         }
-
+        if ((data == NULL) || (packet_len <=0)) {
+            LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
+            break;        
+        }
         if (!cmd_base.ParseFromArray(data, packet_len)) 
         {
             // parse cmd base head failed;
