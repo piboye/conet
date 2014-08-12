@@ -1,39 +1,52 @@
-<html>
-<head>
-    <title>conet rpc list</title>
+<!DOCTYPE html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="http://cdn.bootcss.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="http://cdn.bootcss.com/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
     <script src="/js/jquery.js"></script>
     <script src="/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
-</head>
+
+  </head>
 <body>
+<div class="container">
+    <div class="row">
+        <h3 class=".col-md-4">
+            Server supported rpc command
+        </h3>
+    </div>
+    <div class="row">
+          <div id="rpc_list" class=".col-md-6"> </div>
+    </div>
+</div>
+
 <script type="text/javascript">
 $(function() {
     $.getJSON("/rpc/list", function(result) {
-        $.each(result.list, function(i, name){
-            $("#rpc_list").append($(
-                    '<div class="ui list">  ' +
-                        '<div class="item">  '  +
-                        '<div class="header"> <a href="/rpc/form.html?method=' + name + '">'+ name + '</a>' +
-                           '</div>' +
-                         '</div>' +
-                     '</div>' 
-            ));
-        });
+        $("#rpc_list").append($(
+            "<ul>" +
+            $.map(result.list, function(name, i){
+				console.log(i, name);
+                return '<li>  '  +
+                '<div class="header"> <a href="/rpc/form.html?method=' + name + '">'+ name + '</a>' +
+                   '</div>' +
+                 '</li>';
+            }).join("") + 
+            "</ul>"
+           )
+       );
     });
 });
 </script>
-
-<div class="ui">
-    <div class="row">
-        <h3 class="ui header">
-            Server supported rpc command
-        </h3>
-        <div class="field ui three column grid">
-          <div class="column"> </div>
-          <div id="rpc_list" class="column"> </div>
-        </div>
-    </div>
-</div>
-    
 </body>
 </html>

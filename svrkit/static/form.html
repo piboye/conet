@@ -1,10 +1,21 @@
-<html>
-<head>
-    <title>conet rpc form</title>
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="http://cdn.bootcss.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="http://cdn.bootcss.com/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
     <script src="/js/jquery.js"></script>
-    <script src="/js/semantic.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="/css/semantic.min.css">
-</head>
+    <script src="/js/bootstrap.min.js"></script>
+
+  </head>
 <body>
 <script type="text/javascript">
 $(function() {
@@ -24,39 +35,41 @@ $(function() {
     $("#send").click(function() {
         var req = "" + $("#request").val();
         console.log(req);
-        $.post("/rpc/call/"+method_name, req, function(data, status) {
-            $("#response").text(JSON.stringify(data.body));
-        }, 'json');
+        $.post("/rpc/call/"+method_name, req, function(data2, status) {
+			var data = JSON.parse(data2);
+			if (data.ret != 0) {
+				alert("error: "+data2);
+			} else {
+				$("#response").text(JSON.stringify(data.body));
+			}
+        });
     });
 });
 </script>
 
-<div class="ui">
+<div class="container">
     <div class="row">
-        <h3 class="ui header" id="t1">
+        <h3 class="col-md-8" id="t1">
             Send Rpc Command
         </h3>
-        <div class="field">
-            <div class="ui form">
-                <div class="field">
-                    <label>Request</label>
-                    <textarea id="request"> </textarea>
-                </div>
-            </div>
+		</div>
+	<div class="row">
+        <div class="col-md-8">
+			<h3>Request</h3>
+			<textarea id="request"> </textarea>
         </div>
     </div>
     <div class="row">
-        <div id="send" class="ui button">Send</div>
+		<div class="col-md-4">
+         <button type="button" id="send" class="btn btn-primary btn-lg">Send</button>
+		 </div>
     </div>
     <div class="row">
-        <div class="ui form">
-            <div class="field">
-                <label>Response</label>
-                <textarea id="response"> </textarea>
-            </div>
+        <div class="col-md-8">
+			<h3>Response</h3>
+			<textarea id="response"> </textarea>
         </div>
     </div>
 </div>
-    
 </body>
 </html>

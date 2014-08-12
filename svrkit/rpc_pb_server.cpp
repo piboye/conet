@@ -56,7 +56,7 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     } 
 
     if(ret) { 
-        conet::response_format(resp, 200, "{ret:1, errmsg:\"param error, ret:%d\"}", ret); 
+        conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
         delete req1;
         return -1; 
     } 
@@ -76,7 +76,7 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     std::string errmsg; 
     ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     if (ret) { 
-        conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); 
+        conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
         delete req1;
         delete rsp1;
         return -1; 
@@ -264,6 +264,7 @@ int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, h
     std::string *data = (std::string *) arg; 
     //LOG(ERROR)<<"static file size:"<< data->size(); 
     conet::response_to(resp, 200, *data);
+    return 0;
 }
 
 #define REGISTRY_STATIC_RESOURCE(http_server, path, res) \
