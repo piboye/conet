@@ -135,7 +135,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
     if (pf.revents & POLLERR) {
         return -1;
     }
-    if (!(pf.revents &POLLIN))
+    if (!(pf.revents & POLLIN))
     {
         LOG(ERROR)<<"poll read failed, [events:"<<pf.revents<<"]";
         return -1;

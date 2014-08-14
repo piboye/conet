@@ -92,6 +92,8 @@ uint64_t create_spec_key();
 void * get_pthread_spec(pthread_key_t key);
 int set_pthread_spec(pthread_key_t key, const void * val);
 
+bool is_stop(coroutine_t *co);
+
 int wait(coroutine_t *co);
 
 //

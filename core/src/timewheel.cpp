@@ -29,7 +29,7 @@
 using namespace conet;
 
 void init_timeout_handle(timeout_handle_t * self,
-                         void (*fn)(void *), void *arg, int timeout)
+               void (*fn)(void *), void *arg, int timeout)
 {
     INIT_LIST_HEAD(&self->link_to);
     self->timeout = timeout;
@@ -56,6 +56,9 @@ void init_timewheel(timewheel_t *self, int slot_num)
     uint64_t cur_ms = get_cur_ms();
     self->pos = cur_ms % slot_num;
     self->prev_ms = cur_ms;
+    self->stop = 0;
+    self->co = NULL;
+    self->timerfd = -1;
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -76,6 +79,7 @@ int check_timewheel(void * arg)
                     "[errmsg:"<<strerror(errno)<<"]" \
                     ; \
 
+static
 int timewheel_task(void *arg)
 {
     conet::enable_sys_hook(); 
@@ -97,7 +101,7 @@ int timewheel_task(void *arg)
 
     struct itimerspec ts;
     ts.it_value.tv_sec = now.tv_sec; 
-    ts.it_value.tv_nsec = now.tv_nsec+1000;
+    ts.it_value.tv_nsec = ((now.tv_nsec/1000)+1)*1000;
     ts.it_interval.tv_sec = 0;
     ts.it_interval.tv_nsec = 1000;
 
@@ -109,7 +113,7 @@ int timewheel_task(void *arg)
     
     tw->timerfd = timerfd;
     uint64_t cnt = 0;
-    while (1) {
+    while (!tw->stop) {
        struct pollfd pf = {
             fd: timerfd,
             events: POLLIN | POLLERR | POLLHUP
@@ -139,7 +143,7 @@ timewheel_t *alloc_timewheel()
     init_timewheel(tw, 60 * 1000);
     //conet::registry_task(&check_timewheel, tw);
     coroutine_t *co = alloc_coroutine(timewheel_task, tw);
-    tw->extend = co;
+    tw->co = co;
     resume(co);
     return tw;
 }
@@ -147,8 +151,12 @@ timewheel_t *alloc_timewheel()
 void free_timewheel(timewheel_t *tw)
 {
     fini_timewheel(tw);
-    if (tw->extend) {
-        free_coroutine((coroutine_t *)tw->extend);
+    if (tw->co) {
+        if (conet::is_stop((coroutine_t *)tw->co))  {
+            tw->stop = 1;
+            conet::wait((coroutine_t *)tw->co);
+        }
+        free_coroutine((coroutine_t *)tw->co);
     }
     free(tw);
 }

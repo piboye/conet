@@ -385,14 +385,14 @@ static int proc_rpc_pb(conn_info_t *conn)
             events: POLLIN | POLLERR | POLLHUP
         };
 
-        poll( &pf, 1, 1000);
-
-        if (pf.revents & POLLERR) {
-            break;
+        ret = poll( &pf, 1, 1000);
+        if (ret == 0) {
+            //timeout
+            continue;
         }
 
-        if (!(pf.revents & POLLIN)) {
-            continue;
+        if (pf.revents & POLLERR || pf.revents &POLLHUP) {
+            break;
         }
 
         char * data = NULL;
