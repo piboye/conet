@@ -79,7 +79,7 @@ int check_timewheel(void * arg)
 int timewheel_task(void *arg)
 {
     conet::enable_sys_hook(); 
-    LOG(INFO)<<" timewheel start";
+    //LOG(INFO)<<" timewheel start";
     timewheel_t *tw = (timewheel_t *)arg;
     int timerfd = 0;
     timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
@@ -128,7 +128,7 @@ int timewheel_task(void *arg)
        }
        check_timewheel(tw);
     }
-    LOG(INFO)<<" timewheel stop";
+    //LOG(INFO)<<" timewheel stop";
     return 0;
 }
 
