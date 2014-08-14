@@ -54,6 +54,9 @@ struct timewheel_t
     uint64_t prev_ms;
     int task_num;
     int slot_num;
+    void * co;
+    int stop;
+    int timerfd;
     list_head *slots;
 };
 

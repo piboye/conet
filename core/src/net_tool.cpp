@@ -135,7 +135,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
     if (pf.revents & POLLERR) {
         return -1;
     }
-    if (!(pf.revents &POLLIN))
+    if (!(pf.revents & POLLIN))
     {
         LOG(ERROR)<<"poll read failed, [events:"<<pf.revents<<"]";
         return -1;
@@ -341,6 +341,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
 
     len = ntohl(*(uint32_t *)(buff));
 
+    if ((int32_t) len <=0) return -1;
     if ((int32_t) len + 4 >  max_size) return -4;
 
     while (cur_len - 4 < (int)len) {
@@ -392,6 +393,8 @@ int PacketStream::read_packet(char **pack, int * pack_len)
     }
 
     len = ntohl(*(uint32_t *)(buff));
+
+    if ((int32_t) len <=0) return -1;
 
     if ((int32_t) len + 4 >  max_size) return -4;
 

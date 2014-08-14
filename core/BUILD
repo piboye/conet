@@ -43,6 +43,7 @@ cc_library(
         '#aio',
         '#dl', 
         '#pthread',
+        '#rt',
     ],
     warning=["fPIC"],
     export_incs=["incl/"],

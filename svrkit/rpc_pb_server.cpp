@@ -56,7 +56,7 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     } 
 
     if(ret) { 
-        conet::response_format(resp, 200, "{ret:1, errmsg:\"param error, ret:%d\"}", ret); 
+        conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
         delete req1;
         return -1; 
     } 
@@ -76,7 +76,7 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     std::string errmsg; 
     ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     if (ret) { 
-        conet::response_format(resp, 200, "{ret:%d, errmsg:\"%s\"}", ret, errmsg.c_str()); 
+        conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
         delete req1;
         delete rsp1;
         return -1; 
@@ -264,6 +264,7 @@ int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, h
     std::string *data = (std::string *) arg; 
     //LOG(ERROR)<<"static file size:"<< data->size(); 
     conet::response_to(resp, 200, *data);
+    return 0;
 }
 
 #define REGISTRY_STATIC_RESOURCE(http_server, path, res) \
@@ -291,8 +292,8 @@ int registry_http_rpc_default_api(rpc_pb_server_t *server)
     REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/list.html", list_html);
     REGISTRY_STATIC_RESOURCE(server->http_server, "/rpc/form.html", form_html);
     REGISTRY_STATIC_RESOURCE(server->http_server, "/js/jquery.js", jquery_js);
-    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/semantic.min.js", semantic_min_js);
-    REGISTRY_STATIC_RESOURCE(server->http_server, "/css/semantic.min.css", semantic_min_css);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/js/bootstrap.min.js", bootstrap_min_js);
+    REGISTRY_STATIC_RESOURCE(server->http_server, "/css/bootstrap.min.css", bootstrap_min_css);
 
    return 0; 
 }
@@ -382,14 +383,14 @@ static int proc_rpc_pb(conn_info_t *conn)
             events: POLLIN | POLLERR | POLLHUP
         };
 
-        poll( &pf, 1, 1000);
-
-        if (pf.revents & POLLERR) {
-            break;
+        ret = poll( &pf, 1, 1000);
+        if (ret == 0) {
+            //timeout
+            continue;
         }
 
-        if (!(pf.revents & POLLIN)) {
-            continue;
+        if (pf.revents & POLLERR || pf.revents &POLLHUP) {
+            break;
         }
 
         char * data = NULL;
@@ -410,7 +411,10 @@ static int proc_rpc_pb(conn_info_t *conn)
                 break;
             }
         }
-
+        if ((data == NULL) || (packet_len <=0)) {
+            LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
+            break;        
+        }
         if (!cmd_base.ParseFromArray(data, packet_len)) 
         {
             // parse cmd base head failed;

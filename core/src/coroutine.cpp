@@ -16,6 +16,11 @@ extern "C" void co_setcontext(ucontext_t *co);
 namespace conet
 {
 
+bool is_stop(coroutine_t *co)
+{
+    return co->state == STOP;
+}
+
 static
 void co_return(void *val=NULL) {
     coroutine_env_t *env = get_coroutine_env();

@@ -64,8 +64,7 @@ int proc_netevent(int timeout);
 
 int dispatch(int wait_ms)
 {
-    conet::update_cached_ms();
-
+    //conet::update_cached_ms();
     
     int num = 0;
 

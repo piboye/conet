@@ -224,6 +224,11 @@ HOOK_SYS_FUNC_DEF(
         events: POLLIN | POLLERR | POLLHUP
     };
 
+    ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
+    if (ret >=0) {
+        return ret;
+    }
+
     ret = poll( &pf, 1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
@@ -234,7 +239,7 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
 
-    ret = syscall(SYS_read,  fd,(char*)buf , nbyte );
+    ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
     return ret;
 }
 

@@ -23,11 +23,13 @@
 #include "tls.h"
 #include "dispatch.h"
 #include "time_helper.h"
+#include "conet_all.h"
+#include <sys/timerfd.h>  
 
 using namespace conet;
 
 void init_timeout_handle(timeout_handle_t * self,
-                         void (*fn)(void *), void *arg, int timeout)
+               void (*fn)(void *), void *arg, int timeout)
 {
     INIT_LIST_HEAD(&self->link_to);
     self->timeout = timeout;
@@ -54,6 +56,9 @@ void init_timewheel(timewheel_t *self, int slot_num)
     uint64_t cur_ms = get_cur_ms();
     self->pos = cur_ms % slot_num;
     self->prev_ms = cur_ms;
+    self->stop = 0;
+    self->co = NULL;
+    self->timerfd = -1;
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -68,17 +73,91 @@ int check_timewheel(void * arg)
     return check_timewheel((timewheel_t *) arg, 0);
 }
 
+#define LOG_SYS_CALL(func, ret) \
+        LOG(ERROR)<<"syscall "<<#func <<" failed, [ret:"<<ret<<"]" \
+                    "[errno:"<<errno<<"]" \
+                    "[errmsg:"<<strerror(errno)<<"]" \
+                    ; \
+
+static
+int timewheel_task(void *arg)
+{
+    conet::enable_sys_hook(); 
+    //LOG(INFO)<<" timewheel start";
+    timewheel_t *tw = (timewheel_t *)arg;
+    int timerfd = 0;
+    timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    if (timerfd < 0) {
+        LOG_SYS_CALL(timerfd_create, timerfd); 
+        return -1;
+    }
+    int ret = 0; 
+    struct timespec now;  
+    ret =  clock_gettime(CLOCK_REALTIME, &now);
+    if (ret < 0) {
+        LOG_SYS_CALL(clock_gettime, ret); 
+        return -2;
+    }
+
+    struct itimerspec ts;
+    ts.it_value.tv_sec = now.tv_sec; 
+    ts.it_value.tv_nsec = ((now.tv_nsec/1000)+1)*1000;
+    ts.it_interval.tv_sec = 0;
+    ts.it_interval.tv_nsec = 1000;
+
+    ret = timerfd_settime(timerfd, 0, &ts, NULL);
+    if (ret < 0) {
+        LOG_SYS_CALL(timerfd_settime, ret);
+        return -3;
+    }
+    
+    tw->timerfd = timerfd;
+    uint64_t cnt = 0;
+    while (!tw->stop) {
+       struct pollfd pf = {
+            fd: timerfd,
+            events: POLLIN | POLLERR | POLLHUP
+       };
+       ret = poll(&pf, 1, -1);
+       if (ret == 0) {
+            break;
+       }
+       if (pf.revents & POLLERR) {
+           break;
+       }
+       ret = read(timerfd, &cnt, sizeof(cnt)); 
+       if (ret != sizeof(cnt)) {
+           LOG(ERROR)<<" timewheel read failed";
+           continue;
+       }
+       check_timewheel(tw);
+    }
+    //LOG(INFO)<<" timewheel stop";
+    return 0;
+}
+
+
 timewheel_t *alloc_timewheel()
 {
     timewheel_t *tw = (timewheel_t *) malloc(sizeof(timewheel_t));
     init_timewheel(tw, 60 * 1000);
-    conet::registry_task(&check_timewheel, tw);
+    //conet::registry_task(&check_timewheel, tw);
+    coroutine_t *co = alloc_coroutine(timewheel_task, tw);
+    tw->co = co;
+    resume(co);
     return tw;
 }
 
 void free_timewheel(timewheel_t *tw)
 {
     fini_timewheel(tw);
+    if (tw->co) {
+        if (conet::is_stop((coroutine_t *)tw->co))  {
+            tw->stop = 1;
+            conet::wait((coroutine_t *)tw->co);
+        }
+        free_coroutine((coroutine_t *)tw->co);
+    }
     free(tw);
 }
 

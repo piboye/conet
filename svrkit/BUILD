@@ -69,8 +69,8 @@ resource_library(
         'static/list.html',
         'static/form.html',
         'static/jquery.js',
-        'static/semantic.min.js',
-        'static/semantic.min.css',
+        'static/bootstrap.min.js',
+        'static/bootstrap.min.css',
     ]
 );
 
