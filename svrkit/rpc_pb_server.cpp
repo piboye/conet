@@ -374,8 +374,6 @@ static int proc_rpc_pb(conn_info_t *conn)
     stream.init(fd, max_size);
     std::vector<char> out_buf;
     //uint32_t out_len = max_size;
-    std::string errmsg;
-    std::string resp;
     do
     {
 
@@ -450,16 +448,14 @@ static int proc_rpc_pb(conn_info_t *conn)
 
         std::string * req = cmd_base.mutable_body();
 
-        resp.resize(0);
-        errmsg.resize(0);
 
         int retcode = 0;
-        retcode = rpc_pb_call_cb(cmd, &ctx, req, &resp, &errmsg);
+        std::string *rsp = cmd_base.mutable_body();
+        std::string *errmsg = cmd_base.mutable_errmsg();
+        retcode = rpc_pb_call_cb(cmd, &ctx, req, rsp, errmsg);
 
         cmd_base.set_type(CmdBase::RESPONSE_TYPE);
         cmd_base.set_ret(retcode);
-        if (!errmsg.empty()) cmd_base.set_errmsg(errmsg);
-        if (!resp.empty()) cmd_base.set_body(resp);
 
         ret = send_pb_obj(fd, cmd_base, &out_buf);
         if (ret <=0) {
