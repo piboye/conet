@@ -221,7 +221,10 @@ void  init_poll_ctx(poll_ctx_t *self,
                     item->wait_events = ev.events;
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
                 }
-            }	
+            } else {
+                LOG(FATAL)<<"conet::poll [fd:"<<fds[i].fd<<"] don't have fd_ctx_t";
+                
+            }
         } else {
             init_poll_wait_item(self->wait_items+i,  self, i,  NULL);
         }

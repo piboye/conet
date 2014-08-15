@@ -153,7 +153,6 @@ void print_ucontext(ucontext_t *uc, int fd)
 */
 
 
-static 
 void signal_handle(int signum, siginfo_t* info, void*ptr) 
 {
     static const char *si_codes[3] = {"", "SEGV_MAPERR", "SEGV_ACCERR"};
@@ -179,10 +178,12 @@ void signal_handle(int signum, siginfo_t* info, void*ptr)
     _exit (-1);
 }
 
+
 static char s_sig_stack[1024000];
 
 static int s_catch_sig[] = {SIGILL, SIGBUS, SIGFPE, SIGABRT, SIGSEGV};
 
+void signal_handle(int signum, siginfo_t* info, void*ptr);
 static void __attribute__((constructor)) setup_sig() 
 {
     static stack_t sigstack;

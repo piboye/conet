@@ -329,7 +329,7 @@ public:
 
             n = m_schedule_list[pos];
 
-            uint64_t start_tk = conet::get_cached_ms();
+            uint64_t start_tk = conet::get_sys_ms();
             fd = m_fds.get(n->ip_port.ip.c_str(), n->ip_port.port);
             if (fd >= 0) {
                 m_fd_start_tks[fd] = start_tk;
@@ -338,7 +338,7 @@ public:
             }
 
             ++m_report_num;
-            n->failed_tk += (conet::get_cached_ms()-start_tk); 
+            n->failed_tk += (conet::get_sys_ms()-start_tk); 
             ++ n->called;
             ++ n->failed_called;
         }
@@ -373,7 +373,7 @@ public:
 
         uint64_t tk = m_fd_start_tks[fd];
         if (tk >0) {
-            tk = conet::get_cached_ms() - tk;
+            tk = conet::get_sys_ms() - tk;
         } else {
             tk = 1;
         }

@@ -386,7 +386,7 @@ static int proc_rpc_pb(conn_info_t *conn)
         };
 
         ret = poll( &pf, 1, 1000);
-        if (ret == 0) {
+        if (ret <= 0) {
             //timeout
             continue;
         }
