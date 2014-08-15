@@ -128,9 +128,9 @@ int timewheel_task(void *arg)
 
     struct itimerspec ts;
     ts.it_value.tv_sec = 0;//now.tv_sec; 
-    ts.it_value.tv_nsec = 1000;//((now.tv_nsec/1000)+1)*1000;
+    ts.it_value.tv_nsec = 1000000;//((now.tv_nsec/1000)+1)*1000;
     ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 1000;
+    ts.it_interval.tv_nsec = 1000000;
 
     ret = timerfd_settime(timerfd, 0, &ts, NULL);
     if (ret < 0) {
