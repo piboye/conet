@@ -224,8 +224,6 @@ public:
         return 0;
     }
 
-
-
     int calc() 
     {
         int sum = 0;
