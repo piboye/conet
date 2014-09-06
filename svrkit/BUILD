@@ -3,13 +3,16 @@ cc_library(
     srcs = [
         "server_base.cpp",
         "co_pool.cpp",
-        #"sigsegv.cpp",
+        "sigsegv.cpp",
     ],
     deps =[
         "//core:conet", 
-        #"#unwind", 
-        #"#unwind-x86_64"
-        "//thirdparty/libunwind:unwind",
+        "#unwind", 
+        "#unwind-x86_64",
+        #"//thirdparty/libunwind:unwind-x86_64",
+        #"//thirdparty/libunwind:unwind",
+        #"//thirdparty/libunwind:unwind-elf64",
+        "#rt",
     ],
     link_all_symbols = True,
 );

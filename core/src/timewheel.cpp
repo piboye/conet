@@ -16,6 +16,9 @@
  * =====================================================================================
  */
 #include <stdlib.h>
+#include <sys/timerfd.h>  
+#include <sys/time.h>
+#include "hook_helper.h"
 #include "timewheel.h"
 #include <assert.h>
 #include <stdio.h>
@@ -24,9 +27,29 @@
 #include "dispatch.h"
 #include "time_helper.h"
 #include "conet_all.h"
-#include <sys/timerfd.h>  
+#include "fd_ctx.h"
 
 using namespace conet;
+
+static uint64_t g_khz = 0;
+static struct timeval g_pre_te;
+
+HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
+{
+    HOOK_SYS_FUNC(gettimeofday);
+    if (tz != NULL) return _(gettimeofday)(tv, tz);
+
+    int ret = 0;
+
+    if (g_khz == 0) {
+         g_khz = get_cpu_khz();
+         ret = _(gettimeofday)(&g_pre_te, NULL);
+    }
+
+    tv->tv_sec = g_pre_te.tv_sec;
+    tv->tv_usec = g_pre_te.tv_usec;
+    return ret;
+}
 
 void init_timeout_handle(timeout_handle_t * self,
                void (*fn)(void *), void *arg, int timeout)
@@ -39,7 +62,7 @@ void init_timeout_handle(timeout_handle_t * self,
     self->interval = 0;
 }
 
-#define get_cur_ms conet::get_cached_ms
+#define get_cur_ms conet::get_sys_ms
 
 
 void init_timewheel(timewheel_t *self, int slot_num)
@@ -73,6 +96,9 @@ int check_timewheel(void * arg)
     return check_timewheel((timewheel_t *) arg, 0);
 }
 
+
+
+
 #define LOG_SYS_CALL(func, ret) \
         LOG(ERROR)<<"syscall "<<#func <<" failed, [ret:"<<ret<<"]" \
                     "[errno:"<<errno<<"]" \
@@ -83,7 +109,6 @@ static
 int timewheel_task(void *arg)
 {
     conet::enable_sys_hook(); 
-    //LOG(INFO)<<" timewheel start";
     timewheel_t *tw = (timewheel_t *)arg;
     int timerfd = 0;
     timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
@@ -92,24 +117,28 @@ int timewheel_task(void *arg)
         return -1;
     }
     int ret = 0; 
+    /*
     struct timespec now;  
     ret =  clock_gettime(CLOCK_REALTIME, &now);
     if (ret < 0) {
         LOG_SYS_CALL(clock_gettime, ret); 
         return -2;
-    }
+    }  
+    */
 
     struct itimerspec ts;
-    ts.it_value.tv_sec = now.tv_sec; 
-    ts.it_value.tv_nsec = ((now.tv_nsec/1000)+1)*1000;
+    ts.it_value.tv_sec = 0;//now.tv_sec; 
+    ts.it_value.tv_nsec = 1000000;//((now.tv_nsec/1000)+1)*1000;
     ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 1000;
+    ts.it_interval.tv_nsec = 1000000;
 
     ret = timerfd_settime(timerfd, 0, &ts, NULL);
     if (ret < 0) {
         LOG_SYS_CALL(timerfd_settime, ret);
         return -3;
     }
+
+    conet::alloc_fd_ctx(timerfd, 1);
     
     tw->timerfd = timerfd;
     uint64_t cnt = 0;
@@ -130,9 +159,12 @@ int timewheel_task(void *arg)
            LOG(ERROR)<<" timewheel read failed";
            continue;
        }
+
+       ret = _(gettimeofday)(&g_pre_te, NULL);
+       //LOG(INFO)<<"timewheel heart";
        check_timewheel(tw);
     }
-    //LOG(INFO)<<" timewheel stop";
+    LOG(INFO)<<"timewheel stop";
     return 0;
 }
 
@@ -269,3 +301,4 @@ void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
 {
     set_timeout(tls_get(g_tw), obj, timeout);
 }
+

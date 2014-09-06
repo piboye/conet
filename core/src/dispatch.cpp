@@ -64,7 +64,6 @@ int proc_netevent(int timeout);
 
 int dispatch(int wait_ms)
 {
-    //conet::update_cached_ms();
     
     int num = 0;
 
@@ -76,7 +75,7 @@ int dispatch(int wait_ms)
         if (cnt == 0) break;
     }
 
-    if (num >0) wait_ms = 0; 
+    //if (num >0) wait_ms = 0; 
     cnt = proc_netevent(wait_ms);
     num += cnt;
     return num;
