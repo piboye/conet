@@ -1,12 +1,13 @@
-gen_rule (
-    name = 'gen_co_context',
-    cmd = 'gcc -c $SRCS -o co_context.o;' +
-          'ar -csr $SRCS.dir/libco_context.a co_context.o;' +
-          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_debug;' +
-          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_release;',
-    srcs = ['src/co_context.S'],
-    outs = ['libco_context.a'],
-);
+##gen_rule (
+##    name = 'gen_co_context',
+##    cmd = 'gcc -c $SRCS -o co_context.o;' +
+##          'ar -csr $SRCS.dir/libco_context.a co_context.o;' +
+##          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_debug;' +
+##          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_release;',
+##    srcs = ['src/co_context.S'],
+##    outs = ['libco_context.a'],
+##);
+
 
 cc_library (
     name = 'co_context',
@@ -17,6 +18,7 @@ cc_library (
 cc_library(
     name = 'conet',
     srcs = [
+        "src/wait_queue.cpp",
         "src/coroutine.cpp",
         "src/coroutine_env.cpp",
         "src/gc.cpp",
