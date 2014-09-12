@@ -1,26 +1,28 @@
 /*
  * =====================================================================================
  *
- *       Filename:  load_balance.h
+ *       Filename:  load_balance2.h
  *
  *    Description:  
  *
  *        Version:  1.0
- *        Created:  2014年07月11日 17时25分04秒
+ *        Created:  09/12/2014 07:50:06 AM
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  YOUR NAME (), 
  *   Organization:  
  *
  * =====================================================================================
  */
+
 #ifndef LOAD_BALANCE_H_INC_
 #define LOAD_BALANCE_H_INC_
 
 #include <vector>
 #include <queue>
 #include <list>
+#include <string>
 
 #include "ip_list.h"
 #include "core/incl/auto_var.h"
@@ -31,379 +33,158 @@
 #include <map>
 #include "core/incl/time_helper.h"
 
+#include <algorithm>
+
 namespace conet
 {
 
 class FdPool
 {
 public:
-    class Node
+    std::queue<int> m_fds;
+
+    int get() 
     {
-    public:
-        ip_port_t ip_port;
-        std::queue<int> m_fds;
-    };
-
-    std::map<ip_port_t, Node> m_nodes;
-
-    FdPool()
-    {
-
-    }
-
-
-    int get(char const *ip, int port)
-    {
-        ip_port_t key;
-        key.ip = ip;
-        key.port = port;
-
-        return this->get(key);
-    }
-
-    int get(ip_port_t const & key) 
-    {
-
-        AUTO_VAR(it, =, m_nodes.find(key));
-        if (it == m_nodes.end()) {
-            Node &node = m_nodes[key];
-            node.ip_port = key;
-            it = m_nodes.find(key);
-        }
-        Node & node = it->second;
-
-        int fd = -1;
-        if (node.m_fds.empty()) {
-            fd = connect_to(node.ip_port.ip.c_str(), node.ip_port.port);
-            return fd;
+        if (m_fds.empty()) {
+            return -1;
         }
 
-        fd = node.m_fds.front();
-        node.m_fds.pop();
+        int fd = m_fds.front();
+        m_fds.pop();
         return fd;
     }
 
-    void add(char const *ip, int port, int fd) 
+    int put(int fd) 
     {
-        ip_port_t key;
-        key.ip = ip;
-        key.port = port;
-        return this->add(key, fd);
+        m_fds.push(fd);
+        return 0;
+    }
+};
+
+class IpListConf
+{
+public:
+
+    std::vector<ip_port_t> m_hosts;
+    int m_pos;
+
+    IpListConf()
+    {
+        m_pos = 0;
     }
 
-    void add(ip_port_t const & key, int fd) 
+    explicit
+    IpListConf(char const *src)
     {
-
-        AUTO_VAR(it, =, m_nodes.find(key));
-        if (it == m_nodes.end()) {
-            Node &node = m_nodes[key];
-            node.ip_port = key;
-            it = m_nodes.find(key);
+        parse_ip_list(src, &m_hosts); 
+        if (m_hosts.size() > 0) {
+            m_pos = time(NULL)%m_hosts.size();
         }
-        Node & node = it->second;
-
-        node.m_fds.push(fd);
-        return;
     }
 
-private:
-    FdPool(FdPool &rval) ;
+    int reload(char const *src)
+    {
+        m_hosts.clear();
+        parse_ip_list(src, &m_hosts); 
+        if (m_hosts.size() > 0) {
+            m_pos = time(NULL)%m_hosts.size();
+        }
+        return 0;
+    }
+
+    int add(char const *ip, int port)
+    {
+        ip_port_t host;
+        host.ip = ip;
+        host.port = port;
+        m_hosts.push_back(host);
+        return 0;
+    }
+
+    int remove(char const *ip, int port)
+    {
+        ip_port_t host;
+        host.ip = ip;
+        host.port = port;
+        /*
+        m_hosts.erase(
+                std::remove(m_hosts.begin(), m_hosts.end(), host), 
+                m_hosts.end()
+                );
+        */
+
+        return 0;
+    }
+
+    ip_port_t * get_node() 
+    {
+        if (m_hosts.empty()) {
+            return NULL;
+        }
+
+        m_pos = (m_pos+1) % m_hosts.size();
+        ip_port_t *host = &m_hosts[m_pos];
+        return host;
+    }
 
 };
 
 class IpListLB
 {
-public: 
+public:
+    FdPool m_fd_pool;
 
-    class Node
-    {
-    public:
-        ip_port_t ip_port;
+    IpListConf m_ip_lists;
 
-        int dymanic_weight;
-        int would_cnt;
-        uint64_t called;
-        uint64_t success_called;
-        uint64_t failed_called;
-
-        uint64_t success_tk; // cpu tick
-        uint64_t failed_tk;  // cpu tick
-
-        uint64_t avg_cost; // cpu tick
-
-        list_head link_to;
-        int succ_rate;
-
-        int calc() 
-        {
-            if (dymanic_weight == 0) {
-                dymanic_weight = 100;
-                return 0;
-            }
-
-
-
-            int t = success_called;
-            if (t <=0) t = 1;
-
-            int s = this->called;  
-            if (s == 0) {
-                s=1;
-            }
-
-            avg_cost = (success_tk) / s;
-
-            if (avg_cost <= 0) avg_cost = 1;
-
-            t  = t *100/ s;
-            succ_rate = t;
-
-            dymanic_weight = this->success_called - 5* failed_called;
-
-            if (this->dymanic_weight <= 0) {
-                this->dymanic_weight = 1;
-            }
-            
-
-            return 0;
-
-        }
-
-        int reinit_stat()
-        {
-            avg_cost = 0;
-            called = 0;
-            success_called = 0;
-            failed_called = 0;
-            success_tk = 0;
-            failed_tk =0;
-            succ_rate = 0;
-            return 0;
-        }
-
-        Node()
-        {
-            INIT_LIST_HEAD(&link_to);
-            called = 0;
-            success_called = 0;
-            failed_called = 0;
-            dymanic_weight = 0;
-            avg_cost = 1;
-            would_cnt = 0;
-            succ_rate = 0;
-        }
-    };
-
-    std::vector<Node *> m_nodes;
-    std::map<ip_port_t, Node *> m_ip_port_nodes;
-
-    FdPool m_fds;
-
-    std::vector<Node *> m_schedule_list;
-    int m_schedule_pos;
-    std::tr1::unordered_map<int, uint64_t> m_fd_start_tks;
-
-
-    int init(std::string const &ips) 
-    {
-
-        std::vector<ip_port_t> list;
-        parse_ip_list(ips, &list);
-        if (list.empty()) {
-            return -1;
-        }
-
-        for(int i=0, len = (int)list.size(); i<len; ++i)
-        {
-            Node *node = new Node();
-            node->ip_port = list[i];
-            m_nodes.push_back(node);
-            m_ip_port_nodes[list[i]] = node;
-        }
-        m_report_num=0;
-        return 0;
-    }
-
-    int calc() 
-    {
-        int sum = 0;
-        uint64_t avg_cost = 0;
-        uint64_t sum_tk = 0;
-        int sum_cnt = 0;
-
-        for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
-        {
-            Node *n = m_nodes[i];
-            n->calc();
-            sum += n->dymanic_weight;
-            sum_tk += n->success_tk;
-            sum_cnt += n->success_called;
-        }
-
-        if (sum_cnt == 0) sum_cnt = 1;
-        
-        int avg_wg = sum / m_nodes.size();
-
-        avg_cost = sum_tk / sum_cnt;
-        if (avg_cost <=0) avg_cost = 1;
-
-        list_head schedule;
-        INIT_LIST_HEAD(&schedule);
-
-        for(int i=0, len =  (int) m_nodes.size(); i<len; ++i)
-        {
-            Node *n = m_nodes[i];
-
-            float prio = (float)(avg_cost - n->avg_cost)/avg_cost;
-            if (prio > 1) prio = 1;
-            if (prio <= -1) prio = -1;
-
-            if (n->succ_rate > 98 && (n->dymanic_weight < avg_wg)) {
-                n->would_cnt = (n->dymanic_weight*2 * 101*(1+prio) / sum); 
-            } else {
-                n->would_cnt = (n->dymanic_weight * 101*(1+prio) / sum);
-            }
-            if (n->would_cnt <= 0) n->would_cnt = 1;
-            n->reinit_stat();
-
-            list_del_init(&m_nodes[i]->link_to);
-            list_add_tail(&m_nodes[i]->link_to, &schedule);
-        }
-
-
-        m_schedule_list.clear();
-        m_schedule_pos = 0;
-
-        while(1)  {
-            list_head *it=NULL, *next=NULL;
-            int cnt = 0;
-            list_for_each_safe(it, next, &schedule) 
-            {
-                Node *n = container_of(it, Node, link_to);
-
-                if (n->would_cnt > 0) {
-                    ++cnt;
-                    m_schedule_list.push_back(n);
-                    --(n->would_cnt); 
-                } 
-
-                if (n->would_cnt <=0) {
-                    list_del_init(it);
-                }
-            }
-            if (cnt == 0) {
-                break;
-            }
-        }
-        return 0;
-    }
-
-
-    int get(std::string *ip, int *port) 
-    {
-        ip_port_t ip_port;
-        int fd = -1;
-        fd = this->get(&ip_port);
-        *ip = ip_port.ip;
-        *port= ip_port.port;
-        return fd;
-    }
-
-    int m_report_num;
-
-    int get(ip_port_t * ip_port)
-    {
-        int fd = -1;
-        Node *n = NULL;
-        for (int i=0; i<10; ++i) 
-        {
-            if (m_report_num >= (int)m_schedule_list.size()) {
-                calc();
-                m_report_num = 0;
-            }
-
-            int pos = (m_schedule_pos++)%m_schedule_list.size();
-            
-
-            n = m_schedule_list[pos];
-
-            uint64_t start_tk = conet::get_sys_ms();
-            fd = m_fds.get(n->ip_port.ip.c_str(), n->ip_port.port);
-            if (fd >= 0) {
-                m_fd_start_tks[fd] = start_tk;
-                *ip_port = n->ip_port;
-                break;
-            }
-
-            ++m_report_num;
-            n->failed_tk += (conet::get_sys_ms()-start_tk); 
-            ++ n->called;
-            ++ n->failed_called;
-        }
-        if (fd <0) *ip_port = n->ip_port;
-
-        return fd;
-    }
-
-    void release(char const *ip, int port, int fd, int status = 0) 
-    {
-        ip_port_t ip_port;
-        ip_port.ip = ip;
-        ip_port.port = port;
-        return this->release(ip_port, fd, status);
-    }
-
-    void release(ip_port_t const &ip_port, int fd, int status) 
-    {
-
-        AUTO_VAR(it, =, m_ip_port_nodes.find(ip_port));
-        if (it == m_ip_port_nodes.end()) {
-            if (fd>=0) {
-                close(fd);
-            }
-            return;
-        }
-
-        ++m_report_num;
-
-        Node *n = it->second;
-        ++n->called;
-
-        uint64_t tk = m_fd_start_tks[fd];
-        if (tk >0) {
-            tk = conet::get_sys_ms() - tk;
-        } else {
-            tk = 1;
-        }
-
-        if (status == 0) {
-            m_fds.add(ip_port, fd);
-            ++n->success_called;
-            n->success_tk += tk;   
-        } else {
-            close(fd);
-            ++n->failed_called;
-            n->failed_tk += tk;
-        }
-    }
 
     IpListLB()
     {
     }
 
-    ~IpListLB()
+    int init(char const * src) 
     {
-        for(typeof(m_nodes.begin()) it = m_nodes.begin(), iend = m_nodes.end(); 
-                it!=iend; ++it)
-        {
-            delete *it;
-        }
+        m_ip_lists.reload(src);
+        return 0;
     }
 
-private:
-    IpListLB(IpListLB &rval);
-};
+    int init(std::string const & src) 
+    {
+        return init(src.c_str());
+    }
 
+    int get(std::string *ip, int *port)
+    {
+        int fd = 0;
+        fd = m_fd_pool.get();
+        if (fd <0) {
+            for (int i=0; i<3; ++i) {
+                ip_port_t * host = m_ip_lists.get_node();
+                fd = connect_to(host->ip.c_str(), host->port);
+                if (fd >=0)  {
+                    *ip = host->ip;
+                    *port = host->port;
+                    break;
+                }
+            }
+        } else {
+            //*ip = host->ip;
+            //*port = host->port;
+
+        }
+        return fd;
+    }
+
+    int release(std::string const &ip, int port, int fd, int status)
+    {
+        if (status != 0) {
+            close(fd);
+        } else {
+            m_fd_pool.put(fd);
+        }
+        return 0;
+    }
+};
 }
+
 
 #endif /* end of include guard */
