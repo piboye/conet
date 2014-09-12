@@ -12,6 +12,8 @@ then
     (cd blade; ./install)
 fi
 
+cp -r tools/* ~/bin/*
+
 exit
 
 
@@ -61,4 +63,3 @@ fi
 cp GFLAGS_BUILD gflags/BUILD
 cp -r gflags/include/gflags include/
 
-cp -r tools/* ~/bin/*
