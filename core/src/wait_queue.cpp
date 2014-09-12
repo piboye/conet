@@ -65,9 +65,9 @@ int wakeup_all(wait_queue_t * q)
             free(it);
         }
         conet::resume(co);
-        return 1;
+        ++n;
     }
-    return 0;
+    return n;
 }
 
 }
