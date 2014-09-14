@@ -36,6 +36,8 @@ struct task_t
     conet::coroutine_t *co;
 };
 
+int g_finish_task_num=0;
+
 int proc_send(void *arg)
 {
     conet::enable_sys_hook();
@@ -51,6 +53,7 @@ int proc_send(void *arg)
     FILE *fp = fopen(task->file.c_str(), "r");
     if (!fp) {
         fprintf(stderr, "open file:%s failed!", task->file.c_str());
+        ++g_finish_task_num;
         return -1;
     }
     while( (ret = getline(&line, &len, fp)) >= 0) {
@@ -61,6 +64,7 @@ int proc_send(void *arg)
         if (ret <=0) break;
         //write(1, rbuff, ret);
     }
+    ++g_finish_task_num;
     return 0;
 }
 
@@ -86,7 +90,7 @@ int main(int argc, char * argv[])
         resume(tasks[i].co);
     }
 
-    while (conet::get_epoll_pend_task_num() >0) {
+    while (g_finish_task_num < FLAGS_task_num) {
         conet::dispatch();
     }
 

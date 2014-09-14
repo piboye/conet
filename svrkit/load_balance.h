@@ -106,12 +106,10 @@ public:
         ip_port_t host;
         host.ip = ip;
         host.port = port;
-        /*
         m_hosts.erase(
                 std::remove(m_hosts.begin(), m_hosts.end(), host), 
                 m_hosts.end()
                 );
-        */
 
         return 0;
     }
