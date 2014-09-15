@@ -54,7 +54,7 @@ cc_binary(
     name = "echo_rpc_server",
     srcs = ["echo_rpc_server.cpp"],
     deps = [":echo_rpc_proto",
-            "//svrkit:rpc_pb_server", 
+            "//svrkit:rpc_pb_server_main", 
             #"//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",

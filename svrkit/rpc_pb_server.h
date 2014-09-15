@@ -49,6 +49,7 @@ template <typename T1, typename R1, typename R2>
 R2 get_response_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
 
 
+std::string get_rpc_server_name_default();
 
 struct rpc_pb_cmd_t
 {
@@ -89,7 +90,9 @@ int init_server(
         std::string const &server_name, 
         char const *ip,
         int port,
-        bool use_global_cmd=true
+        bool use_global_cmd=true,
+        char const *http_ip=NULL,
+        int http_port=0
     );
 
 int start_server(rpc_pb_server_t *server);
@@ -126,11 +129,12 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
 }
 
 
+
 #define CONET_MACRO_CONCAT_IMPL(a, b) a##b
 #define CONET_MACRO_CONCAT(a, b) CONET_MACRO_CONCAT_IMPL(a,b)
 
 #define REGISTRY_RPC_PB_FUNC(server, method_name, func, arg) \
-    static int CONET_MACRO_CONCAT(i_rpc_pb_registry_cmd, __LINE__) = conet::registry_rpc_pb_cmd(server, method_name, func, arg)
+    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) = conet::registry_rpc_pb_cmd(server, method_name, func, arg)
 
 
 }

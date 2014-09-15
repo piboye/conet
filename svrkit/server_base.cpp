@@ -22,6 +22,11 @@
 #include "conet_all.h"
 #include "net_tool.h"
 #include "server_base.h"
+#include "thirdparty/gflags/gflags.h"
+
+DEFINE_int32(listen_backlog, 1000, "default listen backlog");
+DEFINE_int32(max_conn_num, 10000, "default max conn num");
+DEFINE_int32(max_packet_size, 102400, "default max packet size");
 
 namespace conet
 {
@@ -48,7 +53,7 @@ int client_proc(conn_info_t *info)
 
         ret = server->proc(info);
         close(info->fd);
-        --server->cur_conn_num;
+        --server->data.cur_conn_num;
         delete info;
         info = NULL;
 
@@ -94,17 +99,17 @@ int proc_pool(server_t *server, conn_info_t *conn_info)
     return 0;
 }
 
-int init_server(server_t *server, const char *ip, int port, int max_packet_size, int max_conn_num)
+int init_server(server_t *server, const char *ip, int port)
 {
     server->ip = ip;
     server->port = port;
     server->state = 0;
     server->co = NULL;
     server->extend = NULL;
-    server->max_conn_num = max_conn_num;
-    server->max_packet_size = max_packet_size;
-    server->cur_conn_num = 0;
-    init_co_pool(&server->co_pool, 10000);
+    server->conf.listen_backlog = FLAGS_listen_backlog;
+    server->conf.max_conn_num = FLAGS_max_conn_num;
+    server->conf.max_packet_size = FLAGS_max_packet_size;
+    server->data.cur_conn_num = 0;
     return 0;
 }
 
@@ -113,11 +118,11 @@ int server_main(void *arg);
 
 int start_server(server_t *server)
 {
+    init_co_pool(&server->co_pool, server->conf.max_conn_num);
     server->co = alloc_coroutine(server_main, server);
     conet::resume(server->co);
     return 0;
 }
-
 
 
 int server_main(void *arg)
@@ -140,8 +145,8 @@ int server_main(void *arg)
     setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
     int ret = 0;
     while (server->state == 0) {
-        while (server->cur_conn_num >= server->max_conn_num) {
-            usleep(10000);
+        while (server->data.cur_conn_num >= server->conf.max_conn_num) {
+            usleep(10000); // block 10ms
         }
         struct pollfd pf = { 0 };
         pf.fd = listen_fd;
@@ -157,7 +162,7 @@ int server_main(void *arg)
 
         if (fd <0) continue;
 
-        ++server->cur_conn_num;
+        ++server->data.cur_conn_num;
 
         conn_info_t *conn_info = new conn_info_t();
         memset(conn_info, 0, sizeof(conn_info_t));

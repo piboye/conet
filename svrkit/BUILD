@@ -97,6 +97,17 @@ cc_library(
     link_all_symbols = True,
 );
 
+cc_library(
+    name = 'rpc_pb_server_main',
+    srcs = [
+        "rpc_pb_server_main.cpp",
+        "delay_init.cpp",
+    ],
+    deps =[
+        ":rpc_pb_server",
+    ]
+);
+
 cc_test(
     name='test',
     srcs =[

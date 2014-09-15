@@ -37,12 +37,20 @@ struct server_t
     int port;
     coroutine_t *co;
     int state;
-    int max_packet_size;
-    int max_conn_num;
-    int cur_conn_num;
     int (*proc)(conn_info_t *conn);
     co_pool_t co_pool;
     void *extend;
+    struct server_base_conf_t 
+    {
+        int listen_backlog;
+        int max_packet_size;
+        int max_conn_num;
+    } conf;
+
+    struct server_base_data_t
+    {
+        int cur_conn_num;
+    } data;
 };
 
 struct conn_info_t
@@ -56,7 +64,7 @@ struct conn_info_t
     void *extend;
 };
 
-int init_server(server_t *server, const char *ip, int port, int max_packet_size=102400, int max_conn_num=10000);
+int init_server(server_t *server, const char *ip, int port);
 int start_server(server_t *server);
 
 

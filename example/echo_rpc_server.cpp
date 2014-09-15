@@ -24,14 +24,11 @@
 #include "example/echo_rpc.pb.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "svrkit/ip_list.h"
+#include "svrkit/delay_init.h"
 
 DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 using namespace conet;
-
-rpc_pb_server_t g_server;
-
 
 class EchoServer
 {
@@ -52,6 +49,12 @@ int proc_echo_impl(rpc_pb_ctx_t *ctx,
 
 EchoServer echo_server;
 
+DELAY_INIT()
+{
+    echo_server.m_pre="fuck:";
+    return 0;
+}
+
 REGISTRY_RPC_PB_FUNC("echo", "echo", &EchoServer::proc_echo_impl, &echo_server);
 
 int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
@@ -63,33 +66,4 @@ int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
 }
 
 REGISTRY_RPC_PB_FUNC("echo", "echo2", &proc_echo_impl, NULL);
-
-
-int main(int argc, char * argv[])
-{
-    google::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
-
-    int ret = 0;
-    std::vector<ip_port_t> ip_list;
-    parse_ip_list(FLAGS_server_addr, &ip_list);
-    if (ip_list.empty()) {
-        fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_addr.c_str());
-        return 1;
-    }
-
-    ret = init_server(&g_server, "echo", ip_list[0].ip.c_str(), ip_list[0].port);
-    if (ret) {
-        fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_addr.c_str(), ret);
-        return 1;
-    }
-    fprintf(stdout, "listen to %s\n, success\n", FLAGS_server_addr.c_str());
-
-    echo_server.m_pre = "fuck";
-    start_server(&g_server);
-    while (conet::get_epoll_pend_task_num() >0) {
-        conet::dispatch();
-    }
-    return 0;
-}
 

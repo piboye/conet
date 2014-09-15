@@ -31,6 +31,14 @@ static std::map<std::string , std::map<std::string, rpc_pb_cmd_t*> > *g_server_c
 
 static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
 
+std::string get_rpc_server_name_default()
+{
+    if (g_server_cmd_maps && g_server_cmd_maps->size() > 0) {
+       return g_server_cmd_maps->begin()->first;
+    }
+    return std::string();
+}
+
 static 
 void clear_g_server_maps(void)
 {
@@ -303,7 +311,9 @@ int init_server(
         std::string const &server_name, 
         char const *ip,
         int port,
-        bool use_global_cmd
+        bool use_global_cmd,
+        char const * http_ip,
+        int http_port
     )
 {
     self->server_name =server_name;
@@ -312,25 +322,30 @@ int init_server(
     ret = init_server(server_base, ip, port);
     if (ret) {
         delete server_base;
-        LOG(ERROR)<<"init server_baser in rpc server failed, [ret:"<<ret<<"]";
+        LOG(ERROR)<<"init server_base in rpc server failed, [ret:"<<ret<<"]";
         return -1;
     }
     self->server = server_base; 
 
-    /*
-    server_t *server_base2 = new server_t();
-    ret = init_server(server_base2, ip, port+10000);
-    if (ret) {
-        delete server_base2;
-        LOG(ERROR)<<"init server_baser in http server failed, [ret:"<<ret<<"]";
-        return -1;
-    }
-    */
-
     http_server_t *http_server = new http_server_t();
-    http_server->server = server_base; 
-    http_server->extend = self;
-    self->http_server = http_server;
+
+    if (http_ip == NULL && http_port == 0) {
+        http_server->server = server_base; 
+        http_server->extend = self;
+        self->http_server = http_server;
+    } else {
+        server_t *server_base2 = new server_t();
+        ret = init_server(server_base2, http_ip, http_port);
+        if (ret) {
+            delete server_base2;
+            LOG(ERROR)<<"init server_base in http server failed, [ret:"<<ret<<"]";
+            return -1;
+        }
+        http_server->server = server_base2; 
+        http_server->extend = self;
+        self->http_server = http_server;
+    }
+
     if (use_global_cmd) {
         get_global_server_cmd(self);
     }
@@ -356,7 +371,7 @@ static int proc_rpc_pb(conn_info_t *conn)
 {
     server_t * server_base= conn->server; 
     rpc_pb_server_t * server = (rpc_pb_server_t *) server_base->extend;
-    int max_size = server_base->max_packet_size;
+    int max_size = server_base->conf.max_packet_size;
     int ret = 0;
     int fd = conn->fd;
 
