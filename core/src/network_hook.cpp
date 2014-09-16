@@ -84,6 +84,9 @@ HOOK_SYS_FUNC_DEF(
             errno = ETIMEDOUT;
             return -1;
         }
+        if (ret <0) {
+            return -1;
+        }
 
         client_fd =  _(accept)(fd, addr, len);
     }
@@ -117,6 +120,9 @@ HOOK_SYS_FUNC_DEF(
     int ret = poll( &pf,1, -1);
     if (ret == 0) {
         errno = ETIMEDOUT;
+        return -1;
+    }
+    if (ret <0) {
         return -1;
     }
 
@@ -161,6 +167,9 @@ HOOK_SYS_FUNC_DEF(
     if (0 == poll_ret) {
         // timeout
         errno = ETIMEDOUT;
+        return -1;
+    }
+    if ( poll_ret <0) {
         return -1;
     }
 
@@ -234,6 +243,9 @@ HOOK_SYS_FUNC_DEF(
         errno = ETIMEDOUT;
         return -1;
     }
+    if (ret <0) {
+        return -1;
+    }
 
     if (pf.revents & POLLERR) {
         return -1;
@@ -283,6 +295,9 @@ HOOK_SYS_FUNC_DEF(
         errno = ETIMEDOUT;
         return -1;
     }
+    if (ret <0) {
+        return -1;
+    }
     if (pf.revents & POLLERR) {
         return -1;
     }
@@ -320,6 +335,9 @@ HOOK_SYS_FUNC_DEF(
             errno = ETIMEDOUT;
             return -1;
         }
+        if (ret <0) {
+            return -1;
+        }
 
         if (pf.revents & POLLERR) {
             return -1;
@@ -354,6 +372,9 @@ HOOK_SYS_FUNC_DEF(
     ssize_t ret = poll( &pf,1,timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
+        return -1;
+    }
+    if (ret < 0) {
         return -1;
     }
 
@@ -393,6 +414,9 @@ HOOK_SYS_FUNC_DEF(
             errno = ETIMEDOUT;
             return -1;
         }
+        if (ret < 0) {
+            return -1;
+        }
 
 
         if (pf.revents & POLLERR) {
@@ -429,6 +453,10 @@ HOOK_SYS_FUNC_DEF(
     ssize_t ret = poll( &pf,1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
+        return -1;
+    }
+
+    if (ret < 0) {
         return -1;
     }
 
@@ -866,6 +894,7 @@ HOOK_SYS_FUNC_DEF(int,  select,
 
     int ret = poll(&pfs[0], pfs.size(), to);
     if (ret == 0) return 0;
+    if (ret <0) return ret;
 
     if (readfds) {
         FD_ZERO(readfds);

@@ -29,6 +29,8 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
 coroutine_t * current_coroutine();
 
+#define CO_SELF() current_coroutine()
+
 void * yield(list_head *wait_to = NULL, void *val=NULL) ;
 
 void * resume(coroutine_t * co, void *val=NULL);
@@ -96,6 +98,7 @@ int set_pthread_spec(pthread_key_t key, const void * val);
 bool is_stop(coroutine_t *co);
 
 int wait(coroutine_t *co);
+int wait(coroutine_t *co, uint32_t ms);
 
 //
 template<typename T>

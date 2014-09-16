@@ -97,6 +97,8 @@ int init_server(
 
 int start_server(rpc_pb_server_t *server);
 
+int stop_server(rpc_pb_server_t *server, int wait=0);
+
 template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
         int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)

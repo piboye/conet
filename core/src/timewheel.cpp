@@ -148,9 +148,15 @@ int timewheel_task(void *arg)
        };
        ret = poll(&pf, 1, -1);
        if (ret == 0) {
+           LOG(ERROR)<<" timewheel poll timeout";
             break;
        }
+       if (ret < 0) {
+           LOG(ERROR)<<" timewheel poll failed";
+           break;
+       }
        if (pf.revents & POLLERR) {
+           LOG(ERROR)<<" timewheel poll failed";
            break;
        }
        ret = read(timerfd, &cnt, sizeof(cnt)); 

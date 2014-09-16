@@ -510,7 +510,10 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
         fd : fd,
         events:( POLLOUT | POLLERR | POLLHUP )
     };
-    poll( &pf,1,timeout );
+    ret = poll( &pf,1,timeout );
+    if (ret <= 0) {
+        return -1;
+    }
     ret = _(writev)(fd, iov, iovcnt);
     return ret;
 }
@@ -540,7 +543,10 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
         events: POLLIN | POLLERR | POLLHUP
     };
 
-    poll( &pf, 1, timeout );
+    ret = poll( &pf, 1, timeout );
+    if (ret <= 0) {
+        return -1;
+    }
 
     int ret = _(readv)( fd, iov, iovcnt);
     return ret;

@@ -32,11 +32,17 @@ struct coroutine_t;
 struct conn_info_t;
 struct server_t
 {
+    enum {
+        SERVER_START=0,
+        SERVER_RUNNING=1,
+        SERVER_STOPED=2,
+    };
     int listen_fd;
     std::string ip;
     int port;
     coroutine_t *co;
     int state;
+    int to_stop;
     int (*proc)(conn_info_t *conn);
     co_pool_t co_pool;
     void *extend;
@@ -66,6 +72,7 @@ struct conn_info_t
 
 int init_server(server_t *server, const char *ip, int port);
 int start_server(server_t *server);
+int stop_server(server_t *server, int wait_ms=0);
 
 
 }

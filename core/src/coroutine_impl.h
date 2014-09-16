@@ -78,6 +78,8 @@ struct coroutine_t
 
     list_head exit_notify_queue; // get notify on the co exit;
 
+    uint64_t id;
+
     std::map<void *, void*> *static_vars;
     std::map<uint64_t, void *> * spec;
     std::map<pthread_key_t, void *> * pthread_spec;

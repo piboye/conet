@@ -59,6 +59,9 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
         // timeout;
         return -2;
     }
+    if (ret <0) {
+        return -1;
+    }
     if (pf.revents & POLLERR) {
         return -1;
     }
@@ -129,6 +132,10 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
     ret = poll( &pf, 1, timeout );
     if (ret == 0) {
         return -2;
+    }
+
+    if (ret <0) { // poll may error when fd reset by peer;
+        return -1;
     }
 
 

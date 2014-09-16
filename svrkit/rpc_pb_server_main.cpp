@@ -26,11 +26,13 @@
 #include "thirdparty/gflags/gflags.h"
 #include "svrkit/ip_list.h"
 #include "delay_init.h"
+#include <signal.h>
 
 DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_string(server_name, "", "server name");
+DEFINE_int32(server_stop_wait_seconds, 10, "server stop wait seconds");
 
 namespace conet
 {
@@ -54,6 +56,23 @@ std::string g_rpc_server_name;
 using namespace conet;
 
 static rpc_pb_server_t g_server;
+
+static int g_exit_flag = 0;
+static int g_exit_finsished = 0;
+
+static
+void sig_exit(int sig)
+{
+   g_exit_flag=1; 
+}
+
+static int proc_server_exit(void *)
+{
+    int ret = 0;
+    ret = conet::stop_server(&g_server, FLAGS_server_stop_wait_seconds*1000);
+    g_exit_finsished = 1;
+    return 0;
+}
 
 int main(int argc, char * argv[])
 {
@@ -118,10 +137,20 @@ int main(int argc, char * argv[])
     fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), http_address.c_str());
 
 
+    signal(SIGINT, sig_exit);
     start_server(&g_server);
 
-    while (conet::get_epoll_pend_task_num() >0) {
+    coroutine_t *exit_co = NULL;
+    while (!g_exit_finsished) {
+        if (g_exit_flag && exit_co == NULL) {
+            exit_co = conet::alloc_coroutine(proc_server_exit, NULL);
+            conet::resume(exit_co);
+        }
         conet::dispatch();
+    }
+
+    if (exit_co) {
+        free_coroutine(exit_co);
     }
 
     for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 

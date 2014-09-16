@@ -16,7 +16,7 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            "//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:tcmalloc_debug",
             "#dl", 
             "#pthread",
            ],
@@ -67,7 +67,7 @@ cc_binary(
     srcs = ["http_server.cpp"],
     deps = [
             "//svrkit:http_server", 
-            "//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 

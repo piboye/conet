@@ -81,6 +81,10 @@ int http_server_proc2(conn_info_t *conn,
 
 http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name);
 int start_server(http_server_t *server);
+
+int stop_server(http_server_t *server, int wait=0);
+
+
 int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg );
 }
 

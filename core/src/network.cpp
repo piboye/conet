@@ -281,7 +281,9 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
                      epoll_ctx->m_epoll_size, timeout);
     if (ret <0 ) {
         // epoll_wait failed;
-        LOG_SYS_CALL(epoll_wait, ret);
+        if (errno != 4) {
+            LOG_SYS_CALL(epoll_wait, ret);
+        }
         return 0;
     }
     if (ret ==0 ) {

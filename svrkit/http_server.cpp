@@ -233,7 +233,7 @@ int http_server_proc2(conn_info_t *conn,
         }
 
 
-    } while(ret == 0);
+    } while(ret == 0 && base_server->to_stop == 0);
 
     free(buf);
 
@@ -248,6 +248,13 @@ int start_server(http_server_t *server)
         return -1;
     }
     return start_server(server->server);
+}
+
+int stop_server(http_server_t *server, int wait)
+{
+    int ret = 0;
+    ret = stop_server(server->server, wait);
+    return ret;
 }
 
 int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg )

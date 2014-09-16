@@ -390,7 +390,7 @@ static int proc_rpc_pb(conn_info_t *conn)
     stream.init(fd, max_size);
     std::vector<char> out_buf;
     //uint32_t out_len = max_size;
-    do
+    while(0 == server_base->to_stop)
     {
 
         struct pollfd pf = {
@@ -399,9 +399,16 @@ static int proc_rpc_pb(conn_info_t *conn)
         };
 
         ret = poll( &pf, 1, 1000);
-        if (ret <= 0) {
+        if (ret == 0) {
             //timeout
             continue;
+        }
+
+        if (ret <0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
         }
 
         if (pf.revents & POLLERR || pf.revents &POLLHUP) {
@@ -449,7 +456,7 @@ static int proc_rpc_pb(conn_info_t *conn)
 
         }
 
-        std::string cmd_name = cmd_base.cmd_name();
+        std::string const & cmd_name = cmd_base.cmd_name();
         rpc_pb_cmd_t * cmd = get_rpc_pb_cmd(server, cmd_name);
         if (NULL == cmd) {
             // not unsuppend cmd;
@@ -485,8 +492,21 @@ static int proc_rpc_pb(conn_info_t *conn)
         if (ctx.to_close) {
             break;
         }
-    } while(1);
+    } 
     return 0;
+}
+
+int stop_server(rpc_pb_server_t *server, int wait)
+{
+    int ret = 0;
+    LOG(INFO)<<"stop rpc main server";
+    ret = stop_server(server->server, wait);
+    
+    LOG(INFO)<<"stop rpc http server";
+    ret = stop_server(server->http_server, wait);
+
+    LOG(INFO)<<"stop rpc finished";
+    return ret;
 }
 
 }

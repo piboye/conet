@@ -72,7 +72,7 @@ void co_main_helper(int co_low, int co_high )
         {
             coroutine_t * co2 = container_of(it, coroutine_t, wait_to);
             list_del_init(it);
-            resume(co2, (void *)(uint64_t)(co->ret_val));
+            resume(co2, (void *)(int64_t)(co->ret_val));
         }
     }
 
@@ -89,6 +89,7 @@ void co_main_helper(int co_low, int co_high )
     return ;
 }
 
+uint64_t g_coroutine_next_id=1;
 
 #define CACHE_LINE_SIZE 64
 int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
@@ -121,6 +122,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->static_vars = NULL;
     self->spec = NULL;
     self->pthread_spec = NULL;
+    self->id = g_coroutine_next_id++;
     return 0;
 }
 
@@ -298,7 +300,34 @@ int set_pthread_spec(pthread_key_t key, const void * val)
 
 int wait(coroutine_t *co)
 {
-    int ret = (uint64_t) (yield(&co->exit_notify_queue, NULL));
+    int ret = 0;
+    if (co->state >= STOP) {
+        return co->ret_val; 
+    }
+
+    ret = (int64_t)(yield(&co->exit_notify_queue, NULL));
+    return ret;
+}
+
+void wait_timeout_handle(void *arg)
+{
+    coroutine_t * co = (coroutine_t *)(arg);
+    list_del_init(&co->wait_to);
+    resume(co, (void *)-1); 
+}
+
+int wait(coroutine_t *co, uint32_t ms)
+{
+    if (co->state >= STOP) {
+        return co->ret_val; 
+    }
+
+    timeout_handle_t wait_th;
+    init_timeout_handle(&wait_th, wait_timeout_handle, CO_SELF(), ms);
+    set_timeout(&wait_th, ms);
+
+    int ret = (int64_t) (yield(&co->exit_notify_queue, NULL));
+    cancel_timeout(&wait_th);
     return ret;
 }
 
