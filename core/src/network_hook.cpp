@@ -221,8 +221,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        return _(read)(fd, buf, nbyte);
-        //return conet::disk_read(fd, buf, nbyte);
+        //return _(read)(fd, buf, nbyte);
+        return conet::disk_read(fd, buf, nbyte);
     }
 
 
@@ -234,6 +234,7 @@ HOOK_SYS_FUNC_DEF(
     };
 
     ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
+    //ret = _(read)(fd,(char*)buf , nbyte);
     if (ret >=0) {
         return ret;
     }
@@ -252,6 +253,7 @@ HOOK_SYS_FUNC_DEF(
     }
 
     ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
+    //ret = _(read)(fd,(char*)buf , nbyte);
     return ret;
 }
 
@@ -319,7 +321,7 @@ HOOK_SYS_FUNC_DEF(
     }
 
     fd_ctx_t *lp = get_fd_ctx(fd);
-    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+    if( !lp || ( O_NONBLOCK & lp->user_flag ) || flags & MSG_DONTWAIT)
     {
         return _(sendto)(fd,message,length,flags,dest_addr,dest_len );
     }
@@ -361,7 +363,7 @@ HOOK_SYS_FUNC_DEF(
     }
 
     fd_ctx_t *lp = get_fd_ctx(fd);
-    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+    if( !lp || ( O_NONBLOCK & lp->user_flag ) || flags & MSG_DONTWAIT)
     {
         return _(recvfrom)(fd, buffer, length, flags, address, address_len);
     }
@@ -398,7 +400,7 @@ HOOK_SYS_FUNC_DEF(
     }
     fd_ctx_t *lp = get_fd_ctx(fd);
 
-    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+    if( !lp || ( O_NONBLOCK & lp->user_flag ) || flags & MSG_DONTWAIT)
     {
         return _(send)(fd, buffer, length, flags);
     }
@@ -441,7 +443,7 @@ HOOK_SYS_FUNC_DEF(
     }
     fd_ctx_t *lp = get_fd_ctx(fd);
 
-    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+    if( !lp || ( O_NONBLOCK & lp->user_flag ) || flags & MSG_DONTWAIT)
     {
         return _(recv)(fd, buffer, length, flags);
     }

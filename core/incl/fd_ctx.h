@@ -28,6 +28,11 @@ namespace conet
 
 struct fd_ctx_t
 {
+    enum {
+        SOCKET_FD_TYPE=1,
+        DISK_FD_TYPE=2,
+        TIMER_FD_TYPE=2,
+    };
     int type;
     int fd;
     int use_cnt;

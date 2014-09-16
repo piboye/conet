@@ -23,11 +23,22 @@
 #include "timewheel.h"
 #include "coroutine.h"
 #include <map>
+#include <sys/epoll.h>
 
 namespace conet
 {
 
-struct epoll_ctx_t;
+//struct epoll_ctx_t;
+struct epoll_ctx_t
+{
+    int m_epoll_fd;
+    int m_epoll_size;
+
+    epoll_event *m_epoll_events;
+
+    int wait_num;
+};
+
 struct fd_ctx_mgr_t;
 
 struct coroutine_env_t

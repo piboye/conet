@@ -29,6 +29,15 @@
 #include "conet_all.h"
 #include "fd_ctx.h"
 #include "thirdparty/gflags/gflags.h"
+#include "coroutine.h"
+#include "coroutine_impl.h"
+#include <sys/epoll.h>
+#include <sys/syscall.h>
+
+namespace conet
+{
+ epoll_ctx_t * get_epoll_ctx();
+}
 
 using namespace conet;
 
@@ -137,11 +146,22 @@ int timewheel_task(void *arg)
         return -3;
     }
 
-    conet::alloc_fd_ctx(timerfd, 1);
+    coroutine_t * co_self = CO_SELF();
+
+    fd_ctx_t *fd_ctx = NULL;
+    fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
     
     tw->timerfd = timerfd;
     uint64_t cnt = 0;
+    
+
+    epoll_event ev;
+    ev.events = EPOLLIN| EPOLLERR| EPOLLHUP | EPOLLET;
+
+    ev.data.ptr = fd_ctx;
+    epoll_ctl(conet::get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_ADD, timerfd,  &ev);
     while (!tw->stop) {
+       /*
        struct pollfd pf = {
             fd: timerfd,
             events: POLLIN | POLLERR | POLLHUP
@@ -159,7 +179,13 @@ int timewheel_task(void *arg)
            LOG(ERROR)<<" timewheel poll failed";
            break;
        }
-       ret = read(timerfd, &cnt, sizeof(cnt)); 
+       */
+
+       fd_ctx->poll_wait_queue.prev = (list_head *)(1);
+       fd_ctx->poll_wait_queue.next = (list_head *)(co_self);
+       conet::yield(NULL, NULL);
+
+       ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
        if (ret != sizeof(cnt)) {
            LOG(ERROR)<<" timewheel read failed";
            continue;
@@ -169,6 +195,7 @@ int timewheel_task(void *arg)
        //LOG(INFO)<<"timewheel heart";
        check_timewheel(tw);
     }
+    epoll_ctl(get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_DEL, timerfd,  &ev);
     LOG(INFO)<<"timewheel stop";
     return 0;
 }

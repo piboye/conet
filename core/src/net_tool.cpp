@@ -46,7 +46,9 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
     ssize_t ret = 0;
     fd_ctx_t *lp = get_fd_ctx( fd, 0);
 
-    ret = syscall(SYS_write, fd, (const char*) buf, nbyte);
+    //ret = syscall(SYS_write, fd, (const char*) buf, nbyte);
+    //ret = write(fd, (const char*) buf, nbyte);
+    ret = send(fd, (const char*) buf, nbyte, MSG_DONTWAIT);
     if (ret >=0) {
         return ret;
     }
@@ -70,7 +72,8 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
         LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
         return -1;
     }
-    ret = syscall(SYS_write, fd, (const char*)buf, nbyte);
+    //ret = syscall(SYS_write, fd, (const char*)buf, nbyte);
+    ret = send(fd, (const char*)buf, nbyte, MSG_DONTWAIT);
     return ret;
 }
 
@@ -116,7 +119,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
 
     ssize_t ret = 0;
     if (has_data) {
-        ret = syscall(SYS_read,  fd,(char*)buf , nbyte );
+        ret = recv(fd,(char*)buf , nbyte , MSG_DONTWAIT);
         if (ret >=0) {
             return ret;
         }
@@ -148,7 +151,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
         return -1;
     }
 
-    ret = syscall(SYS_read,  fd,(char*)buf , nbyte );
+    ret = recv(fd,(char*)buf , nbyte , MSG_DONTWAIT);
     return ret;
 }
 

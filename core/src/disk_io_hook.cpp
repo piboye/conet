@@ -543,12 +543,13 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
         events: POLLIN | POLLERR | POLLHUP
     };
 
+    int ret = 0;
     ret = poll( &pf, 1, timeout );
     if (ret <= 0) {
         return -1;
     }
 
-    int ret = _(readv)( fd, iov, iovcnt);
+    ret = _(readv)( fd, iov, iovcnt);
     return ret;
 }
 

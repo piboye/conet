@@ -60,15 +60,6 @@ struct poll_ctx_t
     list_head to_dispatch; // fd 有事件的时候， 把这个poll加入到 分发中
 };
 
-struct epoll_ctx_t
-{
-    int m_epoll_fd;
-    int m_epoll_size;
-
-    epoll_event *m_epoll_events;
-
-    int wait_num;
-};
 
 epoll_ctx_t * get_epoll_ctx();
 
@@ -298,7 +289,13 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
         fd_ctx_t * fd_ctx = (fd_ctx_t *)epoll_ctx->m_epoll_events[i].data.ptr;
         int events = epoll_event2poll(epoll_ctx->m_epoll_events[i].events);
         if (fd_ctx) {
-            fd_notify_events_to_poll(fd_ctx, events, &dispatch, epoll_ctx->m_epoll_fd);
+            if (fd_ctx->poll_wait_queue.prev == (list_head *)(1)) {
+               if (fd_ctx->poll_wait_queue.next) {
+                   conet::resume((coroutine_t *) (fd_ctx->poll_wait_queue.next));
+               }
+            } else {
+                fd_notify_events_to_poll(fd_ctx, events, &dispatch, epoll_ctx->m_epoll_fd);
+            }
         }
     }
 
