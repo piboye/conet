@@ -138,7 +138,7 @@ int server_main(void *arg)
         return -1;
     }
 
-    listen(listen_fd, 1024); 
+    listen(listen_fd, server->conf.listen_backlog); 
 
     server->listen_fd = listen_fd;
     int waits = 5; // 5 seconds;
