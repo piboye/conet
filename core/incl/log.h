@@ -23,5 +23,10 @@
 #define CONET_LOG(INFO, fmt,  ...) \
     //fprintf(stderr, "[%s:%d][%s][%s]" fmt "\n", __FILE__, __LINE__, #INFO, __func__, ##__VA_ARGS__) 
 
+#define LOG_SYS_CALL(func, ret) \
+        LOG(ERROR)<<"syscall "<<#func <<" failed, [ret:"<<ret<<"]" \
+                    "[errno:"<<errno<<"]" \
+                    "[errmsg:"<<strerror(errno)<<"]" \
+                    ; \
 
 #endif  //__CO_LOG_H_INC__

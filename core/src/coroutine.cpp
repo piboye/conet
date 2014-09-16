@@ -7,6 +7,9 @@
 #include "tls.h"
 #include <stdint.h>
 #include <malloc.h>
+#include "thirdparty/gflags/gflags.h"
+
+DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
 #define ALLOC_VAR(type) (type *) malloc(sizeof(type))
 
@@ -132,9 +135,12 @@ void set_coroutine_desc(coroutine_t *co, char const *desc)
 }
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-                              int stack_size, coroutine_env_t * env)
+                              uint32_t stack_size, coroutine_env_t * env)
 {
     coroutine_t *co = ALLOC_VAR(coroutine_t);
+    if (stack_size <=0) {
+        stack_size = FLAGS_stack_size;
+    }
     init_coroutine(co, fn, arg, stack_size, env);
     return co;
 }

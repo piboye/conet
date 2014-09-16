@@ -14,6 +14,11 @@
 #include "tls.h"
 #include "network_hook.h"
 #include "dispatch.h"
+#include "thirdparty/gflags/gflags.h"
+
+DEFINE_int32(epoll_size, 100, "epoll event size ");
+
+
 
 HOOK_DECLARE(
     int, epoll_wait,(int epfd, struct epoll_event *events,
@@ -272,10 +277,11 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
 
     int ret = 0;
     int cnt = 0;
-    ret = epoll_wait(epoll_ctx->m_epoll_fd, &epoll_ctx->m_epoll_events[0],
+    ret = _(epoll_wait)(epoll_ctx->m_epoll_fd, &epoll_ctx->m_epoll_events[0],
                      epoll_ctx->m_epoll_size, timeout);
     if (ret <0 ) {
         // epoll_wait failed;
+        LOG_SYS_CALL(epoll_wait, ret);
         return 0;
     }
     if (ret ==0 ) {
@@ -365,7 +371,7 @@ int get_epoll_pend_task_num() {
 
 __thread epoll_ctx_t * g_epoll_ctx = NULL;
 
-DEF_TLS_GET(g_epoll_ctx, create_epoll(1000), free_epoll)
+DEF_TLS_GET(g_epoll_ctx, create_epoll(FLAGS_epoll_size), free_epoll)
 
 epoll_ctx_t * get_epoll_ctx()
 {

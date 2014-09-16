@@ -6,6 +6,7 @@
 #include "gc.h"
 #include "timewheel.h"
 
+
 namespace conet
 {
 
@@ -19,7 +20,7 @@ typedef int CO_MAIN_FUN(void *);
 
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-                              int stack_size=128*1024, coroutine_env_t * env=NULL);
+                              uint32_t stack_size=0, coroutine_env_t * env=NULL);
 
 void free_coroutine(coroutine_t *co);
 

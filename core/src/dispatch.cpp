@@ -19,6 +19,10 @@
 #include "dispatch.h"
 #include "tls.h"
 #include "time_helper.h"
+#include "thirdparty/gflags/gflags.h"
+
+
+DEFINE_int32(dispatch_retry_cnt, 3, "dispatch retry num");
 
 namespace conet
 {
@@ -69,7 +73,7 @@ int dispatch(int wait_ms)
 
     int cnt = 0;
 
-    for (int i=0; i< 3; ++i) {
+    for (int i=0; i< FLAGS_dispatch_retry_cnt; ++i) {
         cnt = dispatch_one();
         num+=cnt;
         if (cnt == 0) break;

@@ -26,7 +26,11 @@
 #include "coroutine.h"
 #include "tls.h"
 
+#include <sys/resource.h>
 #include "hook_helper.h"
+#include "gflags/gflags.h"
+
+DEFINE_int32(fd_ctx_size, 0, "default use fd size");
 
 HOOK_DECLARE(int, fcntl, (int, int, ...));
 
@@ -76,7 +80,23 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
     mgr->size = size;
 }
 
-DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(100000), free_fd_ctx_mgr)
+static 
+int get_default_fd_ctx_size()
+{
+    if (FLAGS_fd_ctx_size > 0) {
+        return FLAGS_fd_ctx_size;
+    } else {
+        struct rlimit rl;
+        int ret = 0;
+        ret = getrlimit( RLIMIT_NOFILE, &rl);
+        if (ret) {
+            return 100000;
+        } 
+        return rl.rlim_max;
+    }
+}
+
+DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(get_default_fd_ctx_size()), free_fd_ctx_mgr)
 
 
 fd_ctx_t *get_fd_ctx(int fd, int type)

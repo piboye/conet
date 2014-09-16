@@ -28,11 +28,15 @@
 #include "time_helper.h"
 #include "conet_all.h"
 #include "fd_ctx.h"
+#include "thirdparty/gflags/gflags.h"
 
 using namespace conet;
 
 static uint64_t g_khz = 0;
 static struct timeval g_pre_te;
+
+DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
+
 
 HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
 {
@@ -99,11 +103,6 @@ int check_timewheel(void * arg)
 
 
 
-#define LOG_SYS_CALL(func, ret) \
-        LOG(ERROR)<<"syscall "<<#func <<" failed, [ret:"<<ret<<"]" \
-                    "[errno:"<<errno<<"]" \
-                    "[errmsg:"<<strerror(errno)<<"]" \
-                    ; \
 
 static
 int timewheel_task(void *arg)
@@ -172,7 +171,7 @@ int timewheel_task(void *arg)
 timewheel_t *alloc_timewheel()
 {
     timewheel_t *tw = (timewheel_t *) malloc(sizeof(timewheel_t));
-    init_timewheel(tw, 60 * 1000);
+    init_timewheel(tw, FLAGS_timewheel_slot_num);
     //conet::registry_task(&check_timewheel, tw);
     coroutine_t *co = alloc_coroutine(timewheel_task, tw);
     tw->co = co;
