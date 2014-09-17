@@ -26,6 +26,7 @@
 #include "query_string.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "obj_pool.h"
 
 namespace conet
 {
@@ -61,6 +62,8 @@ struct rpc_pb_cmd_t
    std::string method_name;
    google::protobuf::Message * req_msg;
    google::protobuf::Message * rsp_msg;
+   ObjPoll<google::protobuf::Message> m_req_pool; 
+   ObjPoll<google::protobuf::Message> m_rsp_pool; 
 };
 
 
@@ -99,6 +102,8 @@ int start_server(rpc_pb_server_t *server);
 
 int stop_server(rpc_pb_server_t *server, int wait=0);
 
+google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg);
+
 template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
         int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)
@@ -107,6 +112,10 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
     cmd->method_name = method_name; 
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
+
+    cmd->m_req_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->req_msg));
+    cmd->m_rsp_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->rsp_msg));
+
     cmd->proc = (rpc_pb_callback)(func); 
     cmd->arg = (void *)arg; 
     conet::registry_cmd(server_name, cmd); 
@@ -121,6 +130,9 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
     cmd->method_name = method_name; 
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
+
+    cmd->m_req_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->req_msg));
+    cmd->m_rsp_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->rsp_msg));
 
     //cmd->proc = (rpc_pb_callback)(func);  // 这会引起告警， 换成下面的方式就不会, i hate c++ !!!
     memcpy(&(cmd->proc), &(func), sizeof(void *));
