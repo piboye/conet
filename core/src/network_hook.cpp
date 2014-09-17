@@ -221,8 +221,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        //return _(read)(fd, buf, nbyte);
-        return conet::disk_read(fd, buf, nbyte);
+        return _(read)(fd, buf, nbyte);
+        //return conet::disk_read(fd, buf, nbyte);
     }
 
 
