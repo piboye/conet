@@ -29,7 +29,6 @@
 
 namespace conet
 {
-inline
 uint64_t rdtscp(void)
 {
     uint64_t lo, hi;

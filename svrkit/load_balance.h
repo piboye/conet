@@ -78,7 +78,7 @@ public:
     {
         parse_ip_list(src, &m_hosts); 
         if (m_hosts.size() > 0) {
-            m_pos = time(NULL)%m_hosts.size();
+            m_pos = conet::rdtscp()%m_hosts.size();
         }
     }
 
@@ -87,7 +87,7 @@ public:
         m_hosts.clear();
         parse_ip_list(src, &m_hosts); 
         if (m_hosts.size() > 0) {
-            m_pos = time(NULL)%m_hosts.size();
+            m_pos = conet::rdtscp()%m_hosts.size();
         }
         return 0;
     }

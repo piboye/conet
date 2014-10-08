@@ -7,6 +7,8 @@
         return ret; \
     } while(0)
 
+#define PB_GET_ERROR(p) ((p)->errmsg ? (p)->errmsg : "(none)")
+
 static inline int  pb_get(pb_field_t *f, uint8_t *buf, size_t count)
 {
     if (f->left < count)

@@ -14,6 +14,7 @@
     <![endif]-->
     <script src="/js/jquery.js"></script>
     <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/qrcode.min.js"></script>
 
   </head>
 <body>
@@ -28,8 +29,19 @@ $(function() {
 
     $("#t1").text("Rpc Command ["+method_name+"]");
 
+    var method_name = getUrlParam("method");
+    var qrcode = new QRCode(document.getElementById("qrcode"), method_name);
+    var makeCode = function() {
+            var req = $("#request").val();
+            var req = JSON.parse(req);
+            var text = "http://"+window.location.host+"/rpc/call/"+method_name +"?" + $.param(req);
+            //console.log(text);
+            qrcode.makeCode(text);
+    };
+
     $.getJSON("/rpc/req_def_val/"+method_name, function(result) {
         $("#request").text(JSON.stringify(result.req));
+        makeCode();
     });
 
     $("#send").click(function() {
@@ -44,6 +56,9 @@ $(function() {
 			}
         });
     });
+
+
+    $("#request").on("keyup", makeCode);
 });
 </script>
 
@@ -58,11 +73,15 @@ $(function() {
 			<h3>Request</h3>
 			<textarea id="request"> </textarea>
         </div>
+		<div class="col-md-4">
+            <h3>QR:</h3>
+            <div id="qrcode"></div>
+        </div>
     </div>
     <div class="row">
 		<div class="col-md-4">
          <button type="button" id="send" class="btn btn-primary btn-lg">Send</button>
-		 </div>
+		</div>
     </div>
     <div class="row">
         <div class="col-md-8">

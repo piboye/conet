@@ -74,6 +74,7 @@ resource_library(
         'static/jquery.js',
         'static/bootstrap.min.js',
         'static/bootstrap.min.css',
+        'static/qrcode.min.js',
     ]
 );
 

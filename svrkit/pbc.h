@@ -94,7 +94,6 @@ static inline int pb_get_encoded_length(pb_buff_t *b) { return b->size - b->left
 
 
 
-#define PB_GET_ERROR(p) ((p)->errmsg ? (p)->errmsg : "(none)")
 
 static inline int pb_eval_vint_length(uint64_t value)
 {
