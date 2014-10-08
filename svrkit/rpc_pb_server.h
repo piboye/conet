@@ -27,6 +27,7 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "obj_pool.h"
+#include "str_map.h"
 
 namespace conet
 {
@@ -60,6 +61,8 @@ struct rpc_pb_cmd_t
    void *arg; 
    
    std::string method_name;
+   StrMap::StrNode cmd_map_node;
+
    google::protobuf::Message * req_msg;
    google::protobuf::Message * rsp_msg;
    ObjPoll<google::protobuf::Message> m_req_pool; 
@@ -72,6 +75,7 @@ struct rpc_pb_server_t
     struct server_t * server;
     http_server_t *http_server;
     std::string server_name;
+    //StrMap cmd_maps;
     std::map<std::string, rpc_pb_cmd_t*> cmd_maps;
 };
 
@@ -110,6 +114,8 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
 {
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->method_name = method_name; 
+    cmd->cmd_map_node.init(cmd->method_name.c_str(), cmd->method_name.size());
+
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
 
@@ -128,6 +134,8 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
 {
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->method_name = method_name; 
+    cmd->cmd_map_node.init(cmd->method_name.c_str(), cmd->method_name.size());
+
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
 

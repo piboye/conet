@@ -60,7 +60,7 @@ public:
 
     obj_type * alloc() 
     {
-        if (m_queue.empty()) {
+        if (m_queue.empty() && m_alloc_func) {
             return m_alloc_func->Run();
         }
         obj_type * obj = NULL;

@@ -340,6 +340,9 @@ int init_server(
         LOG(ERROR)<<"init server_base in rpc server failed, [ret:"<<ret<<"]";
         return -1;
     }
+
+    //self->cmd_maps.init(100);
+
     self->server = server_base; 
 
     http_server_t *http_server = new http_server_t();

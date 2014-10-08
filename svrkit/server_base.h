@@ -37,6 +37,7 @@ struct server_t
         SERVER_RUNNING=1,
         SERVER_STOPED=2,
     };
+
     int listen_fd;
     std::string ip;
     int port;
