@@ -42,7 +42,9 @@ struct rpc_pb_ctx_t
     void * arg;
 };
 
-typedef int (*rpc_pb_callback)(void *, rpc_pb_ctx_t *ctx, google::protobuf::Message * req, google::protobuf::Message *resp, std::string * errmsg);
+typedef int (*rpc_pb_callback)(void *, rpc_pb_ctx_t *ctx, \
+        google::protobuf::Message * req, google::protobuf::Message *resp,  \
+        std::string * errmsg);
 
 template <typename T1, typename R1, typename R2>
 R1 get_request_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R1 *req, R2 *resp, std::string *errmsg));
@@ -75,8 +77,8 @@ struct rpc_pb_server_t
     struct server_t * server;
     http_server_t *http_server;
     std::string server_name;
-    //StrMap cmd_maps;
-    std::map<std::string, rpc_pb_cmd_t*> cmd_maps;
+    StrMap *cmd_maps;
+    //std::map<std::string, rpc_pb_cmd_t*> cmd_maps;
 };
 
 int get_global_server_cmd(rpc_pb_server_t * server);

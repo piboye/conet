@@ -32,7 +32,7 @@ google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg)
     return msg->New();
 }
 
-static std::map<std::string , std::map<std::string, rpc_pb_cmd_t*> > *g_server_cmd_maps=NULL;
+static std::map<std::string , StrMap> *g_server_cmd_maps=NULL;
 
 static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
 
@@ -45,7 +45,7 @@ std::string get_rpc_server_name_default()
 }
 
 static 
-void clear_g_server_maps(void)
+void clear_server_maps(void)
 {
     delete g_server_cmd_maps;
     delete g_server_http_cmd_maps;
@@ -135,10 +135,18 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
     Json::Value list(Json::arrayValue);  
 
 
+    StrMap::StrNode * pn = NULL;
+    list_for_each_entry(pn, &self->cmd_maps->m_list, link_to)
+    {
+        rpc_pb_cmd_t *cmd = container_of(pn, rpc_pb_cmd_t, cmd_map_node);
+        list.append(Json::Value(cmd->method_name));
+    }
+    /*
     AUTO_VAR(it, =, self->cmd_maps.begin());
     for(; it != self->cmd_maps.end(); ++it) {
         list.append(Json::Value(it->first));        
     }
+    */
 
     root["ret"]=0; 
     root["list"]=list; 
@@ -216,13 +224,20 @@ int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
     if (NULL == g_server_cmd_maps) {
         g_server_cmd_maps = new typeof(*g_server_cmd_maps);
         g_server_http_cmd_maps = new typeof(*g_server_http_cmd_maps);
-        atexit(clear_g_server_maps);
+        atexit(clear_server_maps);
     }
 
     std::string const & method_name = cmd->method_name;
 
-    std::map<std::string, rpc_pb_cmd_t*> & maps = (*g_server_cmd_maps)[server_name];
-    maps.insert(std::make_pair(method_name, cmd));
+    StrMap * maps =  NULL;
+    if ((*g_server_cmd_maps).find(server_name) == g_server_cmd_maps->end()) {
+        maps = &(*g_server_cmd_maps)[server_name];
+        maps->init(100);
+    } else {
+        maps = &(*g_server_cmd_maps)[server_name];
+    }
+    maps->add(&cmd->cmd_map_node);
+    //maps.insert(std::make_pair(method_name, cmd));
 
 
     { // registry http api
@@ -236,10 +251,14 @@ int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
 {
     std::string const & method_name = cmd->method_name;
 
-    if (server->cmd_maps.find(method_name) != server->cmd_maps.end()) {
+    if (server->cmd_maps->find(method_name.c_str(), method_name.size())) 
+    //if (server->cmd_maps.find(method_name) != server->cmd_maps.end()) 
+    {
         return -1;
     }
-    server->cmd_maps.insert(std::make_pair(method_name, cmd));
+    
+    server->cmd_maps->add(&cmd->cmd_map_node);
+    //server->cmd_maps.insert(std::make_pair(method_name, cmd));
 
     if (server->http_server) {
         AUTO_VAR(maps, =, &server->http_server->cmd_maps);
@@ -252,30 +271,39 @@ int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
 
 int unregistry_cmd(rpc_pb_server_t *server, std::string const &name)
 {
+    /*
     AUTO_VAR(it, =, server->cmd_maps.find(name));
     if (it == server->cmd_maps.end()) {
         return -1;
     }
     server->cmd_maps.erase(it);
+    */
+
+    StrMap::StrNode * n = server->cmd_maps->find(name.c_str(), name.size());
+    if (NULL == n) {
+        return -1;
+    }
+
+    server->cmd_maps->remove(n);
     server->http_server->cmd_maps.erase(name);
     return 0;
 }
 
 rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 {
-    AUTO_VAR(it, =, server->cmd_maps.find(name));
-    if (it == server->cmd_maps.end()) {
+    StrMap::StrNode * n = server->cmd_maps->find(name.c_str(), name.size());
+    if ( NULL == n ) {
         return NULL;
     }
-    return it->second;
+    return container_of(n, rpc_pb_cmd_t, cmd_map_node);
 }
 
 
 int get_global_server_cmd(rpc_pb_server_t * server) 
 {
-    server->cmd_maps = (*g_server_cmd_maps)[server->server_name];
+    server->cmd_maps = &(*g_server_cmd_maps)[server->server_name];
     server->http_server->cmd_maps = (*g_server_http_cmd_maps)[server->server_name];
-    return server->cmd_maps.size();
+    return server->cmd_maps->size();
 }
 
 static int proc_rpc_pb(conn_info_t *conn);
@@ -341,7 +369,7 @@ int init_server(
         return -1;
     }
 
-    //self->cmd_maps.init(100);
+    self->cmd_maps = NULL;
 
     self->server = server_base; 
 
@@ -375,7 +403,7 @@ int start_server(rpc_pb_server_t *server)
 {
     server->server->extend = server;
     server->server->proc = proc_rpc_pb;
-    if (server->cmd_maps.empty() ) {
+    if (server->cmd_maps == NULL) {
         return -1;
     }
     int ret =  0;
