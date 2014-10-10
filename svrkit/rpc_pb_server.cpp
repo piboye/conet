@@ -141,12 +141,6 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
         rpc_pb_cmd_t *cmd = container_of(pn, rpc_pb_cmd_t, cmd_map_node);
         list.append(Json::Value(cmd->method_name));
     }
-    /*
-    AUTO_VAR(it, =, self->cmd_maps.begin());
-    for(; it != self->cmd_maps.end(); ++it) {
-        list.append(Json::Value(it->first));        
-    }
-    */
 
     root["ret"]=0; 
     root["list"]=list; 
@@ -545,13 +539,13 @@ static int proc_rpc_pb(conn_info_t *conn)
 int stop_server(rpc_pb_server_t *server, int wait)
 {
     int ret = 0;
-    LOG(INFO)<<"stop rpc main server";
+    LOG(INFO)<<"["<<server->server_name<<"] stop rpc main server";
     ret = stop_server(server->server, wait);
     
-    LOG(INFO)<<"stop rpc http server";
+    LOG(INFO)<<"["<<server->server_name<<"] stop rpc http server";
     ret = stop_server(server->http_server, wait);
 
-    LOG(INFO)<<"stop rpc finished";
+    LOG(INFO)<<"["<<server->server_name<<"] stop rpc finished";
     return ret;
 }
 

@@ -55,6 +55,21 @@ R2 get_response_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, 
 
 std::string get_rpc_server_name_default();
 
+struct rpc_stat_base_t 
+{
+   int cnt;
+   int max_cost;
+   int min_cost;
+   int64_t total_cost;
+   rpc_stat_base_t()
+   {
+        cnt = 0;
+        max_cost = 0;
+        min_cost = 0;
+        total_cost = 0;
+   }
+};
+
 struct rpc_pb_cmd_t
 {
 
@@ -69,6 +84,15 @@ struct rpc_pb_cmd_t
    google::protobuf::Message * rsp_msg;
    ObjPoll<google::protobuf::Message> m_req_pool; 
    ObjPoll<google::protobuf::Message> m_rsp_pool; 
+
+
+   // stat data
+   // [0] => 5s [1] => 1 minute [2] => 5 minute [3] => 1 hour [4] => 1 day
+   rpc_stat_base_t success_stat[5]; 
+   rpc_stat_base_t failed_stat[5];
+   
+   std::map<int, int64_t> error_ret_stat; // error return code summory
+
 };
 
 
