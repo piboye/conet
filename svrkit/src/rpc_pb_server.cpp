@@ -17,8 +17,8 @@
  */
 #include <stdlib.h>
 #include "rpc_pb_server.h"
-#include "net_tool.h"
-#include "core/incl/auto_var.h"
+#include "base/incl/net_tool.h"
+#include "base/incl/auto_var.h"
 #include "svrkit/static_resource.h"
 #include "glog/logging.h"
 

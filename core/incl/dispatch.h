@@ -17,7 +17,8 @@
  */
 #ifndef __DISPATCH_H_INC__
 #define __DISPATCH_H_INC__
-#include "list.h"
+
+#include "base/incl/list.h"
 
 namespace conet
 {

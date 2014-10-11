@@ -18,7 +18,7 @@
 #ifndef STR_MAP_H_INCL
 #define STR_MAP_H_INCL
 
-#include "core/incl/list.h"
+#include "list.h"
 #include "bobhash.h"
 
 namespace conet

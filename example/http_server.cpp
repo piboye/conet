@@ -21,10 +21,10 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/http_server.h"
+#include "svrkit/incl/http_server.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "svrkit/ip_list.h"
+#include "base/incl/ip_list.h"
 
 DEFINE_string(server_addr, "127.0.0.1:8080", "server address");
 

@@ -21,11 +21,11 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/rpc_pb_server.h"
+#include "rpc_pb_server.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "svrkit/ip_list.h"
-#include "delay_init.h"
+#include "base/incl/ip_list.h"
+#include "base/incl/delay_init.h"
 #include <signal.h>
 
 DEFINE_string(http_server_address, "", "default use server address");

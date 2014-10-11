@@ -9,6 +9,8 @@
 
 #define PB_GET_ERROR(p) ((p)->errmsg ? (p)->errmsg : "(none)")
 
+#define DBGOUT(...)
+
 static inline int  pb_get(pb_field_t *f, uint8_t *buf, size_t count)
 {
     if (f->left < count)

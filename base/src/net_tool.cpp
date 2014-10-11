@@ -33,7 +33,6 @@
 #include <string>
 
 #include "time_helper.h"
-#include "fd_ctx.h"
 #include <sys/syscall.h>
 #include "glog/logging.h"
 
@@ -44,7 +43,6 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
 {
 
     ssize_t ret = 0;
-    fd_ctx_t *lp = get_fd_ctx( fd, 0);
 
     //ret = syscall(SYS_write, fd, (const char*) buf, nbyte);
     //ret = write(fd, (const char*) buf, nbyte);
@@ -115,7 +113,6 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
 {
 
 
-    fd_ctx_t *lp = get_fd_ctx( fd, 0);
 
     ssize_t ret = 0;
     if (has_data) {

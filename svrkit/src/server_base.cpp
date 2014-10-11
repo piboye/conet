@@ -20,10 +20,11 @@
 #include <string>
 #include <netinet/tcp.h>
 #include "conet_all.h"
-#include "net_tool.h"
 #include "server_base.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+
+#include "base/incl/net_tool.h"
 
 DEFINE_int32(listen_backlog, 1000, "default listen backlog");
 DEFINE_int32(max_conn_num, 10000, "default max conn num");

@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include "bobhash.h"
 
-
 struct ip_port_t
 {
     std::string ip;

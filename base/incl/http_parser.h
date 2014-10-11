@@ -2,7 +2,7 @@
 #define HTTP_PARSER_H
 
 #include <sys/types.h>
-#include "core/incl/ref_str.h"
+#include "base/incl/ref_str.h"
 
 namespace conet
 {

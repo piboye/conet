@@ -1,9 +1,10 @@
 cc_library(
     name = 'server_base',
     srcs = [
-        "server_base.cpp",
-        "co_pool.cpp",
-        #"sigsegv.cpp",
+        "src/server_base.cpp",
+    ],
+    incs= [ 
+        "incl/",
     ],
     deps =[
         "//core:conet", 
@@ -20,8 +21,10 @@ cc_library(
 cc_library(
     name = 'client_base',
     srcs = [
-        "rpc_pb_client.cpp",
-        "bobhash.cpp",
+        "src/rpc_pb_client.cpp",
+    ],
+    incs= [ 
+        "incl/",
     ],
     deps =[
         "//core:conet", 
@@ -30,28 +33,16 @@ cc_library(
     link_all_symbols = True,
 );
 
-gen_rule(
-    name='http_parser_rl',
-    srcs=['http_parser.rl'],
-    cmd='ragel $SRCS -o $OUTS',
-    outs=['http_parser.cpp'],
-);
-
-cc_library(
-    name='http_parser',
-    srcs=[
-        'http_parser.cpp',
-    ],
-    deps=[':http_parser_rl'],
-);
 
 cc_library(
     name='http_server',
     srcs=[
-        'http_server.cpp',
+        'src/http_server.cpp',
+    ],
+    incs= [ 
+        "incl/",
     ],
     deps=[
-        ':http_parser',
         ':server_base',
     ],
 );
@@ -81,10 +72,10 @@ resource_library(
 cc_library(
     name = 'rpc_pb_server',
     srcs = [
-        "rpc_pb_server.cpp",
-        "pb2json.cpp",
-        "query_string.cpp",
-        "url_encode.cpp",
+        "src/rpc_pb_server.cpp",
+    ],
+    incs= [ 
+        "incl/",
     ],
     deps =[
         ":rpc_base_pb_proto",
@@ -101,25 +92,15 @@ cc_library(
 cc_library(
     name = 'rpc_pb_server_main',
     srcs = [
-        "rpc_pb_server_main.cpp",
-        "delay_init.cpp",
+        "src/rpc_pb_server_main.cpp",
+    ],
+    incs= [ 
+        "incl/",
     ],
     deps =[
         ":rpc_pb_server",
     ]
 );
 
-cc_test(
-    name='test',
-    srcs =[
-        'http_parser_test.cpp',
-        'query_string_test.cpp',
-        'query_string.cpp',
-        "url_encode.cpp",
-    ],
-    deps=[':http_parser',
-        "//thirdparty/jsoncpp:jsoncpp",
-         ],
-);
 
 

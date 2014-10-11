@@ -20,10 +20,11 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/server_base.h"
+#include "svrkit/incl/server_base.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "svrkit/ip_list.h"
+
+#include "base/incl/ip_list.h"
 
 using namespace conet;
 

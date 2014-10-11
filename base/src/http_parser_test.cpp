@@ -39,7 +39,7 @@ TEST(http_request, parse)
     printf("status:%d, %d\n", (int) req.status, (int)req.err_too_many_header);
     
     EXPECT_EQ(status, 1); 
-    EXPECT_EQ(5, req.content_length);
+    EXPECT_EQ(5, (int)req.content_length);
     char hold = 0;
     EXPECT_STREQ("text-plain", ref_str_to_cstr(&req.content_type, &hold));
     EXPECT_STREQ("a", ref_str_to_cstr(&req.headers[0].value, &hold));

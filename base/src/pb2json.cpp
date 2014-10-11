@@ -24,7 +24,8 @@
 #include "jsoncpp/reader.h"
 #include "jsoncpp/value.h"
 #include "jsoncpp/writer.h"
-#include "core/incl/auto_var.h"
+
+#include "auto_var.h"
 #include "url_encode.h"
 
 using namespace conet;

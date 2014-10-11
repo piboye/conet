@@ -17,8 +17,8 @@
  */
 #include <stdlib.h>
 #include "dispatch.h"
-#include "tls.h"
-#include "time_helper.h"
+#include "base/incl/tls.h"
+#include "base/incl/time_helper.h"
 #include "thirdparty/gflags/gflags.h"
 
 

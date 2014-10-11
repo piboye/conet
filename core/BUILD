@@ -29,9 +29,7 @@ cc_library(
         #"src/disk_io_hook.cpp",
         "src/timewheel.cpp",
         "src/dispatch.cpp",
-        "src/tls.cpp",
-        "src/time_helper.cpp",
-        "src/net_tool.cpp",
+        "src/co_pool.cpp",
     ],
 
     incs= [ 
@@ -39,6 +37,7 @@ cc_library(
     ],
 
     deps=[
+        '//base:base',
         ':co_context',
         '//thirdparty/gflags:gflags',
         '//thirdparty/glog:glog',

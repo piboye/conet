@@ -19,7 +19,7 @@
 #ifndef OBJ_POOL_H_INC
 #define OBJ_POOL_H_INC
 
-#include "core/incl/closure.h"
+#include "closure.h"
 
 #include <queue>
 
