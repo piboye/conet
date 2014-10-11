@@ -75,7 +75,7 @@ namespace conet
         std::string out;
         out.resize(20);
         size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%ld", n);
+        len = snprintf((char *)out.c_str(), out.size(), "%" PRIi64, n);
         out.resize(len);
         return out;
     }
