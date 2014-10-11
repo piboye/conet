@@ -16,119 +16,11 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/descriptor.h"
 #include "base/incl/pb2sqlite.h"
+#include "base/incl/string2number.h"
 
 
 namespace conet
 {
-
-    template <typename IT>
-    int string2number(char const * src, IT *i)
-    {
-        long long n = 0;
-        n = strtoll(src, NULL, 10);
-        *i = (typeof(*i)) n;
-        return 0;
-    }
-
-    template <typename IT>
-    int string2number(std::string const &src, IT *i)
-    {
-        return string2number(src.c_str(), i);
-    }
-
-    template <>
-    int string2number<uint64_t>(char const * src, uint64_t *i)
-    {
-        unsigned long long n = 0;
-        n = strtoull(src, NULL, 10);
-        *i = n;
-        return 0;
-    }
-
-    template <>
-    int string2number<unsigned long long>(char const * src, unsigned long long *i)
-    {
-        unsigned long long n = 0;
-        n = strtoull(src, NULL, 10);
-        *i = n;
-        return 0;
-    }
-
-    template <>
-    int string2number<double>(char const * src, double *i)
-    {
-        *i = strtod(src, NULL);
-        return 0;
-    }
-
-    template <>
-    int string2number<float>(char const * src, float *i)
-    {
-        *i = strtof(src, NULL);
-        return 0;
-    }
-
-    template <typename IT>
-    std::string number2string(IT i)
-    {
-        int64_t n = i;        
-        std::string out;
-        out.resize(20);
-        size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%" PRIi64, n);
-        out.resize(len);
-        return out;
-    }
-
-    template <>
-    std::string number2string<unsigned long long>(unsigned long long i)
-    {
-        uint64_t n = i;        
-        std::string out;
-        out.resize(20);
-        size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%" PRIu64, n);
-        out.resize(len);
-        return out;
-    }
-
-    template <>
-    std::string number2string<uint64_t>(uint64_t i)
-    {
-        uint64_t n = i;        
-        std::string out;
-        out.resize(20);
-        size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%" PRIu64, n);
-        out.resize(len);
-        return out;
-    }
-
-    template <>
-    std::string number2string<float>(float i)
-    {
-        double n = i;        
-        std::string out;
-        out.resize(40);
-        size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%f", n);
-        out.resize(len);
-        return out;
-    }
-
-    template <>
-    std::string number2string<double>(double i)
-    {
-        double n = i;        
-        std::string out;
-        out.resize(40);
-        size_t len = 0;
-        len = snprintf((char *)out.c_str(), out.size(), "%f", n);
-        out.resize(len);
-        return out;
-    }
-
-
 
 int PB2Map(
     const google::protobuf::Message& message,
@@ -699,6 +591,7 @@ int Pb2Sqlite::init(
         ;
         return -1;
     }
+    m_hold_db = 1;
     return 0;
 }
 
