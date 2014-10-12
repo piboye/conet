@@ -47,6 +47,12 @@ std::string get_rpc_server_name_default()
 static 
 void clear_server_maps(void)
 {
+    if (g_server_cmd_maps) {
+        AUTO_VAR(it, = , g_server_cmd_maps->begin());
+        for (; it != g_server_cmd_maps->end(); ++it) {
+            delete it->second;
+        }
+    }
     delete g_server_cmd_maps;
     delete g_server_http_cmd_maps;
     g_server_cmd_maps = NULL;
