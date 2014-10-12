@@ -57,6 +57,13 @@ public:
         INIT_LIST_HEAD(&m_list);
     }
 
+    ~StrMap()  
+    {
+        if (m_bucket) {
+            delete m_bucket;
+        }
+    }
+
     void init(int size) 
     {
         m_bucket = (hlist_head *) malloc(sizeof(hlist_head)*size);
