@@ -10,6 +10,7 @@
 #include "thirdparty/gflags/gflags.h"
 
 #include "base/incl/tls.h"
+#include "log.h"
 
 DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
@@ -30,17 +31,19 @@ static
 void co_return(void *val=NULL) {
     coroutine_env_t *env = get_coroutine_env();
     if (list_empty(&env->run_queue)) {
-        assert(!"co thread env run queue empty");
+        LOG(FATAL)<<"co thread env run queue empty";
         return ;
     }
 
     coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
     list_del_init(&last->wait_to);
+    coroutine_t * curr_co = env->curr_co;
     env->curr_co = last;
     last->state = RUNNING;
     last->yield_val = val;
     //setcontext(&last->ctx);
-    co_setcontext(&last->ctx);
+    co_swapcontext(&(curr_co->ctx), &(last->ctx));
+    //co_setcontext(&last->ctx);
 }
 
 void delay_del_coroutine(void *arg)
@@ -65,7 +68,7 @@ void co_main_helper(int co_low, int co_high )
     list_del_init(&co->wait_to);
     coroutine_env_t *env = get_coroutine_env();
     assert(env->curr_co == co);
-    env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
+    //env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
     list_del_init(&env->curr_co->wait_to);
     {
         // notify exit wait queue
@@ -198,7 +201,7 @@ void * yield(list_head *wait_to, void * val)
     coroutine_t *cur = env->curr_co;
 
     if (list_empty(&env->run_queue)) {
-        assert(!"co thread env run queue empty");
+        LOG(FATAL)<<"co thread env run queue empty";
         return NULL;
     }
 
@@ -212,7 +215,7 @@ void * yield(list_head *wait_to, void * val)
 
     if (wait_to) {
         list_add_tail(&cur->wait_to, wait_to);
-    }
+    } 
 
     cur->state = SUSPEND;
     last->state = RUNNING;

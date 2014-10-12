@@ -11,6 +11,12 @@ cc_binary(
 )
 
 cc_binary(
+    name = "echo_cli_co_async",
+    srcs = ["echo_cli_co_async.cpp"],
+    deps = ["//svrkit:client_base", "#dl", "#pthread"],
+)
+
+cc_binary(
     name = "echo_rpc_cli",
     srcs = ["echo_rpc_cli.cpp"],
     deps = [
@@ -43,6 +49,16 @@ proto_library(
 cc_binary(
     name = "echo_server",
     srcs = ["echo_server.cpp"],
+    deps = [
+        "//svrkit:server_base", 
+        "#dl", 
+        "#pthread"
+    ],
+)
+
+cc_binary(
+    name = "echo_server_async",
+    srcs = ["echo_server_async.cpp"],
     deps = [
         "//svrkit:server_base", 
         "#dl", 

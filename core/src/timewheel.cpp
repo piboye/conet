@@ -158,7 +158,7 @@ int timewheel_task(void *arg)
     
 
     epoll_event ev;
-    ev.events = EPOLLIN| EPOLLERR| EPOLLHUP | EPOLLET;
+    ev.events = EPOLLIN| EPOLLERR| EPOLLHUP;
 
     ev.data.ptr = fd_ctx;
     epoll_ctl(conet::get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_ADD, timerfd,  &ev);
