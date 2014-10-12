@@ -144,7 +144,7 @@ int proc_echo(conn_info_t *conn)
     return 0;
 }
 
-DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
+DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {

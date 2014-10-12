@@ -35,6 +35,8 @@ DEFINE_string(data_file, "1.txt", "send data file");
 
 using namespace conet;
 
+std::vector<std::string *> g_data;
+
 struct task_t
 {
     std::string file;
@@ -49,8 +51,7 @@ struct ctx_t
     int wfd;
     size_t max_size;
     int total;
-    std::queue<ref_str_t> read_queue;
-    std::queue<ref_str_t> write_queue;
+    std::vector<std::string *> *write_queue;
 };
 
 int read_co(void *arg)
@@ -94,17 +95,13 @@ int write_co(void *arg)
     int num = 0;
     int ret = 0;
     int cnt = 0;
-    do
+    for (size_t i = 0, len = ctx->write_queue->size(); i<len; ++i)
     {
-        if (ctx->write_queue.empty()) {
-           break;
-        } 
 
-        ref_str_t data = ctx->write_queue.front();
-        buff   = data.data;
-        size = data.len;
+        std::string * data = ctx->write_queue->at(i);
+        buff   = (char *)data->c_str();
 
-        ctx->write_queue.pop();
+        size = data->size();
 
         ret = write(ctx->wfd,  buff, size);
         if (ret <=0) {
@@ -115,8 +112,7 @@ int write_co(void *arg)
         if (cnt%100==0) {
             usleep(1);
         }
-        ctx->read_queue.push(data);
-    } while(1);
+    }
     printf("write num:%d\n", num);
     return 0;
 }
@@ -132,15 +128,6 @@ int proc_send(void *arg)
     int fd = 0;
     fd = conet::connect_to(task->ip.c_str(), task->port);
     conet::set_none_block(fd, false);
-    char *line= NULL;
-    size_t len = 0;
-    char rbuff[1024];
-    FILE *fp = fopen(task->file.c_str(), "r");
-    if (!fp) {
-        fprintf(stderr, "open file:%s failed!", task->file.c_str());
-        ++g_finish_task_num;
-        return -1;
-    }
     
     ctx_t ctx;
     ctx.rfd = fd;
@@ -148,26 +135,8 @@ int proc_send(void *arg)
     ctx.max_size = 1000;
 
 
-
-    while(1) {
-        char *buff = NULL;
-        size_t size = 1000;
-        ref_str_t data; 
-        if (ctx.read_queue.empty()) {
-            buff = new char[size];
-            init_ref_str(&data, buff, size);
-        } else {
-            data = ctx.read_queue.front();
-            ctx.read_queue.pop();
-            buff = data.data;
-        }
-        ret = getline(&buff, &size, fp);
-        if (ret <= 0) break;
-        init_ref_str(&data, buff, ret);
-        ctx.write_queue.push(data);
-    }
-
-    ctx.total = ctx.write_queue.size();
+    ctx.total = g_data.size();
+    ctx.write_queue = &g_data;
 
     coroutine_t *r_co  = alloc_coroutine(&read_co, &ctx);
     coroutine_t *w_co  = alloc_coroutine(&write_co, &ctx);
@@ -184,6 +153,31 @@ int proc_send(void *arg)
     return 0;
 }
 
+
+int prepare_data(char const *file)
+{
+    char *line= NULL;
+    size_t len = 0;
+    char rbuff[1024];
+    FILE *fp = fopen(file, "r");
+    if (!fp) {
+        fprintf(stderr, "open file:%s failed!", file); 
+        return -1;
+    }
+    int ret = 0;
+    
+    while(1) {
+        size_t size = 1000;
+        ret = getline(&line, &size, fp);
+        if (ret <= 0) break;
+        g_data.push_back(new std::string(rbuff, ret));
+    }
+
+    return 0;
+}
+
+
+
 int main(int argc, char * argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, false); 
@@ -194,6 +188,10 @@ int main(int argc, char * argv[])
     parse_ip_list(FLAGS_server_addr, &ip_list);
     if (ip_list.empty()) {
         fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_addr.c_str());
+        return 1;
+    }
+
+    if (prepare_data(FLAGS_data_file.c_str())) {
         return 1;
     }
 
