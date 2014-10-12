@@ -32,7 +32,7 @@ google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg)
     return msg->New();
 }
 
-static std::map<std::string , StrMap> *g_server_cmd_maps=NULL;
+static std::map<std::string , StrMap*> *g_server_cmd_maps=NULL;
 
 static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
 
@@ -224,11 +224,12 @@ int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
     std::string const & method_name = cmd->method_name;
 
     StrMap * maps =  NULL;
-    if ((*g_server_cmd_maps).find(server_name) == g_server_cmd_maps->end()) {
-        maps = &(*g_server_cmd_maps)[server_name];
+    if (g_server_cmd_maps->find(server_name) == g_server_cmd_maps->end()) {
+        maps = new StrMap();
         maps->init(100);
+        g_server_cmd_maps->insert(std::make_pair(server_name, maps));
     } else {
-        maps = &(*g_server_cmd_maps)[server_name];
+        maps = (*g_server_cmd_maps)[server_name];
     }
     maps->add(&cmd->cmd_map_node);
     //maps.insert(std::make_pair(method_name, cmd));
@@ -295,7 +296,7 @@ rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 
 int get_global_server_cmd(rpc_pb_server_t * server) 
 {
-    server->cmd_maps = &(*g_server_cmd_maps)[server->server_name];
+    server->cmd_maps = (*g_server_cmd_maps)[server->server_name];
     server->http_server->cmd_maps = (*g_server_http_cmd_maps)[server->server_name];
     return server->cmd_maps->size();
 }
