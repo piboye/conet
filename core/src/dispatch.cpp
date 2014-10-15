@@ -22,7 +22,7 @@
 #include "thirdparty/gflags/gflags.h"
 
 
-DEFINE_int32(dispatch_retry_cnt, 3, "dispatch retry num");
+DEFINE_int32(dispatch_retry_cnt, 1, "dispatch retry num");
 
 namespace conet
 {

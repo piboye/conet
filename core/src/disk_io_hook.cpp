@@ -33,6 +33,7 @@
 
 #include <dlfcn.h>
 #include <stdarg.h>
+
 #include "coroutine.h"
 #include "coroutine_impl.h"
 #include "fd_ctx.h"
@@ -72,9 +73,9 @@ HOOK_SYS_FUNC_DEF(int, open, (const char *pathname, int flags, ...))
 	{
 		return fd;
 	}
-    fd_ctx_t *lp = alloc_fd_ctx(fd, 2);
+    fd_ctx_t *lp = alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
     lp->user_flag = flags;
-	fcntl( fd, F_SETFL, _(fcntl)(fd, F_GETFL,0 ) );
+	fcntl(fd, F_SETFL, _(fcntl)(fd, F_GETFL, 0));
     return fd;
 }
 
@@ -107,13 +108,13 @@ HOOK_SYS_FUNC_DEF(int, openat, (int dirfd, const char *pathname, int flags, ...)
     } else {
         fd = _(openat)(dirfd, pathname, flags, DEFFILEMODE);
     }
-	if( !conet::is_enable_sys_hook() || (fd <0))
+	if(!conet::is_enable_sys_hook() || (fd <0))
 	{
         return fd;
 	}
-    fd_ctx_t *lp = alloc_fd_ctx(fd, 2);
+    fd_ctx_t *lp = alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
     lp->user_flag = flags;
-	fcntl( fd, F_SETFL, _(fcntl)(fd, F_GETFL,0 ) );
+	fcntl(fd, F_SETFL, _(fcntl)(fd, F_GETFL, 0));
     return fd;
 }
 
@@ -227,7 +228,7 @@ namespace conet
 {
 ssize_t disk_read(int fd, void *buf, size_t nbyte)
 {
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (NULL==ctx) {
         return _(read)(fd, buf, nbyte);
     }
@@ -277,7 +278,7 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
 
 ssize_t disk_write(int fd, const void *buf, size_t nbyte)
 {
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (NULL==ctx) {
         return _(write)(fd, buf, nbyte);
     }
@@ -328,7 +329,7 @@ HOOK_SYS_FUNC_DEF(
 ssize_t ,pread,(int fd, void *buf, size_t nbyte, off_t off))
 {
     HOOK_SYS_FUNC(pread);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
         return _(pread)(fd, buf, nbyte, off);
     }
@@ -476,7 +477,7 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
     if (!conet::is_enable_sys_hook()) {
         return _(writev)(fd, iov, iovcnt);
     }
-    fd_ctx_t *ctx = get_fd_ctx(fd,0);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, 0);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(writev)(fd, iov, iovcnt);
@@ -545,7 +546,7 @@ HOOK_SYS_FUNC_DEF(
 ssize_t , preadv,(int fd, const struct iovec *iov, int iovcnt, off_t off))
 {
     HOOK_SYS_FUNC(preadv);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
         return _(preadv)(fd, iov, iovcnt, off);
     }
@@ -589,7 +590,7 @@ HOOK_SYS_FUNC_DEF(
 ssize_t ,pwrite,(int fd, const void *buf, size_t nbyte, off_t off))
 {
     HOOK_SYS_FUNC(pwrite);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
         return _(pwrite)(fd, buf, nbyte, off);
     }
@@ -634,7 +635,7 @@ ssize_t ,pwrite,(int fd, const void *buf, size_t nbyte, off_t off))
 HOOK_SYS_FUNC_DEF(
 ssize_t , pwritev,(int fd, const struct iovec *iov, int iovcnt, off_t off))
 {
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!conet::is_enable_sys_hook() || (NULL==ctx)) {
         return _(pwritev)(fd, iov, iovcnt, off);
     }
@@ -681,7 +682,7 @@ int ,fsync,(int fd)
     if (!conet::is_enable_sys_hook()) {
         return _(fsync)(fd);
     }
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fsync)(fd);
@@ -726,7 +727,7 @@ int ,fdatasync, (int fd)
     if (!conet::is_enable_sys_hook()) {
         return _(fdatasync)(fd);
     }
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fdatasync)(fd);
@@ -881,7 +882,7 @@ int ,vfprintf ,( FILE * fp, const char * format, va_list ap )
         return ret;
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         ret =  _(vfprintf)(fp, format, ap);
@@ -926,7 +927,7 @@ int ,fprintf,(FILE * fp, const char *format, ...)
         return ret;
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         ret =  _(vfprintf)(fp, format, ap);
@@ -967,7 +968,7 @@ int , fputs,(const char *str, FILE *fp)
         return _(fputs)(str, fp);
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fputs)(str, fp);
@@ -988,7 +989,7 @@ int , fputc,(int c, FILE *fp)
         return _(fputc)(c, fp);
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fputc)(c, fp);
@@ -1010,7 +1011,7 @@ HOOK_SYS_FUNC_DEF(
         return _(fwrite)(ptr, size, nmemb, fp);
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fwrite)(ptr, size, nmemb, fp);
@@ -1038,7 +1039,7 @@ HOOK_SYS_FUNC_DEF(
         return _(fread)(ptr, size, nmemb, fp);
     }
     int fd = fileno(fp);
-    fd_ctx_t *ctx = get_fd_ctx(fd,2);  
+    fd_ctx_t *ctx = get_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);  
     if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
     {
         return _(fread)(ptr, size, nmemb, fp);

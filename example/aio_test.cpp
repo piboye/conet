@@ -33,8 +33,8 @@ int proc(void *arg)
     conet::enable_sys_hook();
     
     int ret = 0;
-    FILE *fp = fopen(FLAGS_out_file.c_str(), "a+");
-    //ret = write(fileno(fp), "hello\n",6); 
+    FILE *fp = fopen(FLAGS_out_file.c_str(), "a");
+    ret = write(fileno(fp), "hello\n",6); 
     fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
     fputs("hello:\n", fp);
     fprintf(stderr, "pos:%d, out:%d\n", (int)(ftell(fp)), ret);
