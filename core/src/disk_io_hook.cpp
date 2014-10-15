@@ -147,14 +147,13 @@ static int proc_disk_event(void *arg)
     ts.tv_sec = 0;
     ts.tv_nsec = 0;
     struct io_event  event[64];
-
     do 
     {
         uint64_t ready = 0;
         int n = 0;
         n = read(ctx->eventfd, &ready, 8);
         while ((n == 8) && ready > 0) {
-            int events = io_getevents(ctx->ctx, 1, 64, event, &ts);
+            int events = io_getevents(ctx->ctx, 0, 64, event, NULL);
             if (events > 0) {
                 ready -= events;
                 for (int i = 0; i < events; i++) {
@@ -196,7 +195,7 @@ disk_io_ctx_t * get_disk_ctx()
         if (evfd <0) return NULL;
         g_disk_io_ctx->eventfd = evfd; 
 
-        fd_ctx_t *ev_ctx = alloc_fd_ctx(evfd);
+        fd_ctx_t *ev_ctx = alloc_fd_ctx(evfd, 1);
         ev_ctx->user_flag &= ~O_NONBLOCK;
 
         //ret = io_setup(g_disk_io_ctx->num, &g_disk_io_ctx->ctx); 
@@ -208,20 +207,12 @@ disk_io_ctx_t * get_disk_ctx()
             conet::disable_sys_hook();
             exit(-1);
         }
+        g_disk_io_ctx->proc_co=conet::alloc_coroutine(proc_disk_event, g_disk_io_ctx);
+        conet::resume(g_disk_io_ctx->proc_co);
+
         tls_onexit_add(g_disk_io_ctx, fini_disk_io_ctx);
     }
     return g_disk_io_ctx; 
-}
-
-static 
-inline
-void start_disk_task()
-{
-   disk_io_ctx_t *ctx = get_disk_ctx(); 
-   if (ctx && (NULL == ctx->proc_co)) {
-        ctx->proc_co=conet::alloc_coroutine(proc_disk_event, ctx);
-        conet::resume(ctx->proc_co);
-   }
 }
 
 HOOK_DECLARE(
@@ -251,6 +242,8 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
 
     conet_io_cb_t my_cb;
     my_cb.cb = &cb;
+    my_cb.co  = conet::current_coroutine();
+
     io_prep_pread(&cb, fd, buf, nbyte, off);
     io_set_eventfd(&cb, disk_ctx->eventfd); 
     io_set_callback(&cb, (io_callback_t)(&my_cb)); 
@@ -262,9 +255,7 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
         return  -1;
     }
 
-    my_cb.co  = conet::current_coroutine();
 
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -300,7 +291,9 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
     conet_io_cb_t my_cb;
+
     my_cb.cb = &cb;
+    my_cb.co  = conet::current_coroutine();
     io_prep_pwrite(&cb, fd, (void *)buf, nbyte, off);
     io_set_eventfd(&cb, disk_ctx->eventfd); 
     io_set_callback(&cb, (io_callback_t)(&my_cb)); 
@@ -312,10 +305,8 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
         return  -1;
     }
 
-    my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
-
+    
     unsigned long res = 0;
     unsigned long res2 = 0;
     res = my_cb.event->res;
@@ -363,7 +354,6 @@ ssize_t ,pread,(int fd, void *buf, size_t nbyte, off_t off))
 
     my_cb.co  = conet::current_coroutine();
 
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -412,7 +402,6 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -458,7 +447,6 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -579,7 +567,6 @@ ssize_t , preadv,(int fd, const struct iovec *iov, int iovcnt, off_t off))
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -625,7 +612,6 @@ ssize_t ,pwrite,(int fd, const void *buf, size_t nbyte, off_t off))
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -671,7 +657,6 @@ ssize_t , pwritev,(int fd, const struct iovec *iov, int iovcnt, off_t off))
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -720,7 +705,6 @@ int ,fsync,(int fd)
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;
@@ -766,7 +750,6 @@ int ,fdatasync, (int fd)
     }
 
     my_cb.co  = conet::current_coroutine();
-    start_disk_task();
     conet::yield();
 
     unsigned long res = 0;

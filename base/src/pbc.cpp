@@ -13,7 +13,7 @@
 
 static inline int  pb_get(pb_field_t *f, uint8_t *buf, size_t count)
 {
-    if (f->left < count)
+    if ((size_t )f->left < count)
         PB_RETURN_ERROR(f, -1, "end-of-buffer");
 
     if(buf) memcpy(buf, f->ptr, count);
@@ -94,7 +94,7 @@ static inline int  pb_decode_string(pb_field_t *f)
     if (pb_decode_varint(f))
         return -1;
 
-    if (f->val.i64 > f->left)
+    if (f->val.i64 > (uint64_t)f->left)
         PB_RETURN_ERROR(f, -2, "string overflow");
 
     sz = f->val.i64;
@@ -190,7 +190,7 @@ pb_field_t *pb_begin_delimited(pb_field_t *f, const void *data, int dlen)
 
     if (pb_decode_varint(f))
         return NULL;
-    if(f->val.i64 > f->left)
+    if(f->val.i64 > (uint64_t)f->left)
         PB_RETURN_ERROR(f, NULL, "delimited overflow");
     f->left = f->val.i64;
 
@@ -208,7 +208,7 @@ pb_field_t *pb_next(pb_field_t *f)
 
 static inline int  pb_add(pb_buff_t *b, const void *buf, size_t count)
 {
-    if(b->left < count)
+    if((size_t)b->left < count)
         PB_RETURN_ERROR(b, -1, "buf overflow");
 
     DBGOUT("add(len=%u):", count);

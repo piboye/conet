@@ -25,8 +25,13 @@ cc_library(
         "incl/",
     ],
 
+    extra_cppflags=["-fPIC"],
+
     deps = [
         ":http_parser_rl",
+        "//thirdparty/jsoncpp:jsoncpp",
+        "//thirdparty/protobuf:protobuf",
+        "//thirdparty/sqlite:sqlite3",
     ],
 );
 
@@ -40,6 +45,7 @@ cc_test(
     incs= [ 
         "incl/",
     ],
+
 
     deps=[
         ":base",

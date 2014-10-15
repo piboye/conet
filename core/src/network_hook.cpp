@@ -221,8 +221,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        return _(read)(fd, buf, nbyte);
-        //return conet::disk_read(fd, buf, nbyte);
+        //return _(read)(fd, buf, nbyte);
+        return conet::disk_read(fd, buf, nbyte);
     }
 
 
@@ -279,8 +279,8 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        return _(write)(fd, buf, nbyte);
-        //return conet::disk_write(fd, buf, nbyte);
+        //return _(write)(fd, buf, nbyte);
+        return conet::disk_write(fd, buf, nbyte);
     }
 
     ret = _(write)(fd, (const char*) buf, nbyte);
@@ -723,7 +723,8 @@ HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *r
 
     int ms = req->tv_sec *1000+ (req->tv_nsec+999999)/1000000;
 
-    int ret = conet::co_poll(NULL, 0, ms);
+    int ret = 0;
+    ret = conet::co_poll(NULL, 0, ms);
     if (rem) {
         rem->tv_sec = 0;
         rem->tv_nsec = 0;

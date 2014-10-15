@@ -40,6 +40,7 @@ int g_finish_task_num=0;
 int proc_send(void *arg)
 {
     conet::enable_sys_hook();
+    conet::enable_pthread_hook();
     task_t *task = (task_t *)(arg);
 
     int ret = 0;
@@ -61,18 +62,18 @@ int proc_send(void *arg)
         int retcode=0;
         ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
         if (ret || retcode) {
-            printf("ret:%d\n", ret);
+            LOG(ERROR)<<"ret:"<<ret;
             continue;
         }
 
         if (retcode)
-            printf("ret_code:%d, response:%s\n", retcode, resp.msg().c_str());
+            LOG(ERROR)<<"ret_code:"<<retcode<<" resposne:"<<resp.DebugString();;
     }
     ++g_finish_task_num;
     return 0;
 }
 
-
+task_t *tasks = NULL;
 int main(int argc, char * argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, false); 
@@ -81,7 +82,7 @@ int main(int argc, char * argv[])
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);
 
-    task_t * tasks = new task_t[FLAGS_task_num];
+    tasks = new task_t[FLAGS_task_num];
     for (int i=0; i<FLAGS_task_num; ++i) {
         tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
         tasks[i].lb = &lb;

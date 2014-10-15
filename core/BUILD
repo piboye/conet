@@ -26,10 +26,11 @@ cc_library(
         "src/fd_ctx.cpp",
         "src/network_hook.cpp",
         "src/pthread_hook.cpp",
-        #"src/disk_io_hook.cpp",
+        "src/disk_io_hook.cpp",
         "src/timewheel.cpp",
         "src/dispatch.cpp",
         "src/co_pool.cpp",
+        "src/stacktrace.cpp",
     ],
 
     incs= [ 
@@ -45,8 +46,12 @@ cc_library(
         '#dl', 
         '#pthread',
         '#rt',
+        "#unwind", 
+        "#unwind-x86_64",
     ],
-    #warning=["fPIC"],
+
+    extra_cppflags=["-fPIC"],
+
     export_incs=["incl/"],
     link_all_symbols = True,
 );

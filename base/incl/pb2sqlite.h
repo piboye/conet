@@ -36,6 +36,7 @@ namespace conet
             {
                 m_db = db;
                 m_table_name = table;
+                return 0;
             }
 
             int init(std::string const &file_name, std::string const &table);

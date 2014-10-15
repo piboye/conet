@@ -471,6 +471,7 @@ int Pb2Sqlite::remove(uint64_t id)
         sqlite3_free(errmsg);
 		return -1;
 	}
+    return 0;
 }
 
 int Pb2Sqlite::get(uint64_t id, google::protobuf::Message *out)

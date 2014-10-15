@@ -111,6 +111,7 @@ pthread_mutex_t *
     return mutex;
 }
 
+/*
 static
 list_head *tls_get_list_head(list_head * &h)
 {
@@ -121,6 +122,7 @@ list_head *tls_get_list_head(list_head * &h)
     }
     return h;
 }
+*/
 
 
 namespace {

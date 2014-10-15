@@ -7,6 +7,7 @@
 
 #include "coroutine.h"
 #include "coroutine_impl.h"
+#include "timewheel.h"
 #include "thirdparty/gflags/gflags.h"
 
 #include "base/incl/tls.h"
@@ -102,10 +103,10 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 {
 
     self->ret_val = 0;
-    self->is_enable_sys_hook = 0;
+    self->is_enable_sys_hook = 1;
     self->is_end_delete = 0;
-    self->is_enable_pthread_hook = 0;
-    self->is_enable_disk_io_hook = 0;
+    self->is_enable_pthread_hook = 1;
+    self->is_enable_disk_io_hook = 1;
     self->is_main =0;
 
     // stack  group from high address to  low; align depend stack_size must be multiplies align size
@@ -335,6 +336,145 @@ int wait(coroutine_t *co, uint32_t ms)
     cancel_timeout(&wait_th);
     return ret;
 }
+
+class TimeoutHandle; 
+
+class TimeoutMgr
+{
+public:
+    std::map<uint64_t, TimeoutHandle *> m_tm;
+    uint64_t m_id;
+    TimeoutMgr()
+    {
+        m_id = 0;
+    }
+
+    uint64_t add(TimeoutHandle *t)
+    {
+        ++m_id;
+        m_tm.insert(std::make_pair(m_id, t));
+        return m_id;
+    }
+    int free(uint64_t id)
+    {
+        m_tm.erase(id);
+        return 0;
+    }
+    TimeoutHandle * get(uint64_t id)
+    {
+        return m_tm.at(id);
+    }
+};
+
+
+
+
+class TimeoutMgr * g_timout_mgr = NULL;
+
+class TimeoutHandle
+{
+public:
+
+    TimeoutHandle(void (*fn)(void *), void *arg, uint64_t ms, int inter = 0, int stack_size=0)
+    {
+        m_arg = arg;
+        m_fn = fn;
+        m_ms = ms;
+        m_inter = m_inter;
+        m_exit_flag = 0;
+
+        init_timeout_handle(&m_tm,  &TimeoutHandle::timeout_cb, this, m_ms);
+        m_co = alloc_coroutine(&TimeoutHandle::proc, this, stack_size);
+        set_auto_delete(m_co);
+        if (inter) {
+            set_interval(&m_tm, m_ms);
+        } else {
+            set_timeout(&m_tm, m_ms);
+        }
+        m_id = tls_get(g_timout_mgr)->add(this);
+    }
+
+    timeout_handle_t m_tm;
+    
+    void (*m_fn)(void *);
+    void *m_arg; 
+    uint64_t m_ms;
+    uint64_t m_id;
+    int m_exit_flag;
+    int m_inter;
+
+    coroutine_t *m_co;
+
+    static
+    void timeout_cb(void *arg)
+    {
+        TimeoutHandle *self = (TimeoutHandle *)(arg);
+        conet::resume(self->m_co);
+    }
+
+    static
+    int proc(void *arg)
+    {
+        TimeoutHandle *self = (TimeoutHandle *)(arg);
+        while(!self->m_exit_flag) {
+          (self->m_fn)(self->m_arg);
+          if (0 == self->m_inter) break; 
+          conet::yield(NULL, NULL);
+        } 
+        delete self;
+        return 0;
+    }
+   
+    ~TimeoutHandle()
+    {
+       tls_get(g_timout_mgr)->free(m_id);
+    }
+};
+
+uint64_t set_timeout(void (*fn)(void *), void *arg, int ms, int stack_size)
+{
+    TimeoutHandle *tm = new TimeoutHandle(fn, arg, ms, 0, stack_size);
+    return tm->m_id;
+}
+
+uint64_t set_interval(void (*fn)(void *), void *arg, int ms, int stack_size)
+{
+    TimeoutHandle *tm = new TimeoutHandle(fn, arg, ms, 1, stack_size);
+    return tm->m_id;
+}
+
+void cancel_timeout(uint64_t id) 
+{
+   TimeoutHandle * tm = tls_get(g_timout_mgr)->get(id); 
+   if (tm) {
+       tm->m_exit_flag = 1;
+       conet::resume(tm->m_co);
+   }
+}
+
+void cancel_interval(uint64_t id) 
+{
+    return cancel_timeout(id);
+}
+
+template<typename T>
+T call_closure(void *arg)
+{
+    Closure<T> * cl = (Closure<T> *)(arg);
+    return cl->Run();
+}
+
+
+uint64_t set_timeout(Closure<void> *cl, int ms, int stack_size)
+{
+    return set_timeout(&call_closure<void>, cl, ms, stack_size);
+}
+
+uint64_t set_interval(Closure<void> *cl, int ms, int stack_size)
+{
+    return set_interval(&call_closure<void>, cl, ms, stack_size);
+}
+
 
 }
 

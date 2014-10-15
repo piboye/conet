@@ -5,6 +5,7 @@
 #include "base/incl/list.h"
 #include "gc.h"
 #include "timewheel.h"
+#include "base/incl/closure.h"
 
 
 namespace conet
@@ -43,6 +44,8 @@ void set_auto_delete(coroutine_t *co);
 int get_epoll_pend_task_num();
 
 int co_poll(struct pollfd fds[], nfds_t nfds, int timeout);
+
+void print_stacktrace(coroutine_t *co, int fd=2);
 
 // coroutine gc memory alloctor
 gc_mgr_t *get_gc_mgr();
@@ -99,6 +102,15 @@ bool is_stop(coroutine_t *co);
 
 int wait(coroutine_t *co);
 int wait(coroutine_t *co, uint32_t ms);
+
+uint64_t set_timeout(void (*fn)(void *), void *, int ms, int stack_size = 0);
+uint64_t set_interval(void (*fn)(void *), void *, int ms, int stack_size = 0);
+
+uint64_t set_timeout(Closure<void> *cl, int ms, int stack_size=0);
+uint64_t set_interval(Closure<void> *cl, int ms, int stack_size=0);
+
+void cancel_timeout(uint64_t);
+void cancel_interval(uint64_t);
 
 //
 template<typename T>

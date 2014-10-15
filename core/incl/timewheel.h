@@ -77,6 +77,7 @@ int check_timewheel(timewheel_t *self, uint64_t cur_ms = 0);
 
 // global timewheel_t
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/);
+void set_interval(timeout_handle_t * obj, int interval);
 
 
 #endif

@@ -32,7 +32,7 @@ struct fd_ctx_t
     enum {
         SOCKET_FD_TYPE=1,
         DISK_FD_TYPE=2,
-        TIMER_FD_TYPE=2,
+        TIMER_FD_TYPE=3,
     };
     int type;
     int fd;

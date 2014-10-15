@@ -336,3 +336,8 @@ void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
     set_timeout(tls_get(g_tw), obj, timeout);
 }
 
+
+void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
+{
+    set_interval(tls_get(g_tw), obj, timeout);
+}

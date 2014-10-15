@@ -69,6 +69,9 @@ int proc_send(void *arg)
     return 0;
 }
 
+extern
+task_t *tasks = NULL;
+
 int main(int argc, char * argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, false); 
@@ -82,7 +85,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    task_t * tasks = new task_t[num];
+    tasks = new task_t[num];
     for (int i=0; i<num; ++i) {
         tasks[i].ip = ip_list[0].ip;
         tasks[i].port = ip_list[0].port;
