@@ -22,7 +22,52 @@
 namespace conet
 {
 
-int wakeup_one(wait_queue_t * q)
+void init_wait_queue(wait_queue_t *q)
+{
+    q->wait_num = 0;
+    INIT_LIST_HEAD(&q->queue);
+}
+
+void wait_queue_item_timeout(void *arg)
+{
+    wait_item_t *self = (wait_item_t *)(arg);
+    self->expired_flag = 1;
+    resume(self->co, NULL);
+}
+
+int wait_on(wait_queue_t *q, int ms)
+{
+     wait_item_t w;
+     coroutine_t * co = CO_SELF(); 
+
+     w.wq = q;
+
+     w.co = co; 
+     w.delete_self = 0;
+     w.expired_flag = 0;
+     INIT_LIST_HEAD(&w.link);
+
+     if (ms >= 0) {
+        init_timeout_handle(&w.tm, wait_queue_item_timeout, &w, ms);
+        set_timeout(&w.tm, ms);
+     }
+
+     list_add(&w.link, &q->queue);
+     ++q->wait_num;
+
+     yield(NULL, NULL);
+
+     --q->wait_num; 
+
+     if (w.expired_flag) {
+         //timeout
+         return -1;          
+     }
+
+     return 0;
+}
+
+int wakeup_head(wait_queue_t * q)
 {
     if (!list_empty(&q->queue)) {
         wait_item_t *item = container_of(q->queue.next, wait_item_t, link); 
@@ -71,5 +116,4 @@ int wakeup_all(wait_queue_t * q)
 }
 
 }
-
 

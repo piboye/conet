@@ -20,28 +20,39 @@
 
 
 #include "base/incl/list.h"
+#include "timewheel.h"
 
 namespace conet
 {
 
 struct coroutine_t;
 
+struct wait_queue_t;
+
 struct wait_item_t
 {
+    wait_queue_t * wq;
     coroutine_t *co;
     list_head link;
+    timeout_handle_t tm;
     int delete_self;
+    int expired_flag;
 };
 
 struct
 wait_queue_t
 {
+    int wait_num;
     list_head queue;
 };
 
-int wakeup_one(wait_queue_t *);
+int wait_on(wait_queue_t *q, int ms = -1);
+
+void init_wait_queue(wait_item_t *q);
 
 int wakeup_all(wait_queue_t *);
+
+int wakeup_head(wait_queue_t *);
 
 int wakeup_tail(wait_queue_t *);
 

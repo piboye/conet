@@ -174,7 +174,7 @@ static int trylock(lock_ctx_t *ctx)
             }
         default:
             fprintf(stderr, "error lock type:%d\n", ctx->type);
-            exit(-1);
+            abort();
          return -1;
     }
     return -2;
@@ -359,7 +359,7 @@ struct pcond_mgr_t
 };
 
 static
-int proc_pcond_schule(void *arg)
+int proc_pcond_schedule(void *arg)
 {
     int cnt = 0;
     list_head *it=NULL, *next=NULL;
@@ -386,7 +386,7 @@ list_head *get_pcond_schedule_list() {
     if (NULL == g_pcond_schedule_queue) {
         g_pcond_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_pcond_schedule_queue);
-        conet::registry_task(proc_pcond_schule, g_pcond_schedule_queue); 
+        conet::registry_task(proc_pcond_schedule, g_pcond_schedule_queue); 
         tls_onexit_add(g_pcond_schedule_queue, tls_destructor_fun<list_head>);
     }
     return g_pcond_schedule_queue;
