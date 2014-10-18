@@ -27,6 +27,7 @@
 #include "dispatch.h"
 
 #include "base/incl/tls.h"
+#include "base/incl/int_map.h"
 
 #define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
@@ -355,7 +356,15 @@ struct pcond_ctx_t
 
 struct pcond_mgr_t
 {
+   conet::IntMap::Node node;
    list_head wait_list;
+
+   explicit 
+   pcond_mgr_t(void *key)
+   {
+        INIT_LIST_HEAD(&this->wait_list);
+        this->node.init((uint64_t)(key));
+   }
 };
 
 static
@@ -378,7 +387,26 @@ int proc_pcond_schedule(void *arg)
     return cnt;
 }
 
-static std::map<void *, pcond_mgr_t*> g_cond_map;
+//static std::map<void *, pcond_mgr_t*> g_cond_map;
+//
+static conet::IntMap * get_cond_map()  
+{
+    static conet::IntMap * cond_map = NULL;
+    if (cond_map == NULL) {
+        cond_map = new conet::IntMap();
+        cond_map->init(1000);
+        cond_map->m_hash_fn = &conet::address_hash;
+    }
+    return cond_map;
+}
+static pcond_mgr_t * find_cond_map(void *key)
+{
+    conet::IntMap::Node * node = get_cond_map()->find((uint64_t)key);
+    if (node) {
+        return container_of(node, pcond_mgr_t, node);
+    }
+    return NULL;
+}
 
 
 static
@@ -416,11 +444,10 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 
     SCOPE_LOCK(&g_cond_mgr_mutex) 
     {
-        pcond_mgr_t *mgr = g_cond_map[cond];
+        pcond_mgr_t *mgr = find_cond_map(cond);
         if (NULL == mgr) {
-            mgr = new pcond_mgr_t();
-            INIT_LIST_HEAD(&mgr->wait_list);
-            g_cond_map[cond] = mgr;
+            mgr = new pcond_mgr_t(cond);
+            get_cond_map()->add(&mgr->node);
         }
 
         list_add_tail(&wait_item.wait_item, &mgr->wait_list);
@@ -482,11 +509,10 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
 
     SCOPE_LOCK(&g_cond_mgr_mutex)
     {
-        pcond_mgr_t *mgr = g_cond_map[cond];
+        pcond_mgr_t *mgr = find_cond_map(cond);
         if (NULL == mgr) {
-            mgr = new pcond_mgr_t();
-            INIT_LIST_HEAD(&mgr->wait_list);
-            g_cond_map[cond] = mgr;
+            mgr = new pcond_mgr_t(cond);
+            get_cond_map()->add(&mgr->node);
         }
 
         list_add_tail(&wait_item.wait_item, &mgr->wait_list);
@@ -508,11 +534,9 @@ HOOK_FUNC_DEF(int, pthread_cond_signal, (pthread_cond_t *cond))
     pcond_mgr_t *mgr = NULL;
     SCOPE_LOCK(&g_cond_mgr_mutex)
     {
-        mgr= g_cond_map[cond];
+        mgr= find_cond_map(cond);
         if (NULL == mgr) {
-            mgr = new pcond_mgr_t();
-            INIT_LIST_HEAD(&mgr->wait_list);
-            g_cond_map[cond] = mgr;
+            break;
         }
 
         list_head *it=NULL, *next=NULL;
@@ -543,11 +567,9 @@ HOOK_FUNC_DEF(int, pthread_cond_broadcast,(pthread_cond_t *cond))
     pcond_mgr_t *mgr = NULL;
     SCOPE_LOCK(&g_cond_mgr_mutex)
     {   
-        mgr = g_cond_map[cond];
+        mgr = find_cond_map(cond); 
         if (NULL == mgr) {
-            mgr = new pcond_mgr_t();
-            INIT_LIST_HEAD(&mgr->wait_list);
-            g_cond_map[cond] = mgr;
+            break;
         }
 
         list_head *it=NULL, *next=NULL;
@@ -566,5 +588,13 @@ HOOK_FUNC_DEF(int, pthread_cond_broadcast,(pthread_cond_t *cond))
 HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
 {
 	HOOK_FUNC(pthread_cond_destroy);
+    SCOPE_LOCK(&g_cond_mgr_mutex)
+    {   
+        pcond_mgr_t *mgr = find_cond_map(cond);
+        if (mgr) {
+            get_cond_map()->remove(&mgr->node);
+            delete mgr;
+        }
+    }
     return _(pthread_cond_destroy)(cond);
 }
