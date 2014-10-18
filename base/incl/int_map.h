@@ -28,6 +28,7 @@ uint64_t address_hash(uint64_t addr)
   return  addr * 2654435761;
 }
 
+inline
 uint64_t hash64shift(uint64_t key) 
 { 
   key = (~key) + (key << 21); // key = (key << 21) - key - 1; 

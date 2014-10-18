@@ -21,9 +21,6 @@
 #include "base/incl/time_helper.h"
 #include "thirdparty/gflags/gflags.h"
 
-
-DEFINE_int32(dispatch_retry_cnt, 1, "dispatch retry num");
-
 namespace conet
 {
 
@@ -68,21 +65,7 @@ int proc_netevent(int timeout);
 
 int dispatch(int wait_ms)
 {
-    
-    int num = 0;
-
-    int cnt = 0;
-
-    for (int i=0; i< FLAGS_dispatch_retry_cnt; ++i) {
-        cnt = dispatch_one();
-        num+=cnt;
-        if (cnt == 0) break;
-    }
-
-    //if (num >0) wait_ms = 0; 
-    cnt = proc_netevent(wait_ms);
-    num += cnt;
-    return num;
+    return proc_tasks(tls_get(g_tasks));
 }
 
 int dispatch_one()
