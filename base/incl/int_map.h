@@ -25,10 +25,7 @@ namespace conet
 
 uint64_t address_hash(uint64_t addr)
 { 
-  register uint32_t key; 
-  key = (uint32_t) addr; 
-  key = (key >> 3) * 2654435761;
-  return (uint64_t)(key);
+  return  addr * 2654435761;
 }
 
 uint64_t hash64shift(uint64_t key) 
@@ -47,7 +44,6 @@ uint64_t hash64shift(uint64_t key)
 class IntMap
 {
 public:
-    uint64_t (*m_hash_fn)(uint64_t);
 
     struct Node
     {
@@ -75,7 +71,6 @@ public:
         m_bsize =0;
         m_num = 0;
         INIT_LIST_HEAD(&m_list);
-        m_hash_fn = &hash64shift;
     }
 
     ~IntMap()  
@@ -102,7 +97,7 @@ public:
 
     int add(Node * node)
     {
-        size_t hash  = m_hash_fn(node->key);
+        size_t hash  = hash64shift(node->key);
         hlist_head *head = m_bucket + hash%m_bsize;
         hlist_add_head(&node->node, head);
         list_add(&node->link_to, &m_list);
@@ -120,7 +115,7 @@ public:
 
     Node * find(uint64_t key)
     {
-        size_t hash  = m_hash_fn(key);
+        size_t hash  = hash64shift(key);
         hlist_head *head = m_bucket + hash%m_bsize;
         hlist_node *pos = NULL;
         Node *node = NULL;

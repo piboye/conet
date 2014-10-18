@@ -395,7 +395,6 @@ static conet::IntMap * get_cond_map()
     if (cond_map == NULL) {
         cond_map = new conet::IntMap();
         cond_map->init(1000);
-        cond_map->m_hash_fn = &conet::address_hash;
     }
     return cond_map;
 }
