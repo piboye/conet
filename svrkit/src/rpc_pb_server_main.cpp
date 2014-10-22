@@ -27,6 +27,7 @@
 #include "base/incl/ip_list.h"
 #include "base/incl/delay_init.h"
 #include <signal.h>
+#include <malloc.h>
 
 DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
@@ -77,6 +78,9 @@ static int proc_server_exit(void *)
 
 int main(int argc, char * argv[])
 {
+    mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap 
+    mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk 
+
     google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 

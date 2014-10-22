@@ -18,6 +18,7 @@ cc_library (
 cc_library(
     name = 'conet',
     srcs = [
+        "src/version.cpp",
         "src/wait_queue.cpp",
         "src/coroutine.cpp",
         "src/coroutine_env.cpp",
