@@ -67,6 +67,25 @@ int wait_on(wait_queue_t *q, int ms)
      return 0;
 }
 
+int wakeup_head_n(wait_queue_t * q, int times)
+{
+    int n = 0;
+
+    wait_item_t *it=NULL, *next=NULL;
+    list_for_each_entry_safe(it, next, &q->queue, link)
+    {
+        list_del(&it->link);
+        coroutine_t *co = it->co;
+        if (it->delete_self) {
+            free(it);
+        }
+        conet::resume(co);
+        ++n;
+        if (n >= times) break;
+    }
+    return n;
+}
+
 int wakeup_head(wait_queue_t * q)
 {
     if (!list_empty(&q->queue)) {
@@ -95,6 +114,25 @@ int wakeup_tail(wait_queue_t * q)
         return 1;
     }
     return 0;
+}
+
+int wakeup_tail_n(wait_queue_t * q, int times)
+{
+    int n = 0;
+
+    wait_item_t *it=NULL, *next=NULL;
+    list_for_each_entry_safe_reverse(it, next, &q->queue, link)
+    {
+        list_del(&it->link);
+        coroutine_t *co = it->co;
+        if (it->delete_self) {
+            free(it);
+        }
+        conet::resume(co);
+        ++n;
+        if (n >= times) break;
+    }
+    return n;
 }
 
 int wakeup_all(wait_queue_t * q)

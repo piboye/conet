@@ -52,7 +52,11 @@ void init_wait_queue(wait_queue_t *q);
 
 int wakeup_all(wait_queue_t *);
 
+int wakeup_head_n(wait_queue_t *, int times=1);
+
 int wakeup_head(wait_queue_t *);
+
+int wakeup_tail_n(wait_queue_t *, int times=1);
 
 int wakeup_tail(wait_queue_t *);
 

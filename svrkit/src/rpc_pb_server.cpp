@@ -624,6 +624,7 @@ static int proc_rpc_pb_work_co(rpc_pb_conn_asyc_ctx_t *ctx)
         } while(!ctx->cmd_queue.empty()); 
     }
     ctx->to_stop = 1;
+    wakeup_all(&ctx->rsp_wait);
     return 0;
 }
 
@@ -806,10 +807,10 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
         cmd_ctx->cmd = cmd;
         cmd_ctx->cmd_base = cmd_base;
         ctx->cmd_queue.push(cmd_ctx);
-
-        wakeup_head(&ctx->req_wait);
+        wakeup_head_n(&ctx->req_wait, ctx->cmd_queue.size());
     }
     ctx->r_stop = 1;
+    wakeup_all(&ctx->req_wait);
     return 0;
 }
 
