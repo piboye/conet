@@ -83,8 +83,8 @@ struct rpc_pb_cmd_t
 
    google::protobuf::Message * req_msg;
    google::protobuf::Message * rsp_msg;
-   ObjPoll<google::protobuf::Message> m_req_pool; 
-   ObjPoll<google::protobuf::Message> m_rsp_pool; 
+   ObjPool<google::protobuf::Message> m_req_pool; 
+   ObjPool<google::protobuf::Message> m_rsp_pool; 
 
 
    // stat data
@@ -104,6 +104,7 @@ struct rpc_pb_server_t
     std::string server_name;
     StrMap *cmd_maps;
     //std::map<std::string, rpc_pb_cmd_t*> cmd_maps;
+    int async_flag; //default 0
 };
 
 int get_global_server_cmd(rpc_pb_server_t * server);

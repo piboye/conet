@@ -48,7 +48,7 @@ wait_queue_t
 
 int wait_on(wait_queue_t *q, int ms = -1);
 
-void init_wait_queue(wait_item_t *q);
+void init_wait_queue(wait_queue_t *q);
 
 int wakeup_all(wait_queue_t *);
 

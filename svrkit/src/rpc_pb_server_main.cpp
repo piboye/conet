@@ -32,6 +32,7 @@ DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_string(server_name, "", "server name");
+DEFINE_bool(async_server, false, "async server");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
 
 namespace conet
@@ -138,6 +139,10 @@ int main(int argc, char * argv[])
 
 
     signal(SIGINT, sig_exit);
+
+    if (FLAGS_async_server) {
+        g_server.async_flag = 1;
+    }
     start_server(&g_server);
 
     coroutine_t *exit_co = NULL;

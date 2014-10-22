@@ -196,7 +196,9 @@ HOOK_SYS_FUNC_DEF(
     free_fd_ctx( fd );
     return ret;
 }
-namespace conet {
+
+namespace conet 
+{
 ssize_t disk_read(int fd, void *buf, size_t nbyte);
 ssize_t disk_write(int fd, const void *buf, size_t nbyte);
 }
@@ -304,6 +306,85 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
     ret = _(write)(fd, (const char*)buf, nbyte);
+    return ret;
+}
+
+namespace conet
+{
+ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt);
+}
+
+HOOK_SYS_FUNC_DEF(
+ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
+)
+{
+    HOOK_SYS_FUNC(writev);
+    if (!conet::is_enable_sys_hook()) {
+        return _(writev)(fd, iov, iovcnt);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd, 0);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(writev)(fd, iov, iovcnt);
+    }
+    if (ctx->type == 2) {
+        //disk
+        return disk_writev(ctx, fd, iov, iovcnt);
+    }
+    ssize_t ret = 0;
+    ret = _(writev)(fd, iov, iovcnt);
+    if (ret >=0) {
+        return ret;
+    }
+
+    if (errno != EAGAIN) return ret;
+
+    int timeout = ctx->snd_timeout;
+    struct pollfd pf = {
+        fd : fd,
+        events:( POLLOUT | POLLERR | POLLHUP )
+    };
+    ret = poll( &pf,1,timeout );
+    if (ret <= 0) {
+        return -1;
+    }
+    ret = _(writev)(fd, iov, iovcnt);
+    return ret;
+}
+
+HOOK_SYS_FUNC_DEF(
+ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
+)
+{
+    HOOK_SYS_FUNC(readv);
+    if (!conet::is_enable_sys_hook()) 
+    {
+        return _(readv)(fd, iov, iovcnt);
+    }
+    fd_ctx_t *ctx = get_fd_ctx(fd, 0);  
+    if (!ctx || (O_NONBLOCK & ctx->user_flag )) 
+    {
+        return _(readv)(fd, iov, iovcnt);
+    }
+    if (ctx->type == 2) {
+        //disk
+        return conet::disk_readv(fd, iov, iovcnt);
+    }
+    int timeout = ctx->rcv_timeout;
+
+    struct pollfd pf = {
+        fd: fd,
+        events: POLLIN | POLLERR | POLLHUP
+    };
+
+    int ret = 0;
+    ret = poll( &pf, 1, timeout );
+    if (ret <= 0) {
+        return -1;
+    }
+
+    ret = _(readv)( fd, iov, iovcnt);
     return ret;
 }
 

@@ -27,21 +27,25 @@ namespace conet
 {
 
 template <typename obj_t>
-class ObjPoll
+class ObjPool
 {
 public:
     typedef obj_t obj_type;
+
     std::queue<obj_type *> m_queue;
+
     Closure<obj_type *, void> * m_alloc_func;
+    obj_type * (*m_alloc_func2)();
 
     explicit
-    ObjPoll()
+    ObjPool()
     {
 
         m_alloc_func = NULL;
+        m_alloc_func2 = NULL; 
     }
 
-    ~ObjPoll() 
+    ~ObjPool() 
     {
         while (!m_queue.empty()) {
             delete m_queue.front();
@@ -58,10 +62,26 @@ public:
         return 0;
     }
 
+    static obj_type *new_obj()
+    {
+        return new obj_type();
+    }
+
+    int init()
+    {
+        m_alloc_func2 = &ObjPool<obj_type>::new_obj;
+        return 0;
+    }
+
     obj_type * alloc() 
     {
-        if (m_queue.empty() && m_alloc_func) {
-            return m_alloc_func->Run();
+        if (m_queue.empty())  {
+            if (m_alloc_func) {
+                return m_alloc_func->Run();
+            } else if (m_alloc_func2) {
+                return m_alloc_func2();
+            }
+            return NULL;
         }
         obj_type * obj = NULL;
         obj = m_queue.front();
