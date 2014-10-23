@@ -553,6 +553,7 @@ struct rpc_pb_cmd_ctx_t
 
 struct rpc_pb_conn_asyc_ctx_t
 {
+    conet::ObjPool<CmdBase> *cmd_base_pool; 
     conn_info_t *conn;
     int fd;
     server_t * server_base;
@@ -572,6 +573,7 @@ struct rpc_pb_conn_asyc_ctx_t
 
 static int proc_rpc_pb_work_co(rpc_pb_conn_asyc_ctx_t *ctx)
 {
+    conet::ObjPool<CmdBase> *cmd_base_pool=ctx->cmd_base_pool; 
     conn_info_t *conn = ctx->conn;
     server_t * server_base= ctx->server_base; 
     rpc_pb_server_t * server = ctx->server;
@@ -618,8 +620,11 @@ static int proc_rpc_pb_work_co(rpc_pb_conn_asyc_ctx_t *ctx)
             *((uint32_t *)p) = htonl(len);
             cmd_base->SerializeToArray(p+4, len);
 
+
+            cmd_base_pool->release(cmd_base);
             ctx->tx_queue.push_back(buf);
             wakeup_head(&ctx->rsp_wait);
+            delete cmd_ctx;
 
         } while(!ctx->cmd_queue.empty()); 
     }
@@ -665,6 +670,9 @@ int write_all(int fd, std::vector<std::string *> const &out_datas)
                 iov[pos].iov_len -= l; 
             }
         } while(wlen < total_len);
+
+        delete iov;
+        delete need_outs;
 
         if (wlen == total_len) return 0;
         return -1;
@@ -712,8 +720,8 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
     PacketStream stream;
     stream.init(fd, max_size);
 
-    conet::ObjPool<CmdBase> cmd_base_pool; 
-    cmd_base_pool.init();
+    conet::ObjPool<CmdBase> *cmd_base_pool=ctx->cmd_base_pool; 
+
 
     int ret = 0;
     while (0 == server_base->to_stop)
@@ -762,7 +770,7 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
             LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
             break;        
         }
-        CmdBase *cmd_base = cmd_base_pool.alloc();
+        CmdBase *cmd_base = cmd_base_pool->alloc();
         if (!cmd_base->ParseFromArray(data, packet_len)) 
         {
             delete cmd_base;
@@ -819,6 +827,9 @@ static int proc_rpc_pb_async(conn_info_t *conn)
     server_t * server_base= conn->server; 
     rpc_pb_server_t * server = (rpc_pb_server_t *) server_base->extend;
 
+    conet::ObjPool<CmdBase> cmd_base_pool; 
+    cmd_base_pool.init();
+
     rpc_pb_conn_asyc_ctx_t a_ctx;
     a_ctx.fd = conn->fd;
     a_ctx.conn = conn;
@@ -830,6 +841,7 @@ static int proc_rpc_pb_async(conn_info_t *conn)
     a_ctx.to_stop = 0;
     a_ctx.w_stop = 0;
     a_ctx.r_stop = 0;
+    a_ctx.cmd_base_pool = &cmd_base_pool;
 
     conet::coroutine_t * r_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_rpc_pb_read_co, &a_ctx);
     conet::resume(r_co);
