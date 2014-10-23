@@ -22,6 +22,7 @@ cc_library(
     name = 'client_base',
     srcs = [
         "src/rpc_pb_client.cpp",
+        "src/rpc_pb_client_duplex.cpp",
     ],
     incs= [ 
         "incl/",
