@@ -17,6 +17,7 @@
  */
 #include <stdlib.h>
 #include "rpc_pb_client_duplex.h"
+#include "thirdparty/glog/logging.h"
 
 namespace conet
 {

@@ -25,6 +25,10 @@
 #include <map>
 #include <sys/epoll.h>
 
+#ifdef USE_VALGRIND
+#include <valgrind/valgrind.h>
+#endif
+
 namespace conet
 {
 
@@ -90,6 +94,10 @@ struct coroutine_t
     list_head exit_notify_queue; // get notify on the co exit;
 
     uint64_t id;
+
+#ifdef USE_VALGRIND
+    int m_vid;
+#endif
 
     std::map<void *, void*> *static_vars;
     std::map<uint64_t, void *> * spec;

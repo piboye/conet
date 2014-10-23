@@ -129,6 +129,11 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->spec = NULL;
     self->pthread_spec = NULL;
     self->id = g_coroutine_next_id++;
+
+#ifdef USE_VALGRIND
+    self->m_vid = VALGRIND_STACK_REGISTER(self->stack, self->stack + stack_size);
+#endif
+
     return 0;
 }
 
@@ -168,7 +173,13 @@ void free_coroutine(coroutine_t *co)
 
     delete co->pthread_spec;
 
+
+    #ifdef USE_VALGRIND
+            VALGRIND_STACK_DEREGISTER(co->m_vid);
+    #endif
+
     free(co->stack);
+
     free(co);
 }
 

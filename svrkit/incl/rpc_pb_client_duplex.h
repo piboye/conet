@@ -34,7 +34,6 @@
 #include "core/incl/timewheel.h"
 
 #include "svrkit/rpc_base_pb.pb.h"
-#include "thirdparty/glog/logging.h"
 
 
 namespace conet 
