@@ -23,6 +23,7 @@
 namespace conet
 {
 
+inline
 uint64_t address_hash(uint64_t addr)
 { 
   return  addr * 2654435761;
@@ -77,7 +78,7 @@ public:
     ~IntMap()  
     {
         if (m_bucket) {
-            delete m_bucket;
+            free(m_bucket);
         }
     }
 
@@ -92,7 +93,8 @@ public:
         }
     }
 
-    size_t size() const {
+    size_t size() const 
+    {
         return m_num;
     }
 
