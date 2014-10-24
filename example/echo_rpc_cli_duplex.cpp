@@ -95,6 +95,7 @@ int main(int argc, char * argv[])
     google::InitGoogleLogging(argv[0]);
 
     if (prepare_data(FLAGS_data_file.c_str())) {
+        LOG(ERROR)<<"read data failed!";
         return 1;
     }
 
