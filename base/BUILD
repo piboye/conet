@@ -20,6 +20,7 @@ cc_library(
         'src/pb2json.cpp',
         'src/pbc.cpp',
         'src/murmurhash3.cpp',
+        'src/random.cpp',
     ],
 
     incs= [ 

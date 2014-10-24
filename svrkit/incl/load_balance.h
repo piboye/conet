@@ -24,15 +24,15 @@
 #include <list>
 #include <string>
 #include <algorithm>
-#include <tr1/unordered_map>
 #include <math.h>
-#include <map>
 
 #include "base/incl/net_tool.h"
 #include "base/incl/time_helper.h"
 #include "base/incl/ip_list.h"
 #include "base/incl/auto_var.h"
 #include "base/incl/time_helper.h"
+
+#include "base/incl/random.h"
 
 
 namespace conet
@@ -67,18 +67,21 @@ public:
 
     std::vector<ip_port_t> m_hosts;
     int m_pos;
+    Rand m_rand;
 
     IpListConf()
     {
         m_pos = 0;
+        m_rand.reseed(rdtscp());
     }
 
     explicit
     IpListConf(char const *src)
     {
+        m_rand.reseed(rdtscp());
         parse_ip_list(src, &m_hosts); 
         if (m_hosts.size() > 0) {
-            m_pos = conet::rdtscp()%m_hosts.size();
+            m_pos = m_rand.rand_u32()%m_hosts.size();
         }
     }
 
@@ -87,7 +90,7 @@ public:
         m_hosts.clear();
         parse_ip_list(src, &m_hosts); 
         if (m_hosts.size() > 0) {
-            m_pos = conet::rdtscp()%m_hosts.size();
+            m_pos = m_rand.rand_u32()%m_hosts.size();
         }
         return 0;
     }
@@ -120,7 +123,7 @@ public:
             return NULL;
         }
 
-        m_pos = (m_pos+1) % m_hosts.size();
+        m_pos = m_rand.rand_u32() % m_hosts.size();
         ip_port_t *host = &m_hosts[m_pos];
         return host;
     }
@@ -182,6 +185,7 @@ public:
         return 0;
     }
 };
+
 }
 
 
