@@ -19,7 +19,7 @@
 #define STR_MAP_H_INCL
 
 #include "list.h"
-#include "bobhash.h"
+#include "murmurhash3.h"
 
 namespace conet
 {
@@ -60,7 +60,7 @@ public:
     ~StrMap()  
     {
         if (m_bucket) {
-            delete m_bucket;
+            free(m_bucket);
         }
     }
 
@@ -81,7 +81,9 @@ public:
 
     int add(StrNode * node)
     {
-        size_t hash  = bob_hash(node->str, node->len, 1234);
+        uint32_t hash  = 0;
+        MurmurHash3_x86_32(node->str, node->len, 3,  &hash);
+
         hlist_head *head = m_bucket + hash%m_bsize;
         hlist_add_head(&node->node, head);
         list_add(&node->link_to, &m_list);
@@ -99,7 +101,9 @@ public:
 
     StrNode * find(char const * str, size_t len)
     {
-        size_t hash  = bob_hash(str, len, 1234);
+        uint32_t hash  = 0;
+        MurmurHash3_x86_32(str, len, 3,  &hash);
+
         hlist_head *head = m_bucket + hash%m_bsize;
         hlist_node *pos = NULL;
         StrNode *node = NULL;

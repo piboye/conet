@@ -27,9 +27,6 @@
 
 #include "base/incl/net_tool.h"
 
-#ifdef USE_VALGRIND
-#include <valgrind/valgrind.h>
-#endif
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
@@ -97,9 +94,6 @@ int main(int argc, char * argv[])
         conet::dispatch();
     }
 
-#ifdef USE_VALGRIND
-    VALGRIND_STACK_DEREGISTER(0);
-#endif
     return 0;
 }
 

@@ -19,6 +19,7 @@ cc_library(
         'src/delay_init.cpp',
         'src/pb2json.cpp',
         'src/pbc.cpp',
+        'src/murmurhash3.cpp',
     ],
 
     incs= [ 
