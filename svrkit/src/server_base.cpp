@@ -156,10 +156,12 @@ int server_main(void *arg)
             server->state = server_t::SERVER_STOPED;
             return -1;
         }
-
+        
         server->listen_fd = listen_fd;
 
     } 
+
+    set_none_block(listen_fd, true);
 
     listen(listen_fd, server->conf.listen_backlog); 
 
