@@ -21,6 +21,8 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <assert.h>
+#include <sys/stat.h>
+
 #include "log.h"
 #include "coroutine_impl.h"
 #include "coroutine.h"
@@ -111,6 +113,21 @@ fd_ctx_t *get_fd_ctx(int fd, int type)
     }
     fd_ctx_t *ctx =   mgr->fds[fd];
     if (NULL == ctx) {
+        struct stat sb;
+        int ret = fstat(fd, &sb);
+        if (ret) return NULL;
+        if (S_ISSOCK(sb.st_mode)) {
+            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
+        }
+        if (S_ISFIFO(sb.st_mode)) {
+            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
+        }
+        if (S_ISCHR(sb.st_mode)) {
+            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
+        }
+        if (S_ISREG(sb.st_mode)) {
+            return alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
+        }
         return NULL;
     }
 

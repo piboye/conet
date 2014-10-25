@@ -159,9 +159,7 @@ int server_main(void *arg)
 
         server->listen_fd = listen_fd;
 
-    } else {
-        conet::alloc_fd_ctx(listen_fd, fd_ctx_t::SOCKET_FD_TYPE);
-    }
+    } 
 
     listen(listen_fd, server->conf.listen_backlog); 
 
