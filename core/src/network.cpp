@@ -114,13 +114,7 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         // set reachable events
         uint32_t mask = fds[pos].events;
         uint32_t revents = (mask & events);
-        if (revents) {
-            /*
-            CONET_LOG(DEBUG, "fd:%d, need evets:%d, events:%d, mask:%u, revents:%u", \
-                fd_ctx->fd,
-                fds[pos].events,
-                events, mask, revents);
-            */
+        if (revents && dispatch) {
             fds[pos].revents |= revents;
             // add to dispatch
             list_del_init(&poll_ctx->to_dispatch);
@@ -151,7 +145,7 @@ epoll_ctx_t *create_epoll(int event_size);
 
 static uint32_t poll_event2epoll( short events )
 {
-    uint32_t e = 0;
+    uint32_t e = EPOLLET;
     if( events & POLLIN ) 	e |= EPOLLIN;
     if( events & POLLOUT )  e |= EPOLLOUT;
     if( events & POLLHUP ) 	e |= EPOLLHUP;
@@ -201,7 +195,6 @@ void  init_poll_ctx(poll_ctx_t *self,
     for(int i=0; i< (int)nfds; ++i) {
         if( fds[i].fd > -1 ) {
             fds[i].revents = 0;
-            //CONET_LOG(DEBUG, "poll wait fd:%d, events:%u", fds[i].fd, fds[i].events);
             fd_ctx_t *item = get_fd_ctx(fds[i].fd);
             if (item) {
                 incr_ref_fd_ctx(item);
@@ -246,6 +239,10 @@ void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
                 ev.data.ptr = fd_ctx;
                 fd_ctx->wait_events = 0;
                 epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_DEL, self->fds[i].fd,  &ev);
+                //fd_ctx->wait_events = EPOLLERR;
+            } else {
+                //timeout but other coroutine poll on here
+                fd_notify_events_to_poll(fd_ctx, 0, NULL, epoll_ctx->m_epoll_fd);
             }
 
             decr_ref_fd_ctx(fd_ctx);
@@ -259,10 +256,6 @@ void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
     }
 
 }
-
-
-
-
 
 int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
 {
@@ -322,7 +315,7 @@ int proc_netevent(int timeout)
 
 int task_proc(void *arg)
 {
-    return proc_netevent((epoll_ctx_t *) arg, 1);
+    return proc_netevent((epoll_ctx_t *) arg, -1);
 }
 
 epoll_ctx_t *create_epoll(int event_size)

@@ -131,7 +131,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->id = g_coroutine_next_id++;
 
 #ifdef USE_VALGRIND
-    self->m_vid = VALGRIND_STACK_REGISTER(self->stack, self->stack + stack_size);
+    self->m_vid = VALGRIND_STACK_REGISTER(self->stack, (char *)self->stack + stack_size);
 #endif
 
     return 0;

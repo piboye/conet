@@ -1,10 +1,10 @@
 #ifndef __CONET_COROUTINE_H_INC__
 #define __CONET_COROUTINE_H_INC__
 #include <stdlib.h>
+#include <stdint.h>
 #include <poll.h>
 #include "base/incl/list.h"
 #include "gc.h"
-#include "timewheel.h"
 #include "base/incl/closure.h"
 
 namespace conet

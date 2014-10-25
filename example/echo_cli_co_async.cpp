@@ -124,7 +124,6 @@ int proc_send(void *arg)
     conet::enable_sys_hook();
     ::task_t *task = (::task_t *)(arg);
 
-    int ret = 0;
     int fd = 0;
     fd = conet::connect_to(task->ip.c_str(), task->port);
     conet::set_none_block(fd, false);
@@ -157,7 +156,6 @@ int proc_send(void *arg)
 int prepare_data(char const *file)
 {
     char *line= NULL;
-    size_t len = 0;
     char rbuff[1024];
     FILE *fp = fopen(file, "r");
     if (!fp) {

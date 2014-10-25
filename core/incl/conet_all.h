@@ -19,7 +19,6 @@
 #define __CONET_ALL_H__
 
 #include "coroutine.h"
-#include "timewheel.h"
 #include "network_hook.h"
 #include "pthread_hook.h"
 #include "dispatch.h"

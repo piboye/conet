@@ -25,6 +25,7 @@
 #include "glog/logging.h"
 
 #include "base/incl/net_tool.h"
+#include "core/incl/fd_ctx.h"
 
 DEFINE_int32(listen_backlog, 1000, "default listen backlog");
 DEFINE_int32(max_conn_num, 10000, "default max conn num");
@@ -122,6 +123,7 @@ int init_server(server_t *server, const char *ip, int port)
     server->conf.max_packet_size = FLAGS_max_packet_size;
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
+    server->listen_fd = -1;
     return 0;
 }
 
@@ -144,18 +146,28 @@ int server_main(void *arg)
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
     server->state = server_t::SERVER_RUNNING;
-    int listen_fd = create_tcp_socket(server->port, server->ip.c_str(), true);
+
+    int listen_fd = server->listen_fd; 
     if (listen_fd <0) 
     {
-        server->state = server_t::SERVER_STOPED;
-        return -1;
+        listen_fd = create_tcp_socket(server->port, server->ip.c_str(), true);
+        if (listen_fd <0) 
+        {
+            server->state = server_t::SERVER_STOPED;
+            return -1;
+        }
+
+        server->listen_fd = listen_fd;
+
+    } else {
+        conet::alloc_fd_ctx(listen_fd, fd_ctx_t::SOCKET_FD_TYPE);
     }
 
     listen(listen_fd, server->conf.listen_backlog); 
 
-    server->listen_fd = listen_fd;
     int waits = 5; // 5 seconds;
     setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+
     int ret = 0;
     while (0==server->to_stop) {
         while (server->data.cur_conn_num >= server->conf.max_conn_num) {

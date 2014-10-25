@@ -26,6 +26,9 @@
 #include "thirdparty/gflags/gflags.h"
 #include "base/incl/ip_list.h"
 #include "base/incl/delay_init.h"
+#include "base/incl/net_tool.h"
+#include <linux/netdevice.h>
+
 #include <signal.h>
 #include <malloc.h>
 
@@ -35,6 +38,7 @@ DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 DEFINE_string(server_name, "", "server name");
 DEFINE_bool(async_server, false, "async server");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
+DEFINE_int32(thread_num, 1, "server thread num");
 
 namespace conet
 {
@@ -57,10 +61,7 @@ std::string g_rpc_server_name;
 
 using namespace conet;
 
-static rpc_pb_server_t g_server;
-
 static int g_exit_flag = 0;
-static int g_exit_finsished = 0;
 
 static
 void sig_exit(int sig)
@@ -68,20 +69,97 @@ void sig_exit(int sig)
    g_exit_flag=1; 
 }
 
-static int proc_server_exit(void *)
+
+struct Task
 {
-    int ret = 0;
-    ret = conet::stop_server(&g_server, FLAGS_server_stop_wait_seconds*1000);
-    g_exit_finsished = 1;
-    return 0;
-}
+    public:    
+        pthread_t tid;
+        int exit_finsished;
+        std::vector<ip_port_t> ip_list, http_ip_list;
+        std::string http_address;
+
+        conet::rpc_pb_server_t server;    
+        int http_listen_fd;
+        int rpc_listen_fd;
+
+        Task()
+        {
+            exit_finsished = 0;
+            http_listen_fd = -1;
+            rpc_listen_fd = -1;
+        }
+
+        static int proc_server_exit(void *arg)
+        {
+            Task *self = (Task *)(arg);
+            int ret = 0;
+            ret = conet::stop_server(&self->server, FLAGS_server_stop_wait_seconds*1000);
+            self->exit_finsished = 1;
+            return 0;
+        }
+
+        static void *proc(void *arg)
+        {
+            int ret = 0;
+
+            Task *self = (Task *)arg;
+
+
+            if (self->http_ip_list.empty()) {
+                ret = init_server(&self->server, g_rpc_server_name.c_str(), 
+                        self->ip_list[0].ip.c_str(), self->ip_list[0].port);
+            } else {
+                ret = init_server(&self->server, g_rpc_server_name.c_str(), 
+                        self->ip_list[0].ip.c_str(), self->ip_list[0].port, true, 
+                        self->http_ip_list[0].ip.c_str(), self->http_ip_list[0].port);
+            }
+
+            if (ret) {
+                fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_address.c_str(), ret);
+                return 0;
+            }
+
+            fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), self->http_address.c_str());
+
+
+            if (FLAGS_async_server) {
+                self->server.async_flag = 1;
+            }
+
+            if (self->http_listen_fd >=0) {
+                self->server.http_server->server->listen_fd = self->http_listen_fd;
+            }
+
+            if (self->rpc_listen_fd >=0) {
+                self->server.server->listen_fd = self->rpc_listen_fd;
+            }
+
+            start_server(&self->server);
+
+            coroutine_t *exit_co = NULL;
+            while (!self->exit_finsished) {
+                if (g_exit_flag && exit_co == NULL) {
+                    exit_co = conet::alloc_coroutine(proc_server_exit, self);
+                    conet::resume(exit_co);
+                }
+                conet::dispatch();
+            }
+
+            if (exit_co) {
+                free_coroutine(exit_co);
+            }
+            return NULL;
+        }
+};
 
 int main(int argc, char * argv[])
 {
+    int ret = 0;
+
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap 
     mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk 
 
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    ret = google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
     {
@@ -98,7 +176,6 @@ int main(int argc, char * argv[])
         }
     }
 
-    int ret = 0;
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_address, &ip_list);
     if (ip_list.empty()) {
@@ -109,12 +186,11 @@ int main(int argc, char * argv[])
     std::string http_address;
     std::vector<ip_port_t> http_ip_list;
     if (FLAGS_http_server_address.size() > 0) {
-        parse_ip_list(FLAGS_http_server_address, &http_ip_list);
         http_address = FLAGS_http_server_address;
+        parse_ip_list(http_address, &http_ip_list);
     } else {
         http_address = FLAGS_server_address;
     }
-
 
     if (g_rpc_server_name.empty()) {
         g_rpc_server_name = FLAGS_server_name;
@@ -127,40 +203,61 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (http_ip_list.empty()) {
-        ret = init_server(&g_server, g_rpc_server_name.c_str(), ip_list[0].ip.c_str(), ip_list[0].port);
-    } else {
-        ret = init_server(&g_server, g_rpc_server_name.c_str(), ip_list[0].ip.c_str(), ip_list[0].port, true, 
-                          http_ip_list[0].ip.c_str(), http_ip_list[0].port);
-    }
-
-    if (ret) {
-        fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_address.c_str(), ret);
-        return 1;
-    }
-
-    fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), http_address.c_str());
-
-
     signal(SIGINT, sig_exit);
 
-    if (FLAGS_async_server) {
-        g_server.async_flag = 1;
-    }
-    start_server(&g_server);
-
-    coroutine_t *exit_co = NULL;
-    while (!g_exit_finsished) {
-        if (g_exit_flag && exit_co == NULL) {
-            exit_co = conet::alloc_coroutine(proc_server_exit, NULL);
-            conet::resume(exit_co);
+    if (FLAGS_thread_num <= 1) {
+        Task task;
+        task.ip_list = ip_list;
+        task.http_ip_list = http_ip_list;
+        task.http_address = http_address;
+        task.proc(&task);
+    } else {
+#if HAVE_SO_REUSEPORT
+        int num = FLAGS_thread_num;
+        Task *tasks = new Task[num];
+        for (int i=0; i< num; ++i)
+        {
+            tasks[i].http_address = http_address;
+            tasks[i].http_ip_list = http_ip_list;
+            tasks[i].ip_list = ip_list;
+            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
         }
-        conet::dispatch();
-    }
+#else
 
-    if (exit_co) {
-        free_coroutine(exit_co);
+        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
+        int http_listen_fd = rpc_listen_fd;
+        if (!http_ip_list.empty()) {
+            http_listen_fd = conet::create_tcp_socket(http_ip_list[0].port, http_ip_list[0].ip.c_str(), true);
+        }
+
+        int num = FLAGS_thread_num;
+        Task *tasks = new Task[num];
+        for (int i=0; i< num; ++i)
+        {
+            tasks[i].http_address = http_address;
+            tasks[i].http_ip_list = http_ip_list;
+            tasks[i].ip_list = ip_list;
+
+            tasks[i].rpc_listen_fd = rpc_listen_fd;
+            tasks[i].rpc_listen_fd = dup(rpc_listen_fd);
+            if (http_listen_fd != rpc_listen_fd) {
+                tasks[i].http_listen_fd = dup(http_listen_fd);
+            }
+
+            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
+        }
+#endif
+
+        for (int i=0; i< num; ++i)
+        {
+            pthread_join(tasks[i].tid, NULL);
+        }
+
+        delete[] tasks;
     }
+    
+
+
 
     for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 
     {

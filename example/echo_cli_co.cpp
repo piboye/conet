@@ -42,7 +42,7 @@ int g_finish_task_num=0;
 int proc_send(void *arg)
 {
     conet::enable_sys_hook();
-    task_t *task = (task_t *)(arg);
+    ::task_t *task = (::task_t *)(arg);
 
     int ret = 0;
     int fd = 0;
@@ -69,8 +69,7 @@ int proc_send(void *arg)
     return 0;
 }
 
-extern
-task_t *tasks = NULL;
+::task_t *tasks = NULL;
 
 int main(int argc, char * argv[])
 {
@@ -85,7 +84,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    tasks = new task_t[num];
+    tasks = new ::task_t[num];
     for (int i=0; i<num; ++i) {
         tasks[i].ip = ip_list[0].ip;
         tasks[i].port = ip_list[0].port;

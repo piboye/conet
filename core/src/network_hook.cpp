@@ -107,27 +107,35 @@ HOOK_SYS_FUNC_DEF(
         return _(accept4)(fd, addr, len, flags);
     }
 
+    int client_fd = -1;
     fd_ctx_t *lp = get_fd_ctx( fd );
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
     {
-        return  _(accept4)(fd, addr, len, flags);
+        client_fd =   _(accept4)(fd, addr, len, flags);
+    } 
+    else 
+    {
+
+        //block call
+
+        struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
+        int ret = poll( &pf,1, -1);
+        if (ret == 0) {
+            errno = ETIMEDOUT;
+            return -1;
+        }
+        if (ret <0) {
+            return -1;
+        }
+        client_fd =  _(accept4)(fd, addr, len, flags);
     }
-
-    //block call
-
-    struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
-    int ret = poll( &pf,1, -1);
-    if (ret == 0) {
-        errno = ETIMEDOUT;
-        return -1;
+    if (client_fd >=0) {
+        fd_ctx_t *ctx = alloc_fd_ctx(client_fd);
+        ctx->domain = lp->domain;
     }
-    if (ret <0) {
-        return -1;
-    }
+    return client_fd;
 
-
-    return _(accept4)(fd, addr, len, flags);
 }
 
 HOOK_SYS_FUNC_DEF(
@@ -330,6 +338,7 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
     }
     if (ctx->type == 2) {
         //disk
+        //return _(writev)(fd, iov, iovcnt);
         return disk_writev(ctx, fd, iov, iovcnt);
     }
     ssize_t ret = 0;
@@ -369,6 +378,7 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
     }
     if (ctx->type == 2) {
         //disk
+        //return _(readv)(fd, iov, iovcnt);
         return conet::disk_readv(fd, iov, iovcnt);
     }
     int timeout = ctx->rcv_timeout;

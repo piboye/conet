@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -41,11 +41,10 @@ namespace conet
  epoll_ctx_t * get_epoll_ctx();
 }
 
+static __thread timewheel_t * g_tw = NULL;
+
 using namespace conet;
 
-static int g_time_update_flag = 0;
-
-static struct timeval g_pre_te;
 
 DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
 
@@ -53,16 +52,16 @@ DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
 HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
 {
     HOOK_SYS_FUNC(gettimeofday);
-    if (tz != NULL) return _(gettimeofday)(tv, tz);
+    if (tz != NULL || NULL == g_tw) return _(gettimeofday)(tv, tz);
 
     int ret = 0;
-
-    if (g_time_update_flag == 0) {
-         ret = _(gettimeofday)(&g_pre_te, NULL);
+    if (g_tw->update_timeofday_flag == 0) {
+         ret = _(gettimeofday)(tv, NULL);
+         return ret;
     }
 
-    tv->tv_sec = g_pre_te.tv_sec;
-    tv->tv_usec = g_pre_te.tv_usec;
+    tv->tv_sec = g_tw->prev_tv.tv_sec;
+    tv->tv_usec = g_tw->prev_tv.tv_usec;
     return ret;
 }
 
@@ -79,10 +78,13 @@ void init_timeout_handle(timeout_handle_t * self,
 
 static 
 inline
-uint64_t get_cur_ms()
+uint64_t get_cur_ms(timewheel_t *tw)
 {
-    if (g_time_update_flag == 0) return get_sys_ms();
-    return g_pre_te.tv_sec*1000UL + g_pre_te.tv_usec/1000;
+    if (tw && tw->co && tw->update_timeofday_flag)
+    {
+        return tw->prev_tv.tv_sec*1000UL + tw->prev_tv.tv_usec/1000;
+    }
+    return get_sys_ms();
 }
 
 
@@ -97,12 +99,15 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->slot_num = slot_num;
     self->task_num = 0;
 
-    uint64_t cur_ms = get_cur_ms();
+    uint64_t cur_ms = get_sys_ms();
     self->pos = cur_ms % slot_num;
     self->prev_ms = cur_ms;
     self->stop = 0;
     self->co = NULL;
     self->timerfd = -1;
+    self->update_timeofday_flag = 0;
+    self->prev_tv.tv_sec = 0;
+    self->prev_tv.tv_usec = 0;
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -157,55 +162,43 @@ int timewheel_task(void *arg)
     coroutine_t * co_self = CO_SELF();
 
     fd_ctx_t *fd_ctx = NULL;
-    fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
+    //fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
+    fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::SOCKET_FD_TYPE);
     
     tw->timerfd = timerfd;
 
     uint64_t cnt = 0;
 
-    int update_flag = 0;
-    if (__sync_bool_compare_and_swap(&g_time_update_flag, 0, 1)) 
-    {
-        update_flag = 1;    
-        ret = _(gettimeofday)(&g_pre_te, NULL);
-    }
+    ret = _(gettimeofday)(&tw->prev_tv, NULL);
+    tw->update_timeofday_flag = 1;
 
-    epoll_event ev;
-    ev.events = EPOLLIN| EPOLLERR| EPOLLHUP;
+    //epoll_event ev;
+    //ev.events = EPOLLIN| EPOLLERR| EPOLLHUP | EPOLLET;
 
-    ev.data.ptr = fd_ctx;
-    epoll_ctl(conet::get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_ADD, timerfd,  &ev);
+    //ev.data.ptr = fd_ctx;
+    //epoll_ctl(conet::get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_ADD, timerfd,  &ev);
     while (!tw->stop) {
 
-       fd_ctx->poll_wait_queue.prev = (list_head *)(1);
-       fd_ctx->poll_wait_queue.next = (list_head *)(co_self);
-       conet::yield(NULL, NULL);
+       //fd_ctx->poll_wait_queue.prev = (list_head *)(1);
+       //fd_ctx->poll_wait_queue.next = (list_head *)(co_self);
+       //conet::yield(NULL, NULL);
 
+       struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
+       ret = poll(&pf, 1, -1);
+       
        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
        if (ret != sizeof(cnt)) {
            LOG(ERROR)<<" timewheel read failed";
            continue;
        }
 
-       if (update_flag) {
-            ret = _(gettimeofday)(&g_pre_te, NULL);
-       } 
-       else if (g_time_update_flag == 0) 
-       {
-            if (__sync_bool_compare_and_swap(&g_time_update_flag, 0, 1)) 
-            {
-                update_flag = 1;    
-                ret = _(gettimeofday)(&g_pre_te, NULL);
-            }
-       }
+       ret = _(gettimeofday)(&tw->prev_tv, NULL);
 
-       check_timewheel(tw, get_cur_ms());
+       check_timewheel(tw, get_cur_ms(tw));
     }
-    epoll_ctl(get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_DEL, timerfd,  &ev);
-    if (update_flag) {
-        __sync_bool_compare_and_swap(&g_time_update_flag, 1, 0);
-    }
-    LOG(INFO)<<"timewheel stop"; return 0;
+    //epoll_ctl(get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_DEL, timerfd,  &ev);
+    //LOG(INFO)<<"timewheel stop"; 
+    return 0;
 }
 
 void stop_timewheel(timewheel_t *self)
@@ -253,7 +246,7 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     assert(list_empty(&obj->link_to));
     assert (timeout >=0);
     if (timeout <0) timeout = 0;
-    uint64_t cur_ms = get_cur_ms();
+    uint64_t cur_ms = get_cur_ms(tw);
     uint64_t t = cur_ms + timeout;
     if (t < tw->prev_ms)  t = tw->prev_ms;
     obj->timeout = t;
@@ -283,7 +276,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 {
 
     if (cur_ms == 0 ) {
-        cur_ms = get_cur_ms();
+        cur_ms = get_cur_ms(tw);
     }
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
@@ -291,6 +284,8 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
     int cnt = 0;
 
     int end_pos = 0;
+
+    if (elasp_ms <=0) return 0;
 
     int slot_num = tw->slot_num;
     list_head *slots = tw->slots;
@@ -326,8 +321,6 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
     return cnt;
 }
 
-static
-__thread timewheel_t * g_tw = NULL;
 
 static
 DEF_TLS_GET(g_tw, alloc_timewheel(),  free_timewheel)

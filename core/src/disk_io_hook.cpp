@@ -199,7 +199,6 @@ disk_io_ctx_t * get_disk_ctx()
         fd_ctx_t *ev_ctx = alloc_fd_ctx(evfd, 1);
         ev_ctx->user_flag &= ~O_NONBLOCK;
 
-        //ret = io_setup(g_disk_io_ctx->num, &g_disk_io_ctx->ctx); 
         ret = io_queue_init(g_disk_io_ctx->num, &g_disk_io_ctx->ctx); 
         if (ret) {
             close(evfd);

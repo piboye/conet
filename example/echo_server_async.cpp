@@ -121,7 +121,6 @@ int proc_echo(conn_info_t *conn)
     server_t * server= conn->server;
     int size = server->conf.max_packet_size;
 
-    int ret = 0;
     ctx_t ctx;
     ctx.rfd = conn->fd;
     ctx.wfd = conn->fd;

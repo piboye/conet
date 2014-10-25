@@ -57,14 +57,16 @@ struct timewheel_t
     void * co;
     int stop;
     int timerfd;
+    int update_timeofday_flag;
+    struct timeval prev_tv;
     list_head *slots;
 };
 
 void init_timewheel(timewheel_t *self, int solt_num = 60*1000);
 void fini_timewheel(timewheel_t *self);
 
-void free_timewheel(timewheel_t *tw);
-timewheel_t *alloc_timewheel();
+//void free_timewheel(timewheel_t *tw);
+//timewheel_t *alloc_timewheel();
 
 void cancel_timeout(timeout_handle_t *self);
 void stop_timewheel(timewheel_t *self);

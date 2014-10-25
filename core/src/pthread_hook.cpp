@@ -112,19 +112,6 @@ pthread_mutex_t *
     return mutex;
 }
 
-/*
-static
-list_head *tls_get_list_head(list_head * &h)
-{
-    if (NULL == h) {
-        h = new list_head();
-        INIT_LIST_HEAD(h);
-        tls_onexit_add(h, tls_destructor_fun<list_head>);
-    }
-    return h;
-}
-*/
-
 
 namespace {
 enum {
@@ -144,8 +131,8 @@ struct lock_ctx_t
 }
 
 static __thread list_head * g_lock_schedule_queue = NULL;
-static
-list_head *get_lock_schedule_queue();
+
+static list_head *get_lock_schedule_queue();
 
 static __thread conet::task_t *g_lock_dipatch_task = NULL;
 
@@ -387,17 +374,26 @@ int proc_pcond_schedule(void *arg)
     return cnt;
 }
 
-//static std::map<void *, pcond_mgr_t*> g_cond_map;
-//
+
+static conet::IntMap * g_cond_map = NULL;
+static void delete_g_cond_map(int status, void *cond)
+{
+    delete g_cond_map; 
+    g_cond_map = NULL;
+}
+
+// this protected by g_cond_mgr_mutex
 static conet::IntMap * get_cond_map()  
 {
-    static conet::IntMap * cond_map = NULL;
-    if (cond_map == NULL) {
-        cond_map = new conet::IntMap();
-        cond_map->init(1000);
+    if (g_cond_map == NULL) {
+        g_cond_map = new conet::IntMap();
+        g_cond_map->init(1000);
+        on_exit(delete_g_cond_map, g_cond_map);
     }
-    return cond_map;
+    return g_cond_map;
 }
+
+// this protected by g_cond_mgr_mutex
 static pcond_mgr_t * find_cond_map(void *key)
 {
     conet::IntMap::Node * node = get_cond_map()->find((uint64_t)key);
