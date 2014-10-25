@@ -43,7 +43,8 @@ namespace conet
 
 using namespace conet;
 
-static uint64_t g_khz = 0;
+static int g_time_update_flag = 0;
+
 static struct timeval g_pre_te;
 
 DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
@@ -56,8 +57,7 @@ HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
 
     int ret = 0;
 
-    if (g_khz == 0) {
-         g_khz = get_cpu_khz();
+    if (g_time_update_flag == 0) {
          ret = _(gettimeofday)(&g_pre_te, NULL);
     }
 
@@ -77,7 +77,13 @@ void init_timeout_handle(timeout_handle_t * self,
     self->interval = 0;
 }
 
-#define get_cur_ms conet::get_sys_ms
+static 
+inline
+uint64_t get_cur_ms()
+{
+    if (g_time_update_flag == 0) return get_sys_ms();
+    return g_pre_te.tv_sec*1000UL + g_pre_te.tv_usec/1000;
+}
 
 
 void init_timewheel(timewheel_t *self, int slot_num)
@@ -154,8 +160,15 @@ int timewheel_task(void *arg)
     fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
     
     tw->timerfd = timerfd;
+
     uint64_t cnt = 0;
-    
+
+    int update_flag = 0;
+    if (__sync_bool_compare_and_swap(&g_time_update_flag, 0, 1)) 
+    {
+        update_flag = 1;    
+        ret = _(gettimeofday)(&g_pre_te, NULL);
+    }
 
     epoll_event ev;
     ev.events = EPOLLIN| EPOLLERR| EPOLLHUP;
@@ -163,25 +176,6 @@ int timewheel_task(void *arg)
     ev.data.ptr = fd_ctx;
     epoll_ctl(conet::get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_ADD, timerfd,  &ev);
     while (!tw->stop) {
-       /*
-       struct pollfd pf = {
-            fd: timerfd,
-            events: POLLIN | POLLERR | POLLHUP
-       };
-       ret = poll(&pf, 1, -1);
-       if (ret == 0) {
-           LOG(ERROR)<<" timewheel poll timeout";
-            break;
-       }
-       if (ret < 0) {
-           LOG(ERROR)<<" timewheel poll failed";
-           break;
-       }
-       if (pf.revents & POLLERR) {
-           LOG(ERROR)<<" timewheel poll failed";
-           break;
-       }
-       */
 
        fd_ctx->poll_wait_queue.prev = (list_head *)(1);
        fd_ctx->poll_wait_queue.next = (list_head *)(co_self);
@@ -193,13 +187,31 @@ int timewheel_task(void *arg)
            continue;
        }
 
-       ret = _(gettimeofday)(&g_pre_te, NULL);
-       //LOG(INFO)<<"timewheel heart";
-       check_timewheel(tw);
+       if (update_flag) {
+            ret = _(gettimeofday)(&g_pre_te, NULL);
+       } 
+       else if (g_time_update_flag == 0) 
+       {
+            if (__sync_bool_compare_and_swap(&g_time_update_flag, 0, 1)) 
+            {
+                update_flag = 1;    
+                ret = _(gettimeofday)(&g_pre_te, NULL);
+            }
+       }
+
+       check_timewheel(tw, get_cur_ms());
     }
     epoll_ctl(get_epoll_ctx()->m_epoll_fd, EPOLL_CTL_DEL, timerfd,  &ev);
-    LOG(INFO)<<"timewheel stop";
-    return 0;
+    if (update_flag) {
+        __sync_bool_compare_and_swap(&g_time_update_flag, 1, 0);
+    }
+    LOG(INFO)<<"timewheel stop"; return 0;
+}
+
+void stop_timewheel(timewheel_t *self)
+{
+    self->stop = 1;
+    conet::wait((coroutine_t *)self->co);
 }
 
 
@@ -207,7 +219,6 @@ timewheel_t *alloc_timewheel()
 {
     timewheel_t *tw = (timewheel_t *) malloc(sizeof(timewheel_t));
     init_timewheel(tw, FLAGS_timewheel_slot_num);
-    //conet::registry_task(&check_timewheel, tw);
     coroutine_t *co = alloc_coroutine(timewheel_task, tw);
     tw->co = co;
     resume(co);
@@ -229,13 +240,11 @@ void free_timewheel(timewheel_t *tw)
 
 
 void cancel_timeout(timeout_handle_t *obj) {
-    //assert(!list_empty(&obj->link_to));
     list_del_init(&obj->link_to);
     timewheel_t * tw = obj->tw;
     if (tw)  {
         --tw->task_num;
     }
-    //CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
     obj->tw = NULL;
 }
 
@@ -255,7 +264,6 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     list_add(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
     obj->interval = interval;
-    //CONET_LOG(INFO, "obj:%p, tw:%p", obj, tw);
     return true;
 }
 
@@ -280,9 +288,6 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
 
-    // this is import, can speed up 30%
-    if (elasp_ms <=0) return 0;
-
     int cnt = 0;
 
     int end_pos = 0;
@@ -298,14 +303,11 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         end_pos = cur_ms % slot_num;
     }
 
-    int pcnt= 0;
     do
     {
-        ++pcnt;
-        list_head *it=NULL, *next=NULL;
-        list_for_each_safe(it, next, slots+pos)
+        timeout_handle_t *t1=NULL, *next=NULL;
+        list_for_each_entry_safe(t1, next, slots+pos, link_to)
         {
-            timeout_handle_t *t1 = container_of(it, timeout_handle_t, link_to);
             if (time_after_eq(cur_ms, t1->timeout)) {
                 cancel_timeout(t1);
                 if (t1->interval) {
@@ -318,7 +320,6 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         if (pos == end_pos) break;
         pos = (pos+1) % slot_num;
     } while(1);
-    //CONET_LOG(DEBUG, "timewheel procc slots:%d", pcnt);
 
     tw->pos = cur_ms % slot_num;;
     tw->prev_ms = cur_ms;

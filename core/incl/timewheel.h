@@ -67,6 +67,7 @@ void free_timewheel(timewheel_t *tw);
 timewheel_t *alloc_timewheel();
 
 void cancel_timeout(timeout_handle_t *self);
+void stop_timewheel(timewheel_t *self);
 
 
 bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval);
