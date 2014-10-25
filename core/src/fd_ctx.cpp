@@ -125,9 +125,12 @@ fd_ctx_t *get_fd_ctx(int fd, int type)
         if (S_ISCHR(sb.st_mode)) {
             return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
         }
+        /*
+        // because FILE read buffer, can't hook
         if (S_ISREG(sb.st_mode)) {
             return alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
         }
+        */
         return NULL;
     }
 
