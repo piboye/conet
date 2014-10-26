@@ -52,7 +52,7 @@ int wait_on(wait_queue_t *q, int ms)
         set_timeout(&w.tm, ms);
      }
 
-     list_add(&w.link, &q->queue);
+     list_add_tail(&w.link, &q->queue);
      ++q->wait_num;
 
      yield(NULL, NULL);

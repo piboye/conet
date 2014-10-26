@@ -43,10 +43,12 @@ void registry_task(task_t *task);
 
 void unregistry_task(task_t *task);
 
+void registry_delay_task(task_t *task);
 
 int proc_tasks(list_head *list);
-int dispatch_one();
-int dispatch(int wait_ms=1 /*ms*/);
+int dispatch();
+
+void delay_back();
 
 }
 

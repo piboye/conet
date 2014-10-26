@@ -27,6 +27,7 @@
 #include <time.h>
 
 #include "network_hook.h"
+#include "dispatch.h"
 #include "hook_helper.h"
 
 using conet::alloc_fd_ctx;
@@ -815,6 +816,15 @@ HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *r
 
     int ms = req->tv_sec *1000+ (req->tv_nsec+999999)/1000000;
 
+    if (ms == 0) {
+        conet::delay_back();
+        if (rem) {
+            rem->tv_sec = 0;
+            rem->tv_nsec = 0;
+        }
+        return 0;
+    } 
+
     int ret = 0;
     ret = conet::co_poll(NULL, 0, ms);
     if (rem) {
@@ -831,6 +841,12 @@ HOOK_SYS_FUNC_DEF(unsigned int, sleep, (unsigned int s))
     {
         return _(sleep)(s);
     }
+
+    if (s == 0) {
+        conet::delay_back();
+        return 0;
+    } 
+
     return conet::co_poll(NULL, 0, s*1000);
 }
 
@@ -842,6 +858,11 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     {
         return _(usleep)(us);
     }
+
+    if (us == 0) {
+        conet::delay_back();
+        return 0;
+    } 
 
     int ms = (us+999)/1000;
     return conet::co_poll(NULL, 0, ms);

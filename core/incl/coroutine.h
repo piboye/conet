@@ -29,7 +29,7 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
 coroutine_t * current_coroutine();
 
-#define CO_SELF() current_coroutine()
+#define CO_SELF() conet::current_coroutine()
 
 void * yield(list_head *wait_to = NULL, void *val=NULL) ;
 

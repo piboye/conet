@@ -20,57 +20,85 @@
 #include "base/incl/tls.h"
 #include "base/incl/time_helper.h"
 #include "thirdparty/gflags/gflags.h"
+#include "coroutine.h"
 
 namespace conet
 {
 
-static __thread list_head * g_tasks = NULL;
-
-void free_task_list(list_head * list)
+struct dispatch_mgr_t
 {
-    list_head *it=NULL, *next = NULL;
-    list_for_each_safe(it, next, list) {
-        task_t * t = container_of(it, task_t, link_to);
-        list_del_init(it);
+    list_head tasks;
+    list_head delay_tasks;
+    void init()
+    {
+        INIT_LIST_HEAD(&tasks);
+        INIT_LIST_HEAD(&delay_tasks);
+    }
+};
+
+static __thread dispatch_mgr_t * g_dispatch_mgr;
+
+void free_dispach_mgr(dispatch_mgr_t * mgr)
+{
+    task_t *t=NULL, *n = NULL;
+    list_for_each_entry_safe(t, n, &mgr->tasks, link_to) {
+        list_del_init(&t->link_to);
         if (t->auto_del) {
             free(t);
         }
     }
-    free(list);
+
+    list_for_each_entry_safe(t, n, &mgr->delay_tasks, link_to) {
+        list_del_init(&t->link_to);
+        if (t->auto_del) {
+            free(t);
+        }
+    }
+    
+    free(mgr);
 }
 
-list_head *alloc_task_list()
+dispatch_mgr_t *alloc_dispatch_mgr()
 {
-    list_head *n = (list_head *)malloc(sizeof(list_head));
-    INIT_LIST_HEAD(n);
-    return n;
+    dispatch_mgr_t *mgr = (dispatch_mgr_t *)malloc(sizeof(dispatch_mgr_t));
+    mgr->init();
+    return mgr;
 }
 
-DEF_TLS_GET(g_tasks, alloc_task_list(), free_task_list)
+DEF_TLS_GET(g_dispatch_mgr, alloc_dispatch_mgr(), free_dispach_mgr)
 
-int proc_tasks(list_head *list)
+int proc_tasks(dispatch_mgr_t *mgr)
 {
     int num = 0;
-    list_head *it=NULL, *next = NULL;
-    list_for_each_safe(it, next, list) {
-        task_t * t = container_of(it, task_t, link_to);
+    task_t *t=NULL, *n = NULL;
+    list_for_each_entry_safe(t, n, &mgr->tasks, link_to) {
         int ret = t->proc(t->arg);
         if(ret >0) num+=ret;
     }
+
+    list_head delay_list;
+    { // swap delay list;
+        INIT_LIST_HEAD(&delay_list);
+        list_add(&delay_list, &mgr->delay_tasks);
+        list_del_init(&mgr->delay_tasks);
+    }
+
+    list_for_each_entry_safe(t, n, &delay_list, link_to) {
+        list_del_init(&t->link_to);
+        int ret = t->proc(t->arg);
+        if(ret >0) num+=ret;
+        if (t->auto_del) {
+            free(t);
+        }
+    }
+
     return num;
 }
 
 
-int proc_netevent(int timeout);
-
-int dispatch(int wait_ms)
+int dispatch()
 {
-    return proc_tasks(tls_get(g_tasks));
-}
-
-int dispatch_one()
-{
-    return proc_tasks(tls_get(g_tasks));
+    return proc_tasks(tls_get(g_dispatch_mgr));
 }
 
 void registry_task(list_head *list, task_t *task)
@@ -80,7 +108,7 @@ void registry_task(list_head *list, task_t *task)
 
 void registry_task(task_t *task)
 {
-    list_add_tail(&task->link_to, tls_get(g_tasks));
+    list_add_tail(&task->link_to, &tls_get(g_dispatch_mgr)->tasks);
 }
 
 void unregistry_task(task_t *task)
@@ -106,7 +134,34 @@ void registry_task(list_head *list, task_proc_fun_t proc, void *arg)
 
 void registry_task(task_proc_fun_t proc, void *arg)
 {
-    registry_task(tls_get(g_tasks), proc, arg);
+    registry_task(&tls_get(g_dispatch_mgr)->tasks, proc, arg);
+}
+
+void registry_delay_task(task_t *task)
+{
+    list_add_tail(&task->link_to, &tls_get(g_dispatch_mgr)->delay_tasks);
+}
+
+struct delay_back_t
+{
+    task_t task;
+    coroutine_t *co;
+};
+
+int proc_delay_back(void *arg)
+{
+    delay_back_t * self = (delay_back_t *)(arg);
+    conet::resume(self->co);
+    return 0;
+}
+
+void delay_back()
+{
+    delay_back_t t;
+    init_task(&t.task, &proc_delay_back, &t);
+    t.co = CO_SELF();
+    registry_delay_task(&t.task);
+    conet::yield();
 }
 
 }

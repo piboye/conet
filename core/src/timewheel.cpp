@@ -254,7 +254,7 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     ++tw->task_num;
 
     int pos = obj->timeout % tw->slot_num;
-    list_add(&obj->link_to, &tw->slots[pos]);
+    list_add_tail(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
     obj->interval = interval;
     return true;
