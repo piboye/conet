@@ -157,6 +157,10 @@ fd_ctx_t *alloc_fd_ctx(int fd, int type)
     }
 
     fd_ctx_t * d = mgr->fds[fd];
+    if (d) {
+        decr_ref_fd_ctx(d);
+        d = NULL;
+    }
     if (NULL == d)
     {
         HOOK_SYS_FUNC(fcntl);
@@ -169,7 +173,10 @@ fd_ctx_t *alloc_fd_ctx(int fd, int type)
         d->snd_timeout = 1000;
         int flags = 0;
         flags = _(fcntl)(fd, F_GETFL, 0);
-        d->user_flag = flags;
+        //d->user_flag = flags;
+        
+        //default is block 
+        d->user_flag = 0;
         d->wait_events = 0;
 
         // 设置 none block, 方便hook 系统调用

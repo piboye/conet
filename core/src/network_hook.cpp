@@ -133,6 +133,7 @@ HOOK_SYS_FUNC_DEF(
     if (client_fd >=0) {
         fd_ctx_t *ctx = alloc_fd_ctx(client_fd);
         ctx->domain = lp->domain;
+        ctx->user_flag = flags;
     }
     return client_fd;
 

@@ -159,12 +159,12 @@ int timewheel_task(void *arg)
         return -3;
     }
 
-    coroutine_t * co_self = CO_SELF();
+    //coroutine_t * co_self = CO_SELF();
 
     fd_ctx_t *fd_ctx = NULL;
     //fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
     fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::SOCKET_FD_TYPE);
-    
+
     tw->timerfd = timerfd;
 
     uint64_t cnt = 0;
