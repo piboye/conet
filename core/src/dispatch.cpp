@@ -76,6 +76,10 @@ int proc_tasks(dispatch_mgr_t *mgr)
         if(ret >0) num+=ret;
     }
 
+    if (list_empty(&mgr->delay_tasks)) {
+        return num;
+    }
+
     list_head delay_list;
     { // swap delay list;
         INIT_LIST_HEAD(&delay_list);

@@ -764,7 +764,7 @@ HOOK_SYS_FUNC_DEF(
     }
     case F_GETOWN:
     {
-        ret = _(fcntl)( fd,cmd );
+        ret = _(fcntl)( fd, cmd);
         break;
     }
     case F_SETOWN:

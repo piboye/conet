@@ -22,6 +22,7 @@
 #include <sys/syscall.h>
 #include <assert.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 #include "hook_helper.h"
 #include "timewheel.h"
@@ -164,6 +165,7 @@ int timewheel_task(void *arg)
     fd_ctx_t *fd_ctx = NULL;
     //fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::TIMER_FD_TYPE);
     fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::SOCKET_FD_TYPE);
+    fd_ctx->user_flag |= O_NONBLOCK;
 
     tw->timerfd = timerfd;
 
@@ -277,6 +279,12 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 
     if (cur_ms == 0 ) {
         cur_ms = get_cur_ms(tw);
+    }
+
+    if (tw->task_num <=0) {
+        tw->pos = cur_ms % tw->slot_num;;
+        tw->prev_ms = cur_ms;
+        return 0;
     }
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
