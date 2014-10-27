@@ -20,6 +20,7 @@
 #define OBJ_POOL_H_INC
 
 #include "lifo.h"
+#include "fifo.h"
 
 namespace conet
 {
@@ -31,7 +32,7 @@ public:
     typedef obj_t obj_type;
 
 
-    Lifo m_queue;
+    Fifo m_queue;
 
     obj_type * (*m_alloc_func)(void *);
     void * m_alloc_arg;
@@ -45,15 +46,19 @@ public:
         m_alloc_func = NULL;
         m_alloc_arg = NULL; 
         m_alloc_func2 = NULL;
+        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
+    }
+
+    static
+    int delete_obj_help(void *arg, void *obj)
+    {
+        obj_type *v = (obj_type *)(obj);
+        delete v;
+        return 0;
     }
 
     ~ObjPool() 
     {
-        obj_type *v = NULL;
-        while ((v = (obj_type *)m_queue.pop()))
-        {
-            delete v;
-        }
     }
 
     int init(obj_type * (*alloc_func)(void *), void *arg=NULL)

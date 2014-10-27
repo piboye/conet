@@ -155,6 +155,7 @@ struct Task
 int main(int argc, char * argv[])
 {
     int ret = 0;
+    signal(SIGINT, sig_exit);
 
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap 
     mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk 
@@ -203,7 +204,6 @@ int main(int argc, char * argv[])
         }
     }
 
-    signal(SIGINT, sig_exit);
 
     if (FLAGS_thread_num <= 1) {
         Task task;

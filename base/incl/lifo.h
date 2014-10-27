@@ -18,7 +18,6 @@
 #ifndef __CONET_LIFO_H__
 #define __CONET_LIFO_H__
 
-#include "list.h"
 namespace conet
 {
 
@@ -65,7 +64,17 @@ namespace conet
         lifo_t used_list;
         lifo_t free_list;
 
+        int (*obj_fini_func)(void *, void *);
+        void * obj_fini_arg;
+
+
         typedef lifo_t::node_t node_type;
+
+        Lifo()
+        {
+           obj_fini_func = NULL; 
+           obj_fini_arg = NULL;
+        }
 
         void push(void *v)
         {
@@ -77,7 +86,9 @@ namespace conet
             used_list.push(n);
         }
 
-        bool empty() {
+
+        bool empty() const
+        {
             return used_list.empty();
         }
 
@@ -91,11 +102,21 @@ namespace conet
             return n->value;
         }
 
+        void set_delete_obj_func(int (*fn)(void *arg, void * value), void *arg)
+        {
+            obj_fini_func = fn;
+            obj_fini_arg = arg;
+        }
+
         ~Lifo()
         {
             node_type *n = NULL;
             while( (n = used_list.pop()))
             {
+                if (obj_fini_func)
+                {
+                    obj_fini_func(obj_fini_arg, n->value);
+                }
                 delete n;
             }
             while( (n = free_list.pop()))

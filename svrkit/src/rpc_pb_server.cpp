@@ -242,7 +242,7 @@ int registry_rpc_cmd_http_api(std::string const & method_name, rpc_pb_cmd_t *cmd
         return 0;
 }
 
-static int delete_rpc_pb_cmd_obj(StrMap::node_type *n, void *arg)
+static int delete_rpc_pb_cmd_obj(void *arg, StrMap::node_type *n)
 {
     rpc_pb_cmd_t *cmd = container_of(n, rpc_pb_cmd_t, cmd_map_node);
     if (cmd) {

@@ -47,7 +47,7 @@ public:
 
     typedef Node node_type;
 
-    int (*m_destructor_func)(Node *node, void *arg);
+    int (*m_destructor_func)(void *arg, Node *node);
     void *m_destructor_arg;
 
     hlist_head *m_bucket;     
@@ -72,7 +72,7 @@ public:
             Node *item=NULL, *next = NULL;
             list_for_each_entry_safe(item, next, &m_list, link_to)
             {
-               m_destructor_func(item, m_destructor_arg); 
+               m_destructor_func(m_destructor_arg, item); 
             }
         }
         if (m_bucket) {
@@ -91,7 +91,7 @@ public:
         }
     }
 
-    void set_destructor_func(int (*fini_func)(Node *, void *), void *arg)
+    void set_destructor_func(int (*fini_func)(void *, Node *), void *arg)
     {
         m_destructor_func = fini_func;
         m_destructor_arg = arg;

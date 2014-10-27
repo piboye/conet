@@ -22,9 +22,6 @@
 namespace conet
 {
 
-
-
-
 class IntMap 
     : public HashTableBase<uint64_t, IntMap>
 {

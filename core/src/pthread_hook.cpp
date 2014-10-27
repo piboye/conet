@@ -353,7 +353,7 @@ struct pcond_mgr_t
         this->node.init(key);
    }
 
-   static int fini(conet::AddrMap::Node *n, void *arg)
+   static int fini(void *arg, conet::AddrMap::Node *n)
    {
         pcond_mgr_t *p = container_of(n, pcond_mgr_t, node);
         delete p;

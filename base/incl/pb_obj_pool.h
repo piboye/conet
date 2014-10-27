@@ -61,6 +61,7 @@ public:
         }
     }
 
+
     int init(google::protobuf::Message *pb, int hold=0)
     {
         m_queue.init();
