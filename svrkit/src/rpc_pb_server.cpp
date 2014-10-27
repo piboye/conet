@@ -157,7 +157,7 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
     Json::Value list(Json::arrayValue);  
 
 
-    StrMap::StrNode * pn = NULL;
+    StrMap::node_type * pn = NULL;
     list_for_each_entry(pn, &self->cmd_maps->m_list, link_to)
     {
         rpc_pb_cmd_t *cmd = container_of(pn, rpc_pb_cmd_t, cmd_map_node);
@@ -242,6 +242,15 @@ int registry_rpc_cmd_http_api(std::string const & method_name, rpc_pb_cmd_t *cmd
         return 0;
 }
 
+static int delete_rpc_pb_cmd_obj(StrMap::node_type *n, void *arg)
+{
+    rpc_pb_cmd_t *cmd = container_of(n, rpc_pb_cmd_t, cmd_map_node);
+    if (cmd) {
+        delete cmd;
+    }
+    return 0;
+}
+
 int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
 {
     if (NULL == g_server_cmd_maps) {
@@ -256,6 +265,7 @@ int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
     if (g_server_cmd_maps->find(server_name) == g_server_cmd_maps->end()) {
         maps = new StrMap();
         maps->init(100);
+        maps->set_destructor_func(&delete_rpc_pb_cmd_obj, NULL);
         g_server_cmd_maps->insert(std::make_pair(server_name, maps));
     } else {
         maps = (*g_server_cmd_maps)[server_name];
@@ -275,7 +285,7 @@ int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
 {
     std::string const & method_name = cmd->method_name;
 
-    if (server->cmd_maps->find(method_name.c_str(), method_name.size())) 
+    if (server->cmd_maps->find(ref_str(method_name)))
     //if (server->cmd_maps.find(method_name) != server->cmd_maps.end()) 
     {
         return -1;
@@ -303,7 +313,7 @@ int unregistry_cmd(rpc_pb_server_t *server, std::string const &name)
     server->cmd_maps.erase(it);
     */
 
-    StrMap::StrNode * n = server->cmd_maps->find(name.c_str(), name.size());
+    StrMap::node_type * n = server->cmd_maps->find(ref_str(name));
     if (NULL == n) {
         return -1;
     }
@@ -315,7 +325,7 @@ int unregistry_cmd(rpc_pb_server_t *server, std::string const &name)
 
 rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 {
-    StrMap::StrNode * n = server->cmd_maps->find(name.c_str(), name.size());
+    StrMap::node_type * n = server->cmd_maps->find(ref_str(name));
     if ( NULL == n ) {
         return NULL;
     }

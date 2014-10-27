@@ -27,7 +27,7 @@
 #include "dispatch.h"
 
 #include "base/incl/tls.h"
-#include "base/incl/int_map.h"
+#include "base/incl/addr_map.h"
 
 #define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
@@ -343,14 +343,21 @@ struct pcond_ctx_t
 
 struct pcond_mgr_t
 {
-   conet::IntMap::Node node;
+   conet::AddrMap::Node node;
    list_head wait_list;
 
    explicit 
    pcond_mgr_t(void *key)
    {
         INIT_LIST_HEAD(&this->wait_list);
-        this->node.init((uint64_t)(key));
+        this->node.init(key);
+   }
+
+   static int fini(conet::AddrMap::Node *n, void *arg)
+   {
+        pcond_mgr_t *p = container_of(n, pcond_mgr_t, node);
+        delete p;
+        return 0;
    }
 };
 
@@ -375,7 +382,8 @@ int proc_pcond_schedule(void *arg)
 }
 
 
-static conet::IntMap * g_cond_map = NULL;
+// this protected by g_cond_mgr_mutex
+static conet::AddrMap * g_cond_map = NULL;
 static void delete_g_cond_map(int status, void *cond)
 {
     delete g_cond_map; 
@@ -383,11 +391,12 @@ static void delete_g_cond_map(int status, void *cond)
 }
 
 // this protected by g_cond_mgr_mutex
-static conet::IntMap * get_cond_map()  
+static conet::AddrMap * get_cond_map()  
 {
     if (g_cond_map == NULL) {
-        g_cond_map = new conet::IntMap();
+        g_cond_map = new conet::AddrMap();
         g_cond_map->init(1000);
+        g_cond_map->set_destructor_func(&pcond_mgr_t::fini, NULL);
         on_exit(delete_g_cond_map, g_cond_map);
     }
     return g_cond_map;
@@ -396,7 +405,7 @@ static conet::IntMap * get_cond_map()
 // this protected by g_cond_mgr_mutex
 static pcond_mgr_t * find_cond_map(void *key)
 {
-    conet::IntMap::Node * node = get_cond_map()->find((uint64_t)key);
+    conet::AddrMap::Node * node = get_cond_map()->find(key);
     if (node) {
         return container_of(node, pcond_mgr_t, node);
     }

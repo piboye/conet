@@ -74,19 +74,27 @@ struct rpc_stat_base_t
 
 struct rpc_pb_cmd_t
 {
+   rpc_pb_cmd_t()
+   {
+
+   }
+   ~rpc_pb_cmd_t()
+   {
+       if (req_msg) delete req_msg;
+       if (rsp_msg) delete rsp_msg;
+   }
 
    rpc_pb_callback proc;
 
    void *arg; 
    
    std::string method_name;
-   StrMap::StrNode cmd_map_node;
+   StrMap::node_type cmd_map_node;
 
    google::protobuf::Message * req_msg;
    google::protobuf::Message * rsp_msg;
    PbObjPool m_req_pool; 
    PbObjPool m_rsp_pool; 
-
 
    // stat data
    // [0] => 5s [1] => 1 minute [2] => 5 minute [3] => 1 hour [4] => 1 day
@@ -141,9 +149,10 @@ template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
         int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)
 {
+    int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->method_name = method_name; 
-    cmd->cmd_map_node.init(cmd->method_name.c_str(), cmd->method_name.size());
+    cmd->cmd_map_node.init(ref_str(cmd->method_name));
 
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
@@ -153,7 +162,10 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
 
     cmd->proc = (rpc_pb_callback)(func); 
     cmd->arg = (void *)arg; 
-    conet::registry_cmd(server_name, cmd); 
+    ret = conet::registry_cmd(server_name, cmd); 
+    if (ret)  {
+       delete cmd;
+    }
     return 1; 
 }
 
@@ -161,9 +173,10 @@ template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &server_name, std::string const &method_name,
         int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), T1* arg)
 {
+    int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->method_name = method_name; 
-    cmd->cmd_map_node.init(cmd->method_name.c_str(), cmd->method_name.size());
+    cmd->cmd_map_node.init(conet::ref_str(cmd->method_name));
 
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
@@ -175,7 +188,10 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
     memcpy(&(cmd->proc), &(func), sizeof(void *));
 
     cmd->arg = (void *)arg; 
-    conet::registry_cmd(server_name, cmd); 
+    ret = conet::registry_cmd(server_name, cmd); 
+    if (ret) {
+        delete cmd;
+    }
     return 1; 
 }
 
