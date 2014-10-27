@@ -19,9 +19,7 @@
 #ifndef OBJ_POOL_H_INC
 #define OBJ_POOL_H_INC
 
-#include "closure.h"
-
-#include <queue>
+#include "lifo.h"
 
 namespace conet
 {
@@ -32,9 +30,12 @@ class ObjPool
 public:
     typedef obj_t obj_type;
 
-    std::queue<obj_type *> m_queue;
 
-    Closure<obj_type *, void> * m_alloc_func;
+    Lifo m_queue;
+
+    obj_type * (*m_alloc_func)(void *);
+    void * m_alloc_arg;
+
     obj_type * (*m_alloc_func2)();
 
     explicit
@@ -42,23 +43,29 @@ public:
     {
 
         m_alloc_func = NULL;
-        m_alloc_func2 = NULL; 
+        m_alloc_arg = NULL; 
+        m_alloc_func2 = NULL;
     }
 
     ~ObjPool() 
     {
-        while (!m_queue.empty()) {
-            delete m_queue.front();
-            m_queue.pop();
-        }
-        if (m_alloc_func) {
-            delete m_alloc_func;
+        obj_type *v = NULL;
+        while ((v = (obj_type *)m_queue.pop()))
+        {
+            delete v;
         }
     }
 
-    int init(Closure<obj_type *, void> * alloc_func) 
+    int init(obj_type * (*alloc_func)(void *), void *arg=NULL)
     {
         m_alloc_func = alloc_func;
+        m_alloc_arg = arg;
+        return 0;
+    }
+
+    int init ()
+    {
+        m_alloc_func2 = &new_obj;
         return 0;
     }
 
@@ -67,25 +74,20 @@ public:
         return new obj_type();
     }
 
-    int init()
-    {
-        m_alloc_func2 = &ObjPool<obj_type>::new_obj;
-        return 0;
-    }
 
     obj_type * alloc() 
     {
         if (m_queue.empty())  {
             if (m_alloc_func) {
-                return m_alloc_func->Run();
-            } else if (m_alloc_func2) {
+                return m_alloc_func(m_alloc_arg);
+            } 
+            if (m_alloc_func2) {
                 return m_alloc_func2();
             }
             return NULL;
         }
         obj_type * obj = NULL;
-        obj = m_queue.front();
-        m_queue.pop();
+        obj = (obj_type *)m_queue.pop();
         return obj;
     }
 

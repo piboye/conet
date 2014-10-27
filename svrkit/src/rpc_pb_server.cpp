@@ -16,6 +16,7 @@
  * =====================================================================================
  */
 #include <stdlib.h>
+#include <queue>
 #include "rpc_pb_server.h"
 #include "base/incl/net_tool.h"
 #include "base/incl/auto_var.h"
@@ -67,11 +68,12 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     int ret = 0; 
 
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
-    PbObjPool::node_t *req_node=NULL; 
-    PbObjPool::node_t *rsp_node=NULL; 
+    //PbObjPool::node_t *req_node=NULL; 
+    //PbObjPool::node_t *rsp_node=NULL; 
 
     google::protobuf::Message * req1 = NULL;
-    self->m_req_pool.alloc(&req_node, &req1);
+    //self->m_req_pool.alloc(&req_node, &req1);
+    req1 = alloc_pb_obj_from_pool(self->req_msg);
 
     if (req->method == conet::METHOD_GET) {  
         Json::Value query(Json::objectValue); 
@@ -83,12 +85,14 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
 
     if(ret) { 
         conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
-        self->m_req_pool.release(req_node, req1);
+        //self->m_req_pool.release(req_node, req1);
+        free_pb_obj_to_pool(self->req_msg, req1);
         return -1; 
     } 
     
     google::protobuf::Message * rsp1 =  NULL;
-    self->m_rsp_pool.alloc(&rsp_node, &rsp1);
+    //self->m_rsp_pool.alloc(&rsp_node, &rsp1);
+    rsp1 = alloc_pb_obj_from_pool(self->rsp_msg);
 
     ret = 0; 
     rpc_pb_ctx_t pb_ctx;  
@@ -105,8 +109,10 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     if (ret) { 
         conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
-        self->m_req_pool.release(req_node, req1);
-        self->m_rsp_pool.release(rsp_node, rsp1);
+        //self->m_req_pool.release(req_node, req1);
+        //self->m_rsp_pool.release(rsp_node, rsp1);
+        free_pb_obj_to_pool(self->req_msg, req1);
+        free_pb_obj_to_pool(self->rsp_msg, rsp1);
         return -1; 
     } else {\
         Json::Value root(Json::objectValue); 
@@ -117,8 +123,10 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         conet::response_to(resp, 200, root.toStyledString()); 
     } 
 
-    self->m_req_pool.release(req_node, req1);
-    self->m_rsp_pool.release(rsp_node, rsp1);
+    //self->m_req_pool.release(req_node, req1);
+    //self->m_rsp_pool.release(rsp_node, rsp1);
+    free_pb_obj_to_pool(self->req_msg, req1);
+    free_pb_obj_to_pool(self->rsp_msg, rsp1);
     return 0; 
 } 
 
@@ -166,30 +174,37 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
         std::string *req, std::string *rsp, std::string *errmsg)
 {
-    PbObjPool::node_t *req_node=NULL; 
-    PbObjPool::node_t *rsp_node=NULL; 
+    //PbObjPool::node_t *req_node=NULL; 
+    //PbObjPool::node_t *rsp_node=NULL; 
 
     google::protobuf::Message * req1 = NULL;
-    self->m_req_pool.alloc(&req_node, &req1);
+    //self->m_req_pool.alloc(&req_node, &req1);
+    req1 = alloc_pb_obj_from_pool(self->req_msg);
     //google::protobuf::Message * req1 = self->req_msg->New();
     if(!req1->ParseFromString(*req)) { 
-        self->m_req_pool.release(req_node, req1);
+        //self->m_req_pool.release(req_node, req1);
+        free_pb_obj_to_pool(self->req_msg, req1);
         return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
     } 
  
     google::protobuf::Message * rsp1 = NULL;
-    self->m_rsp_pool.alloc(&rsp_node, &rsp1);
+    //self->m_rsp_pool.alloc(&rsp_node, &rsp1);
     //google::protobuf::Message * rsp1 = self->rsp_msg->New();
+    rsp1 = alloc_pb_obj_from_pool(self->rsp_msg);
     int ret = 0; 
     ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
     if (ret) { 
-        self->m_req_pool.release(req_node, req1);
-        self->m_rsp_pool.release(rsp_node, rsp1);
+        //self->m_req_pool.release(req_node, req1);
+        //self->m_rsp_pool.release(rsp_node, rsp1);
+        free_pb_obj_to_pool(self->req_msg, req1);
+        free_pb_obj_to_pool(self->rsp_msg, rsp1);
         return ret; 
     } 
     rsp1->SerializeToString(rsp); 
-    self->m_req_pool.release(req_node, req1);
-    self->m_rsp_pool.release(rsp_node, rsp1);
+    //self->m_req_pool.release(req_node, req1);
+    //self->m_rsp_pool.release(rsp_node, rsp1);
+    free_pb_obj_to_pool(self->req_msg, req1);
+    free_pb_obj_to_pool(self->rsp_msg, rsp1);
     return ret;
 }
 

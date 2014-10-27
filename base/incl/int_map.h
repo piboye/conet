@@ -61,6 +61,9 @@ public:
         }
     };
 
+    int (*m_destructor_func)(Node *node, void *arg);
+    void *m_destructor_arg;
+
     hlist_head *m_bucket;     
     size_t m_bsize; //bucket size
     size_t m_num;
@@ -73,10 +76,15 @@ public:
         m_bsize =0;
         m_num = 0;
         INIT_LIST_HEAD(&m_list);
+        m_destructor_func = NULL;
+        m_destructor_arg = NULL;
     }
 
     ~IntMap()  
     {
+        if (m_destructor_func) {
+            foreach(m_destructor_func, m_destructor_arg);
+        }
         if (m_bucket) {
             free(m_bucket);
         }
@@ -93,9 +101,28 @@ public:
         }
     }
 
+    void set_destructor_func(int (*fini_func)(Node *, void *), void *arg)
+    {
+        m_destructor_func = fini_func;
+        m_destructor_arg = arg;
+    }
+
     size_t size() const 
     {
         return m_num;
+    }
+
+    int foreach(int (*proc)(Node *, void *arg), void *arg)
+    {
+       int cnt = 0;
+       int ret = 0;
+       Node *item=NULL, *next = NULL;
+       list_for_each_entry_safe(item, next, &m_list, link_to)
+       {
+            ret = proc(item, arg);
+            ++cnt;
+       }
+       return cnt; 
     }
 
     int add(Node * node)

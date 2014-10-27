@@ -99,6 +99,10 @@ public:
 
 };
 
+google::protobuf::Message * alloc_pb_obj_from_pool(google::protobuf::Message *proto);
+
+void free_pb_obj_to_pool(google::protobuf::Message *proto, google::protobuf::Message *obj);
+
 }
 
 #endif /* end of include guard */

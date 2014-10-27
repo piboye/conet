@@ -21,6 +21,7 @@ cc_library(
         'src/pbc.cpp',
         'src/murmurhash3.cpp',
         'src/random.cpp',
+        'src/pb_obj_pool.cpp',
     ],
 
     incs= [ 
