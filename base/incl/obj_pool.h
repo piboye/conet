@@ -20,7 +20,6 @@
 #define OBJ_POOL_H_INC
 
 #include "lifo.h"
-#include "fifo.h"
 
 namespace conet
 {
@@ -32,7 +31,7 @@ public:
     typedef obj_t obj_type;
 
 
-    Fifo m_queue;
+    Lifo m_queue;
 
     obj_type * (*m_alloc_func)(void *);
     void * m_alloc_arg;

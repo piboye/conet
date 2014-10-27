@@ -180,7 +180,6 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx,
     google::protobuf::Message * req1 = NULL;
     //self->m_req_pool.alloc(&req_node, &req1);
     req1 = alloc_pb_obj_from_pool(self->req_msg);
-    //google::protobuf::Message * req1 = self->req_msg->New();
     if(!req1->ParseFromString(*req)) { 
         //self->m_req_pool.release(req_node, req1);
         free_pb_obj_to_pool(self->req_msg, req1);
@@ -196,8 +195,8 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx,
     if (ret) { 
         //self->m_req_pool.release(req_node, req1);
         //self->m_rsp_pool.release(rsp_node, rsp1);
-        free_pb_obj_to_pool(self->req_msg, req1);
-        free_pb_obj_to_pool(self->rsp_msg, rsp1);
+        //free_pb_obj_to_pool(self->req_msg, req1);
+        //free_pb_obj_to_pool(self->rsp_msg, rsp1);
         return ret; 
     } 
     rsp1->SerializeToString(rsp); 

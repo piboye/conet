@@ -100,7 +100,7 @@ cc_library(
     ],
     deps =[
         ":rpc_pb_server",
-        "//thirdparty/perftools:tcmalloc",
+        #"//thirdparty/perftools:tcmalloc",
     ]
 );
 
@@ -111,7 +111,6 @@ cc_test(
     ],
     incs= [ 
         "incl/",
-        "//thirdparty/perftools:tcmalloc",
     ],
     deps =[
         ":rpc_base_pb_proto",
