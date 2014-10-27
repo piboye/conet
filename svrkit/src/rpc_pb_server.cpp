@@ -64,10 +64,15 @@ void clear_server_maps(void)
 
 int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
 { 
-    rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
-
-    google::protobuf::Message * req1 = self->m_req_pool.alloc();
     int ret = 0; 
+
+    rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
+    fifo_lockfree_t::node_t *req_node=NULL; 
+    fifo_lockfree_t::node_t *rsp_node=NULL; 
+
+    google::protobuf::Message * req1 = NULL;
+    self->m_req_pool.alloc(&req_node, &req1);
+
     if (req->method == conet::METHOD_GET) {  
         Json::Value query(Json::objectValue); 
         conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); 
@@ -78,11 +83,12 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
 
     if(ret) { 
         conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
-        self->m_req_pool.release(req1);
+        self->m_req_pool.release(req_node, req1);
         return -1; 
     } 
     
-    google::protobuf::Message * rsp1 = self->m_rsp_pool.alloc();
+    google::protobuf::Message * rsp1 =  NULL;
+    self->m_rsp_pool.alloc(&rsp_node, &rsp1);
 
     ret = 0; 
     rpc_pb_ctx_t pb_ctx;  
@@ -99,8 +105,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     if (ret) { 
         conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
-        self->m_req_pool.release(req1);
-        self->m_rsp_pool.release(rsp1);
+        self->m_req_pool.release(req_node, req1);
+        self->m_rsp_pool.release(rsp_node, rsp1);
         return -1; 
     } else {\
         Json::Value root(Json::objectValue); 
@@ -111,8 +117,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         conet::response_to(resp, 200, root.toStyledString()); 
     } 
 
-    self->m_req_pool.release(req1);
-    self->m_rsp_pool.release(rsp1);
+    self->m_req_pool.release(req_node, req1);
+    self->m_rsp_pool.release(rsp_node, rsp1);
     return 0; 
 } 
 
@@ -160,29 +166,30 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
         std::string *req, std::string *rsp, std::string *errmsg)
 {
-    //google::protobuf::Message * req1 = self->m_req_pool.alloc();
-    google::protobuf::Message * req1 = self->req_msg->New();
+    fifo_lockfree_t::node_t *req_node=NULL; 
+    fifo_lockfree_t::node_t *rsp_node=NULL; 
+
+    google::protobuf::Message * req1 = NULL;
+    self->m_req_pool.alloc(&req_node, &req1);
+    //google::protobuf::Message * req1 = self->req_msg->New();
     if(!req1->ParseFromString(*req)) { 
-        self->m_req_pool.release(req1);
+        self->m_req_pool.release(req_node, req1);
         return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
     } 
  
-    //google::protobuf::Message * rsp1 = self->m_rsp_pool.alloc();
-    google::protobuf::Message * rsp1 = self->rsp_msg->New();
+    google::protobuf::Message * rsp1 = NULL;
+    self->m_rsp_pool.alloc(&rsp_node, &rsp1);
+    //google::protobuf::Message * rsp1 = self->rsp_msg->New();
     int ret = 0; 
     ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
     if (ret) { 
-        //self->m_req_pool.release(req1);
-        //self->m_rsp_pool.release(rsp1);
-        delete req1;
-        delete rsp1;
+        self->m_req_pool.release(req_node, req1);
+        self->m_rsp_pool.release(rsp_node, rsp1);
         return ret; 
     } 
     rsp1->SerializeToString(rsp); 
-    //self->m_req_pool.release(req1);
-    //self->m_rsp_pool.release(rsp1);
-    delete req1;
-    delete rsp1;
+    self->m_req_pool.release(req_node, req1);
+    self->m_rsp_pool.release(rsp_node, rsp1);
     return ret;
 }
 

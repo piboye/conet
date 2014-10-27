@@ -29,6 +29,7 @@
 #include "base/incl/str_map.h"
 #include "base/incl/query_string.h"
 #include "base/incl/pb2json.h"
+#include "base/incl/pb_obj_pool.h"
 
 namespace conet
 {
@@ -83,8 +84,8 @@ struct rpc_pb_cmd_t
 
    google::protobuf::Message * req_msg;
    google::protobuf::Message * rsp_msg;
-   ObjPool<google::protobuf::Message> m_req_pool; 
-   ObjPool<google::protobuf::Message> m_rsp_pool; 
+   PbObjPool m_req_pool; 
+   PbObjPool m_rsp_pool; 
 
 
    // stat data
@@ -147,8 +148,8 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
 
-    cmd->m_req_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->req_msg));
-    cmd->m_rsp_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->rsp_msg));
+    cmd->m_req_pool.init(cmd->req_msg, 0);
+    cmd->m_rsp_pool.init(cmd->rsp_msg, 0);
 
     cmd->proc = (rpc_pb_callback)(func); 
     cmd->arg = (void *)arg; 
@@ -167,8 +168,8 @@ int registry_rpc_pb_cmd(std::string const &server_name, std::string const &metho
     cmd->req_msg = new typeof(R1);
     cmd->rsp_msg = new typeof(R2);
 
-    cmd->m_req_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->req_msg));
-    cmd->m_rsp_pool.init(conet::NewPermanentClosure(pb_obj_new, cmd->rsp_msg));
+    cmd->m_req_pool.init(cmd->req_msg, 0);
+    cmd->m_rsp_pool.init(cmd->rsp_msg, 0);
 
     //cmd->proc = (rpc_pb_callback)(func);  // 这会引起告警， 换成下面的方式就不会, i hate c++ !!!
     memcpy(&(cmd->proc), &(func), sizeof(void *));

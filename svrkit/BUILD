@@ -97,6 +97,7 @@ cc_library(
     ],
     incs= [ 
         "incl/",
+        "//thirdparty/perftools:tcmalloc",
     ],
     deps =[
         ":rpc_pb_server",
