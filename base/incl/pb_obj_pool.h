@@ -20,7 +20,7 @@
 #define __PB_OBJ_POOL_H_INC__
 
 #include "google/protobuf/message.h"
-#include "fifo_lockfree.h"
+#include "lifo_lockfree.h"
 
 namespace conet
 {
@@ -30,8 +30,10 @@ class PbObjPool
 public:
     google::protobuf::Message * m_obj_proto;    
     
-    fifo_lockfree_t m_queue;
+    lifo_lockfree_t m_queue;
     int m_hold_proto_flag;
+
+    typedef lifo_lockfree_t::node_t node_t;
 
     explicit
     PbObjPool()
@@ -42,7 +44,7 @@ public:
 
     ~PbObjPool() 
     {
-        fifo_lockfree_t::node_t *n = NULL;
+        node_t *n = NULL;
         while (1)
         {
             n = m_queue.pop();
@@ -72,9 +74,9 @@ public:
         return 0;
     }
 
-    int alloc(fifo_lockfree_t::node_t **o_node, google::protobuf::Message **o_msg) 
+    int alloc(PbObjPool::node_t **o_node, google::protobuf::Message **o_msg) 
     {
-        fifo_lockfree_t::node_t *n = NULL;
+        node_t *n = NULL;
         n = m_queue.pop();
         if (NULL == n) 
         {
@@ -90,7 +92,7 @@ public:
         return 0;
     }
 
-    void release(fifo_lockfree_t::node_t *node, google::protobuf::Message *value)
+    void release(PbObjPool::node_t *node, google::protobuf::Message *value)
     {
         m_queue.push(node, value);
     }

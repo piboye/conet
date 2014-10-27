@@ -67,8 +67,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     int ret = 0; 
 
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
-    fifo_lockfree_t::node_t *req_node=NULL; 
-    fifo_lockfree_t::node_t *rsp_node=NULL; 
+    PbObjPool::node_t *req_node=NULL; 
+    PbObjPool::node_t *rsp_node=NULL; 
 
     google::protobuf::Message * req1 = NULL;
     self->m_req_pool.alloc(&req_node, &req1);
@@ -166,8 +166,8 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
         std::string *req, std::string *rsp, std::string *errmsg)
 {
-    fifo_lockfree_t::node_t *req_node=NULL; 
-    fifo_lockfree_t::node_t *rsp_node=NULL; 
+    PbObjPool::node_t *req_node=NULL; 
+    PbObjPool::node_t *rsp_node=NULL; 
 
     google::protobuf::Message * req1 = NULL;
     self->m_req_pool.alloc(&req_node, &req1);

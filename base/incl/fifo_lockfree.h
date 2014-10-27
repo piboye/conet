@@ -23,7 +23,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <malloc.h>
-#include <assert.h>
 
 namespace conet 
 {
@@ -31,7 +30,6 @@ namespace conet
 class fifo_lockfree_t 
 {
 public:
-    typedef void * data_type;
 
     struct node_t;
 
@@ -167,6 +165,13 @@ public:
         pointer_t new_pt(nd, tail.tag+1);
         CAS2(&(this->tail_), tail, new_pt);
     } 
+
+    bool empty() const
+    {
+        return ((head_.ptr == tail_.ptr)
+                &&(head_.tag == tail_.tag));
+
+    }
 
 
     node_t * pop() 
