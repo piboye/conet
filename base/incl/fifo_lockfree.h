@@ -63,7 +63,7 @@ public:
 
     struct node_t 
     { 
-        pointer_t next; 
+        volatile pointer_t next; 
         void * value; 
         node_t() 
         {
@@ -78,13 +78,8 @@ public:
             next.tag = 0;
             value = val;
         }
-    } __attribute__ ((aligned (16)));
+    };
 
-
-    pointer_t tail_;
-    pointer_t head_;
-
-    struct node_t init_node_;
 
     static 
     inline
@@ -102,21 +97,44 @@ public:
             return ret;
     }
 
+public:
+    //var members
+    volatile pointer_t tail_;
+    volatile pointer_t head_;
+
+
+public:
+
     fifo_lockfree_t() 
     {
+
     }
 
-    void init() volatile
+    static
+    node_t * alloc_node()
     {
+
         node_t *nd = (node_t *)memalign(16, sizeof(node_t)); 
         nd->reinit(NULL);
+        return nd;
+    }
+
+    static
+    void free_node(node_t *nd) 
+    {
+        free(nd);
+    }
+
+    void init()
+    {
+        node_t *nd = alloc_node();
         head_.ptr = nd;
         head_.tag = 0;
         tail_.ptr = nd;
         tail_.tag = 0;
     }
 
-    void push(node_t *nd, void * val) volatile
+    void push(node_t *nd, void * val) 
     {
         pointer_t tail, next;
         nd->value = val;
@@ -151,7 +169,7 @@ public:
     } 
 
 
-    node_t * pop() volatile
+    node_t * pop() 
     {
 
         pointer_t tail, head, next;

@@ -30,7 +30,7 @@ class PbObjPool
 public:
     google::protobuf::Message * m_obj_proto;    
     
-    volatile fifo_lockfree_t m_queue;
+    fifo_lockfree_t m_queue;
     int m_hold_proto_flag;
 
     explicit
@@ -48,7 +48,7 @@ public:
             n = m_queue.pop();
             if (n) {
                 delete (google::protobuf::Message *)(n->value);
-                free(n);
+                m_queue.free_node(n);
             } else {
                 break;
             }
@@ -78,8 +78,7 @@ public:
         n = m_queue.pop();
         if (NULL == n) 
         {
-            n = (fifo_lockfree_t::node_t *) memalign(16, sizeof(fifo_lockfree_t::node_t));
-            n->reinit();
+            n = m_queue.alloc_node();
         }
 
         if (NULL == n->value) {
