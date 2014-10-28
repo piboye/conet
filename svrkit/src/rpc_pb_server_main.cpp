@@ -259,7 +259,6 @@ int main(int argc, char * argv[])
             tasks[i].http_ip_list = http_ip_list;
             tasks[i].ip_list = ip_list;
 
-            tasks[i].rpc_listen_fd = rpc_listen_fd;
             tasks[i].rpc_listen_fd = dup(rpc_listen_fd);
             if (http_listen_fd != rpc_listen_fd) {
                 tasks[i].http_listen_fd = dup(http_listen_fd);

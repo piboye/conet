@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (),
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include "conet_all.h"
 #include "thirdparty/gflags/gflags.h"
+#include "thirdparty/glog/logging.h"
 
 #include "base/incl/ip_list.h"
 #include "base/incl/net_tool.h"
@@ -35,9 +36,32 @@ struct task_t
     std::string ip;
     int port;
     conet::coroutine_t *co;
+    std::vector<std::string *> *data;
 };
 
 int g_finish_task_num=0;
+
+std::vector<std::string *> g_data;
+int prepare_data(char const *file)
+{
+    char *line= NULL;
+    char rbuff[1024];
+    FILE *fp = fopen(file, "r");
+    if (!fp) {
+        fprintf(stderr, "open file:%s failed!", file); 
+        return -1;
+    }
+    int ret = 0;
+    
+    while(1) {
+        size_t size = 1000;
+        ret = getline(&line, &size, fp);
+        if (ret <= 0) break;
+        g_data.push_back(new std::string(rbuff, ret));
+    }
+
+    return 0;
+}
 
 int proc_send(void *arg)
 {
@@ -46,24 +70,16 @@ int proc_send(void *arg)
 
     int ret = 0;
     int fd = 0;
+    char rbuff[1024];
     fd = conet::connect_to(task->ip.c_str(), task->port);
     conet::set_none_block(fd, false);
-    char *line= NULL;
-    size_t len = 0;
-    char rbuff[1024];
-    FILE *fp = fopen(task->file.c_str(), "r");
-    if (!fp) {
-        fprintf(stderr, "open file:%s failed!", task->file.c_str());
-        ++g_finish_task_num;
-        return -1;
-    }
-    while( (ret = getline(&line, &len, fp)) >= 0) {
-        if (ret == 0) continue;
-        ret = write(fd, line, ret);
+
+    for (int i=0, len = task->data->size(); i<len; ++i) {
+        std::string * send_data = task->data->at(i); 
+        ret = write(fd, send_data->c_str(), send_data->size());
         if (ret <= 0) break;
         ret = read(fd, rbuff, 1024);
         if (ret <=0) break;
-        //write(1, rbuff, ret);
     }
     ++g_finish_task_num;
     return 0;
@@ -84,12 +100,18 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    if (prepare_data(FLAGS_data_file.c_str())) {
+        LOG(ERROR)<<"read data failed!";
+        return 1;
+    }
+
     tasks = new ::task_t[num];
     for (int i=0; i<num; ++i) {
         tasks[i].ip = ip_list[0].ip;
         tasks[i].port = ip_list[0].port;
         tasks[i].file = FLAGS_data_file;
         tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
+        tasks[i].data = &g_data;
         resume(tasks[i].co);
     }
 

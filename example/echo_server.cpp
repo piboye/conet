@@ -23,10 +23,16 @@
 #include "svrkit/incl/server_base.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-
+#include "base/incl/cpu_affinity.h"
+#include "base/incl/delay_init.h"
 #include "base/incl/ip_list.h"
+#include "base/incl/net_tool.h"
 
 using namespace conet;
+DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
+DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
+DEFINE_int32(thread_num, 1, "server thread num");
+DEFINE_string(cpu_set, "", "cpu affinity set");
 
 
 inline
@@ -50,8 +56,61 @@ int proc_echo(conn_info_t *conn)
     //free(buff);
     return 0;
 }
+namespace 
+{
+struct Task
+{
+    public:    
+        pthread_t tid;
+        int exit_finsished;
+        std::vector<ip_port_t> ip_list, http_ip_list;
+        std::string http_address;
 
-DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
+        server_t server;
+        int http_listen_fd;
+        int rpc_listen_fd;
+        int cpu_id;
+
+        Task()
+        {
+            exit_finsished = 0;
+            http_listen_fd = -1;
+            rpc_listen_fd = -1;
+            cpu_id = -1;
+        }
+
+        static int proc_server_exit(void *arg)
+        {
+            Task *self = (Task *)(arg);
+            int ret = 0;
+            ret = conet::stop_server(&self->server, FLAGS_server_stop_wait_seconds*1000);
+            self->exit_finsished = 1;
+            return 0;
+        }
+
+        static void *proc(void *arg)
+        {
+            int ret = 0;
+
+            Task *self = (Task *)arg;
+            if (self->cpu_id >=0) {
+                set_cur_thread_cpu_affinity(self->cpu_id);
+            }
+
+            ret = init_server(&self->server, self->ip_list[0].ip.c_str(), self->ip_list[0].port);
+            self->server.proc = &proc_echo;
+            start_server(&self->server);
+            while (1) 
+            {
+                conet::dispatch();
+            }
+            return NULL;
+        }
+
+};
+}
+
+DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {
@@ -65,14 +124,69 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    server_t server;
-    int ret = 0;
-    ret = init_server(&server, ip_list[0].ip.c_str(), ip_list[0].port);
-    server.proc = &proc_echo;
-    start_server(&server);
-    while (conet::get_epoll_pend_task_num() >0) {
-        conet::dispatch();
+    std::vector<int> cpu_set;
+    parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
+
+    {
+        // delay init
+        delay_init::call_all_level();
+        LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
+                <<" success:"<<delay_init::success_cnt
+                <<", failed:"<<delay_init::failed_cnt;
+
+        if(delay_init::failed_cnt>0)
+        {
+            LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+            return 1;
+        }
     }
+
+    if (FLAGS_thread_num <= 1) {
+        Task task;
+        task.ip_list = ip_list;
+        if (!cpu_set.empty()) {
+            task.cpu_id = cpu_set[0];
+        }
+        task.proc(&task);
+    } else {
+
+#if HAVE_SO_REUSEPORT
+        int num = FLAGS_thread_num;
+        Task *tasks = new Task[num];
+        for (int i=0; i< num; ++i)
+        {
+            tasks[i].ip_list = ip_list;
+            if (!cpu_set.empty()) {
+                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
+            }
+            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
+        }
+#else
+
+        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
+
+        int num = FLAGS_thread_num;
+        Task *tasks = new Task[num];
+        for (int i=0; i< num; ++i)
+        {
+            if (!cpu_set.empty()) {
+                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
+            }
+            tasks[i].ip_list = ip_list;
+
+            tasks[i].rpc_listen_fd = dup(rpc_listen_fd);
+
+            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
+        }
+#endif
+
+        for (int i=0; i< num; ++i)
+        {
+            pthread_join(tasks[i].tid, NULL);
+        }
+
+        delete[] tasks;
+    }
+
     return 0;
 }
-
