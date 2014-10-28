@@ -63,6 +63,7 @@ cc_binary(
     deps = [
         "//svrkit:server_base", 
         "#dl", 
+        "//thirdparty/perftools:tcmalloc",
         "#pthread"
     ],
 )

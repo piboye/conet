@@ -155,7 +155,7 @@ static uint32_t poll_event2epoll( short events )
 
 static short epoll_event2poll( uint32_t events )
 {
-    short e = 0;
+    short e = 0; 
     if( events & EPOLLIN ) 	e |= POLLIN;
     if( events & EPOLLOUT ) e |= POLLOUT;
     if( events & EPOLLHUP ) e |= POLLHUP;
