@@ -27,6 +27,7 @@
 #include "base/incl/ip_list.h"
 #include "base/incl/delay_init.h"
 #include "base/incl/net_tool.h"
+#include "base/incl/cpu_affinity.h"
 #include <linux/netdevice.h>
 
 #include <signal.h>
@@ -39,6 +40,9 @@ DEFINE_string(server_name, "", "server name");
 DEFINE_bool(async_server, false, "async server");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
 DEFINE_int32(thread_num, 1, "server thread num");
+
+DEFINE_string(cpu_set, "", "cpu affinity set");
+
 
 namespace conet
 {
@@ -81,12 +85,14 @@ struct Task
         conet::rpc_pb_server_t server;    
         int http_listen_fd;
         int rpc_listen_fd;
+        int cpu_id;
 
         Task()
         {
             exit_finsished = 0;
             http_listen_fd = -1;
             rpc_listen_fd = -1;
+            cpu_id = -1;
         }
 
         static int proc_server_exit(void *arg)
@@ -103,7 +109,9 @@ struct Task
             int ret = 0;
 
             Task *self = (Task *)arg;
-
+            if (self->cpu_id >=0) {
+                set_cur_thread_cpu_affinity(self->cpu_id);
+            }
 
             if (self->http_ip_list.empty()) {
                 ret = init_server(&self->server, g_rpc_server_name.c_str(), 
@@ -163,6 +171,9 @@ int main(int argc, char * argv[])
     ret = google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
+    std::vector<int> cpu_set;
+    parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
+
     {
         // delay init
         delay_init::call_all_level();
@@ -210,8 +221,12 @@ int main(int argc, char * argv[])
         task.ip_list = ip_list;
         task.http_ip_list = http_ip_list;
         task.http_address = http_address;
+        if (!cpu_set.empty()) {
+            task.cpu_id = cpu_set[0];
+        }
         task.proc(&task);
     } else {
+
 #if HAVE_SO_REUSEPORT
         int num = FLAGS_thread_num;
         Task *tasks = new Task[num];
@@ -220,6 +235,9 @@ int main(int argc, char * argv[])
             tasks[i].http_address = http_address;
             tasks[i].http_ip_list = http_ip_list;
             tasks[i].ip_list = ip_list;
+            if (!cpu_set.empty()) {
+                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
+            }
             pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
         }
 #else
@@ -234,6 +252,9 @@ int main(int argc, char * argv[])
         Task *tasks = new Task[num];
         for (int i=0; i< num; ++i)
         {
+            if (!cpu_set.empty()) {
+                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
+            }
             tasks[i].http_address = http_address;
             tasks[i].http_ip_list = http_ip_list;
             tasks[i].ip_list = ip_list;
