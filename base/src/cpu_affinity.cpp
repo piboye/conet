@@ -23,6 +23,7 @@
 #include "glog/logging.h"
 #include <vector>
 #include <string>
+#include <pthread.h>
 
 namespace 
 {
@@ -75,16 +76,16 @@ namespace conet
 
     int set_cur_thread_cpu_affinity(int cpu_id)
     {
-        pid_t pid = getpid();
         cpu_set_t  mask;
         CPU_ZERO(&mask);
         CPU_SET(cpu_id, &mask);
         int ret = 0;
-        ret = sched_setaffinity(pid, sizeof(mask), &mask);
+        pthread_t tid = pthread_self();
+        ret = pthread_setaffinity_np(tid, sizeof(mask), &mask);
         if (ret) {
-            LOG(ERROR)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity failed, ret:"<<ret;
+            LOG(ERROR)<<"set tid:"<<tid<<" to  cpu:"<<cpu_id<<" affinity failed, ret:"<<ret;
         } else {
-            LOG(INFO)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity success";
+            LOG(INFO)<<"set tid:"<<tid<<" to  cpu:"<<cpu_id<<" affinity success";
         }
         return ret;
     }

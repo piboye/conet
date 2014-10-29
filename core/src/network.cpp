@@ -145,7 +145,7 @@ epoll_ctx_t *create_epoll(int event_size);
 
 static uint32_t poll_event2epoll( short events )
 {
-    uint32_t e = 0;
+    uint32_t e = EPOLLET;
     if( events & POLLIN ) 	e |= EPOLLIN;
     if( events & POLLOUT )  e |= EPOLLOUT;
     if( events & POLLHUP ) 	e |= EPOLLHUP;

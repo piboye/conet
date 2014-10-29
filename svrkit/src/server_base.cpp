@@ -49,6 +49,7 @@ int client_proc(conn_info_t *info)
 
         ret = server->proc(info);
         close(info->fd);
+        co = info->co;
         --server->data.cur_conn_num;
         server->conn_info_pool.release(info);
         info = NULL;

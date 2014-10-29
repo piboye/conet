@@ -38,7 +38,7 @@ void init_coroutine_env(coroutine_env_t *self)
     self->main->state = RUNNING;
     self->main->desc = "main";
     getcontext(&self->main->ctx);
-    makecontext(&self->main->ctx, NULL, 0);
+    //makecontext(&self->main->ctx, NULL, 0);
     self->curr_co = self->main;
     INIT_LIST_HEAD(&self->run_queue);
     list_add_tail(&self->main->wait_to, &self->run_queue);

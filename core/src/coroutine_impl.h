@@ -24,6 +24,7 @@
 #include "coroutine.h"
 #include <map>
 #include <sys/epoll.h>
+#include "coctx.h"
 
 #ifdef USE_VALGRIND
 #include <valgrind/valgrind.h>
@@ -67,7 +68,10 @@ enum {
 struct coroutine_t
 {
     ucontext_t ctx;
+    //coctx_t ctx;
+    
     void * stack;
+    int stack_size;
 
     int state;
 
@@ -77,6 +81,7 @@ struct coroutine_t
         unsigned int is_end_delete:1;
         unsigned int is_enable_pthread_hook:1;
         unsigned int is_enable_disk_io_hook:1;
+        unsigned int is_page_stack:1;
     };
 
     int ret_val;

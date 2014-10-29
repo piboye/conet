@@ -4,6 +4,7 @@
 #include <sys/syscall.h>
 #include <stdint.h>
 #include <malloc.h>
+#include <sys/mman.h>
 
 #include "coroutine.h"
 #include "coroutine_impl.h"
@@ -12,6 +13,7 @@
 
 #include "base/incl/tls.h"
 #include "log.h"
+#include "coctx.h"
 
 DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
@@ -47,8 +49,9 @@ void co_return(void *val=NULL) {
     last->state = RUNNING;
     last->yield_val = val;
     //setcontext(&last->ctx);
-    co_swapcontext(&(curr_co->ctx), &(last->ctx));
     //co_setcontext(&last->ctx);
+    co_swapcontext(&(curr_co->ctx), &(last->ctx));
+    //coctx_swap(&(curr_co->ctx), &(last->ctx));
 }
 
 void delay_del_coroutine(void *arg)
@@ -58,12 +61,22 @@ void delay_del_coroutine(void *arg)
 }
 
 static
+void co_main_helper2(void *, void *);
+
+static
 void co_main_helper(int co_low, int co_high )
 {
     uint64_t p = (uint32_t)co_high;
     p <<= 32;
     p |= (uint32_t)co_low;
+    co_main_helper2((void *)(p), NULL);
+}
 
+int64_t g_page_size  = sysconf(_SC_PAGESIZE);
+
+static
+void co_main_helper2(void *p, void *p2)
+{
     coroutine_t *co = (coroutine_t *)p;
 
     //run main proc
@@ -115,13 +128,31 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
     // stack  group from high address to  low; align depend stack_size must be multiplies align size
     //
-    stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE*CACHE_LINE_SIZE;
-    self->stack = memalign(CACHE_LINE_SIZE, stack_size), 
+    stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+    if ((stack_size >= g_page_size) && (g_page_size > 0)) {
+        stack_size = (stack_size + g_page_size -1) / g_page_size * g_page_size;
+        self->stack = mmap(NULL, stack_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
+        self->is_page_stack = 1;
+    } else {
+        self->stack = memalign(CACHE_LINE_SIZE, stack_size); 
+        self->is_page_stack = 0;
+    }
+
+    self->stack_size = stack_size;
+
+/*
+    coctx_init(&self->ctx);
+    self->ctx.ss_sp = (char *)self->stack;
+    self->ctx.ss_size = stack_size;
+*/
+
     self->ctx.uc_stack.ss_sp = self->stack;
     self->ctx.uc_stack.ss_size = stack_size;
     self->ctx.uc_link = NULL;
+
     self->pfn = fn;
     self->pfn_arg = arg;
+
     self->state = CREATE;
 
     INIT_LIST_HEAD(&self->wait_to);
@@ -182,7 +213,14 @@ void free_coroutine(coroutine_t *co)
             VALGRIND_STACK_DEREGISTER(co->m_vid);
     #endif
 
-    free(co->stack);
+    if (co->is_page_stack)
+    {
+        munmap(co->stack, co->stack_size);
+    }
+    else 
+    {
+        free(co->stack);
+    }
 
     free(co);
 }
@@ -198,16 +236,19 @@ void *resume(coroutine_t * co, void * val)
     co->yield_val = val;
     if (CREATE == co->state) {
         uint64_t p = (uint64_t) co;
-        getcontext(&co->ctx);
+        //getcontext(&co->ctx);
         makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
                     (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
+        //coctx_make( &co->ctx,(coctx_pfn_t)co_main_helper2, co, NULL);
     }
     co->ctx.uc_link = &cur->ctx;
     co->state = RUNNING;
     list_del_init(&co->wait_to);
     env->curr_co = co;
     list_add_tail(&cur->wait_to, &env->run_queue);
+
     co_swapcontext(&(cur->ctx), &(co->ctx) );
+    //coctx_swap( &(cur->ctx), &(co->ctx));
     return cur->yield_val;
 }
 
@@ -237,6 +278,7 @@ void * yield(list_head *wait_to, void * val)
     last->state = RUNNING;
     last->yield_val = val;
     co_swapcontext(&cur->ctx, &last->ctx);
+    //coctx_swap(&(cur->ctx), &(last->ctx));
     return cur->yield_val;
 }
 

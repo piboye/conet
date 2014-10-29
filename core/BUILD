@@ -1,12 +1,14 @@
-##gen_rule (
-##    name = 'gen_co_context',
-##    cmd = 'gcc -c $SRCS -o co_context.o;' +
-##          'ar -csr $SRCS.dir/libco_context.a co_context.o;' +
-##          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_debug;' +
-##          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_release;',
-##    srcs = ['src/co_context.S'],
-##    outs = ['libco_context.a'],
-##);
+#gen_rule (
+#    name = 'gen_co_context',
+#    cmd = 
+#    'gcc -c $SRCS.dir/coctx_swap.S -o coctx_swap.o;' +
+#    'gcc -c $SRCS.dir/co_context.S -o co_context.o;' +
+#          'ar -csr $SRCS.dir/libco_context.a co_context.o coctx_swap.o;' +
+#          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_debug;' +
+#          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_release;',
+#    srcs = ['src/co_context.S'],
+#    outs = ['libco_context.a'],
+#);
 
 
 cc_library (
@@ -32,6 +34,7 @@ cc_library(
         "src/dispatch.cpp",
         "src/co_pool.cpp",
         "src/stacktrace.cpp",
+        "src/coctx.cpp",
     ],
 
     incs= [ 
@@ -47,8 +50,11 @@ cc_library(
         '#dl', 
         '#pthread',
         '#rt',
-        "#unwind", 
-        "#unwind-x86_64",
+        '#lzma',
+        "//thirdparty/libunwind:unwind-setjmp", 
+        "//thirdparty/libunwind:unwind-ptrace",
+        "//thirdparty/libunwind:unwind-x86_64",
+        "//thirdparty/libunwind:unwind", 
     ],
 
     extra_cppflags=["-fPIC"],
