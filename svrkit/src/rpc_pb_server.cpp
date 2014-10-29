@@ -865,7 +865,6 @@ static int proc_rpc_pb_async(conn_info_t *conn)
     rpc_pb_server_t * server = (rpc_pb_server_t *) server_base->extend;
 
     conet::ObjPool<CmdBase> cmd_base_pool; 
-    cmd_base_pool.init();
 
     rpc_pb_conn_asyc_ctx_t a_ctx;
     a_ctx.fd = conn->fd;
@@ -906,7 +905,6 @@ static int proc_rpc_pb_async(conn_info_t *conn)
         conet::wait(work_co[i]);
         conet::free_coroutine(work_co[i]);
     }
-    
 
     return 0;
 }

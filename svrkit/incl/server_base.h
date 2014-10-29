@@ -60,7 +60,7 @@ struct server_t
     int to_stop;
     int (*proc)(conn_info_t *conn);
 
-    ObjPool<coroutine_t> co_pool;
+    obj_pool_t co_pool;
 
     ObjPool<conn_info_t> conn_info_pool;
     void *extend;

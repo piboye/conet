@@ -64,16 +64,16 @@ namespace conet
         lifo_t used_list;
         lifo_t free_list;
 
-        int (*obj_fini_func)(void *, void *);
-        void * obj_fini_arg;
+        void (*free_obj_func)(void *, void *);
+        void * free_obj_arg;
 
 
         typedef lifo_t::node_t node_type;
 
         Lifo()
         {
-           obj_fini_func = NULL; 
-           obj_fini_arg = NULL;
+           free_obj_func = NULL; 
+           free_obj_arg = NULL;
         }
 
         void push(void *v)
@@ -102,10 +102,10 @@ namespace conet
             return n->value;
         }
 
-        void set_delete_obj_func(int (*fn)(void *arg, void * value), void *arg)
+        void set_free_obj_func(void (*fn)(void *arg, void * value), void *arg)
         {
-            obj_fini_func = fn;
-            obj_fini_arg = arg;
+            free_obj_func = fn;
+            free_obj_arg = arg;
         }
 
         ~Lifo()
@@ -113,9 +113,9 @@ namespace conet
             node_type *n = NULL;
             while( (n = used_list.pop()))
             {
-                if (obj_fini_func)
+                if (free_obj_func)
                 {
-                    obj_fini_func(obj_fini_arg, n->value);
+                    free_obj_func(free_obj_arg, n->value);
                 }
                 delete n;
             }

@@ -289,9 +289,6 @@ coroutine_t * current_coroutine()
     return cur;
 }
 
-
-
-
 gc_mgr_t *get_gc_mgr()
 {
     coroutine_t *cur = current_coroutine();
@@ -531,7 +528,6 @@ uint64_t set_interval(Closure<void> *cl, int ms, int stack_size)
 {
     return set_interval(&call_closure<void>, cl, ms, stack_size);
 }
-
 
 }
 

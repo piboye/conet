@@ -75,13 +75,13 @@ int client_proc(conn_info_t *info)
 
 int proc_pool(server_t *server, conn_info_t *conn_info)
 {
-    conn_info->co = server->co_pool.alloc();
+    conn_info->co = (coroutine_t *)server->co_pool.alloc();
     conet::resume(conn_info->co, conn_info);
     return 0;
 }
 
 static 
-conet::coroutine_t * alloc_server_work_co(void *arg)
+void * alloc_server_work_co(void *arg)
 {
     conet::coroutine_t * co = alloc_coroutine((int (*)(void *))client_proc, NULL);
     set_auto_delete(co);
@@ -101,8 +101,7 @@ int init_server(server_t *server, const char *ip, int port)
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
     server->listen_fd = -1;
-    server->conn_info_pool.init();
-    server->co_pool.init_without_delete(alloc_server_work_co, NULL);
+    server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
     return 0;
 }
 

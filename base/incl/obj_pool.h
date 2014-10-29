@@ -24,88 +24,78 @@
 namespace conet
 {
 
+struct obj_pool_t
+    :public Lifo
+{
+    void * (*m_alloc_func)(void *);
+    void * m_alloc_arg;
+
+    obj_pool_t() 
+    {
+        m_alloc_func = NULL;
+        m_alloc_arg = NULL;
+    }
+
+    void set_alloc_obj_func( void *(*fn)(void *arg), void *arg)
+    {
+        m_alloc_func = fn;
+        m_alloc_arg = arg;
+    }
+
+    void * alloc() 
+    {
+        void * obj = pop();
+        if (NULL == obj) {
+            if (m_alloc_func) {
+                return m_alloc_func(m_alloc_arg);
+            } 
+        }
+        return obj;
+    }
+
+    void release(void * obj) 
+    {
+        push(obj);
+    }
+};
+
 template <typename obj_t>
-class ObjPool
+class ObjPool :public obj_pool_t
 {
 public:
     typedef obj_t obj_type;
 
-
-    Lifo m_queue;
-
-    obj_type * (*m_alloc_func)(void *);
-    void * m_alloc_arg;
-
-    obj_type * (*m_alloc_func2)();
-
     explicit
     ObjPool()
     {
-
-        m_alloc_func = NULL;
-        m_alloc_arg = NULL; 
-        m_alloc_func2 = NULL;
+        set_alloc_obj_func(new_obj_help, NULL);
+        set_free_obj_func(delete_obj_help, NULL);
     }
 
     static
-    int delete_obj_help(void *arg, void *obj)
+    void delete_obj_help(void *arg, void *obj)
     {
         obj_type *v = (obj_type *)(obj);
         delete v;
-        return 0;
+    }
+
+    static void *new_obj_help(void *arg)
+    {
+        return new obj_type();
     }
 
     ~ObjPool() 
     {
     }
 
-    int init(obj_type * (*alloc_func)(void *), void *arg=NULL)
-    {
-        m_alloc_func = alloc_func;
-        m_alloc_arg = arg;
-        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
-        return 0;
-    }
-
-    int init_without_delete(obj_type * (*alloc_func)(void *), void *arg=NULL)
-    {
-        m_alloc_func = alloc_func;
-        m_alloc_arg = arg;
-        return 0;
-    }
-
-    int init ()
-    {
-        m_alloc_func2 = &new_obj;
-        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
-        return 0;
-    }
-
-    static obj_type *new_obj()
-    {
-        return new obj_type();
-    }
-
-
     obj_type * alloc() 
     {
-        if (m_queue.empty())  {
-            if (m_alloc_func) {
-                return m_alloc_func(m_alloc_arg);
-            } 
-            if (m_alloc_func2) {
-                return m_alloc_func2();
-            }
-            return NULL;
-        }
-        obj_type * obj = NULL;
-        obj = (obj_type *)m_queue.pop();
-        return obj;
+        return (obj_type *)obj_pool_t::alloc();
     }
 
     void release(obj_type * obj) 
     {
-        m_queue.push(obj);
+        obj_pool_t::release(obj);
     }
 
 };

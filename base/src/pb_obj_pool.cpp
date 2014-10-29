@@ -31,7 +31,7 @@ namespace conet
         {
             AddrMap::Node map_node;
 
-            pb_obj_pool_type obj_pool;
+            obj_pool_t obj_pool;
 
             static int fini(void *arg, AddrMap::Node *n)
             {
@@ -55,13 +55,17 @@ namespace conet
         }
 
         static 
-        google::protobuf::Message *pb_new_obj(void * arg)
+        void *pb_new_obj(void * arg)
         { 
             google::protobuf::Message *proto = (google::protobuf::Message *)(arg);
             return proto->New();
         }
+        static void pb_delete_obj(void *arg, void *obj)
+        {
+            delete (google::protobuf::Message *)(obj);
+        }
 
-        pb_obj_pool_type * find(google::protobuf::Message *proto) 
+        obj_pool_t * find(google::protobuf::Message *proto) 
         {
             AddrMap::Node * n = pool_map.find(proto);
             PbObjPoolNode * node = NULL;
@@ -69,7 +73,8 @@ namespace conet
             {
                 node = new PbObjPoolNode ();
                 node->map_node.init(proto);
-                node->obj_pool.init(pb_new_obj, proto);
+                node->obj_pool.set_alloc_obj_func(pb_new_obj, proto);
+                node->obj_pool.set_free_obj_func(pb_delete_obj, proto);
                 pool_map.add(&node->map_node);
             } else {
                 node = container_of(n, PbObjPoolNode, map_node);
@@ -85,14 +90,14 @@ namespace conet
 google::protobuf::Message * alloc_pb_obj_from_pool(google::protobuf::Message *proto)
 {
     PbObjPoolMgr * mgr = tls_get(g_pb_obj_pool_mgr);
-    ObjPool<google::protobuf::Message> *pool = mgr->find(proto);
-    return pool->alloc();
+    obj_pool_t *pool = mgr->find(proto);
+    return (google::protobuf::Message *) pool->alloc();
 }
 
 void free_pb_obj_to_pool(google::protobuf::Message *proto, google::protobuf::Message *obj)
 {
     PbObjPoolMgr * mgr = tls_get(g_pb_obj_pool_mgr);
-    ObjPool<google::protobuf::Message> *pool = mgr->find(proto);
+    obj_pool_t *pool = mgr->find(proto);
     return pool->release(obj);
 }
 
