@@ -22,6 +22,10 @@ extern "C" void co_setcontext(ucontext_t *co);
 
 namespace conet
 {
+void * get_yield_value(coroutine_t *co)
+{
+    return co->yield_val;
+}
 
 bool is_stop(coroutine_t *co)
 {
@@ -56,7 +60,7 @@ void delay_del_coroutine(void *arg)
 static
 void co_main_helper(int co_low, int co_high )
 {
-    unsigned long p = (uint32_t)co_high;
+    uint64_t p = (uint32_t)co_high;
     p <<= 32;
     p |= (uint32_t)co_low;
 
@@ -191,6 +195,7 @@ void *resume(coroutine_t * co, void * val)
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
     assert(cur);
+    co->yield_val = val;
     if (CREATE == co->state) {
         uint64_t p = (uint64_t) co;
         getcontext(&co->ctx);
@@ -202,7 +207,6 @@ void *resume(coroutine_t * co, void * val)
     list_del_init(&co->wait_to);
     env->curr_co = co;
     list_add_tail(&cur->wait_to, &env->run_queue);
-    co->yield_val = val;
     co_swapcontext(&(cur->ctx), &(co->ctx) );
     return cur->yield_val;
 }

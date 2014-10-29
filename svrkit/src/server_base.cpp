@@ -28,7 +28,7 @@
 #include "core/incl/fd_ctx.h"
 
 DEFINE_int32(listen_backlog, 1000, "default listen backlog");
-DEFINE_int32(max_conn_num, 10000, "default max conn num");
+DEFINE_int32(max_conn_num, 100000, "default max conn num");
 DEFINE_int32(max_packet_size, 102400, "default max packet size");
 
 namespace conet
@@ -39,46 +39,34 @@ int client_proc(conn_info_t *info)
 {
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
-
-    co_pool_item_t pool_item;   
-    INIT_LIST_HEAD(&pool_item.link);
-    pool_item.co = info->co;
+    conet::coroutine_t *co = CO_SELF();
+    info = (conn_info_t *) conet::get_yield_value(co);
     server_t *server = info->server;
-    co_pool_t *pool = &server->co_pool;
-    ++pool->total_num;
-
     do
     {   //running;
-
-        list_add(&pool_item.link, &pool->used_list);
 
         int ret = 0;
 
         ret = server->proc(info);
         close(info->fd);
         --server->data.cur_conn_num;
-        delete info;
+        server->conn_info_pool.release(info);
         info = NULL;
 
         if (ret) break;
-        list_del_init(&pool_item.link);
-
-        if (pool->total_num > pool->max_num) break;
         if (server->to_stop) break;
 
-        list_add(&pool_item.link, &pool->free_list);
-        info = (conn_info_t *) conet::yield(0);
+        server->co_pool.release(co);
+        info = (conn_info_t *) conet::yield(NULL);
     } while(!server->to_stop);
 
     if (info) {
         close(info->fd);
         --server->data.cur_conn_num;
-        delete info;
+        server->conn_info_pool.release(info);
         info = NULL;
     }
 
-    list_del_init(&pool_item.link);
-    --pool->total_num;
     return 0;
 }
 
@@ -86,29 +74,17 @@ int client_proc(conn_info_t *info)
 
 int proc_pool(server_t *server, conn_info_t *conn_info)
 {
-    co_pool_t *pool = &server->co_pool;
-
-    if (list_empty(&pool->free_list))
-    {
-        //if (pool->total_num + 1 < pool->max_num) {
-            conn_info->co = alloc_coroutine((int (*)(void *))client_proc, conn_info);
-            set_auto_delete(conn_info->co);
-            resume(conn_info->co, conn_info);
-            return 0;
-        /*
-        } else {
-            while  (list_empty(&pool->free_list)) {
-                usleep(1000);
-            }
-        }
-        */
-    }
-
-    list_head * it = pool->free_list.next;
-    list_del_init(it);
-    co_pool_item_t *item = container_of(it, co_pool_item_t, link);
-    conet::resume(item->co, conn_info);
+    conn_info->co = server->co_pool.alloc();
+    conet::resume(conn_info->co, conn_info);
     return 0;
+}
+
+static 
+conet::coroutine_t * alloc_server_work_co(void *arg)
+{
+    conet::coroutine_t * co = alloc_coroutine((int (*)(void *))client_proc, NULL);
+    set_auto_delete(co);
+    return co;
 }
 
 int init_server(server_t *server, const char *ip, int port)
@@ -124,6 +100,8 @@ int init_server(server_t *server, const char *ip, int port)
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
     server->listen_fd = -1;
+    server->conn_info_pool.init();
+    server->co_pool.init_without_delete(alloc_server_work_co, NULL);
     return 0;
 }
 
@@ -132,7 +110,6 @@ int server_main(void *arg);
 
 int start_server(server_t *server)
 {
-    init_co_pool(&server->co_pool, server->conf.max_conn_num);
     server->co = alloc_coroutine(server_main, server);
     conet::resume(server->co);
     return 0;
@@ -189,7 +166,7 @@ int server_main(void *arg)
         }
 
         struct sockaddr_in addr;
-        memset( &addr,0,sizeof(addr) );
+        memset( &addr, 0, sizeof(addr) );
         socklen_t len = sizeof(addr);
 
         int fd = accept(listen_fd, (struct sockaddr *)&addr, &len);
@@ -198,8 +175,8 @@ int server_main(void *arg)
 
         ++server->data.cur_conn_num;
 
-        conn_info_t *conn_info = new conn_info_t();
-        memset(conn_info, 0, sizeof(conn_info_t));
+        conn_info_t *conn_info = server->conn_info_pool.alloc();
+        //memset(conn_info, 0, sizeof(conn_info_t));
         conn_info->server = server;
         memcpy(&conn_info->addr, &addr,len);
         conn_info->fd = fd;

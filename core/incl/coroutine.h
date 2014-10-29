@@ -43,6 +43,7 @@ void set_auto_delete(coroutine_t *co);
 int get_epoll_pend_task_num();
 
 int co_poll(struct pollfd fds[], nfds_t nfds, int timeout);
+void * get_yield_value(coroutine_t *co);
 
 void print_stacktrace(coroutine_t *co, int fd=2);
 

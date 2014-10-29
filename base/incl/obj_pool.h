@@ -45,7 +45,6 @@ public:
         m_alloc_func = NULL;
         m_alloc_arg = NULL; 
         m_alloc_func2 = NULL;
-        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
     }
 
     static
@@ -64,12 +63,21 @@ public:
     {
         m_alloc_func = alloc_func;
         m_alloc_arg = arg;
+        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
+        return 0;
+    }
+
+    int init_without_delete(obj_type * (*alloc_func)(void *), void *arg=NULL)
+    {
+        m_alloc_func = alloc_func;
+        m_alloc_arg = arg;
         return 0;
     }
 
     int init ()
     {
         m_alloc_func2 = &new_obj;
+        m_queue.set_delete_obj_func(&delete_obj_help, NULL);
         return 0;
     }
 

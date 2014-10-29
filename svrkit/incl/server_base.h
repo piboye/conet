@@ -23,13 +23,27 @@
 #include "conet_all.h"
 #include "co_pool.h"
 #include "base/incl/list.h"
+#include "base/incl/obj_pool.h"
 
 namespace conet
 {
 
+struct server_t;
+struct conn_info_t
+{
+    server_t * server;
+    uint32_t ip;
+    int port;
+    int fd;
+    struct sockaddr_in addr;
+    coroutine_t *co;
+    void *extend;
+    conn_info_t()
+    {
+    }
+};
 
 struct coroutine_t;
-struct conn_info_t;
 struct server_t
 {
     enum {
@@ -45,7 +59,10 @@ struct server_t
     int state;
     int to_stop;
     int (*proc)(conn_info_t *conn);
-    co_pool_t co_pool;
+
+    ObjPool<coroutine_t> co_pool;
+
+    ObjPool<conn_info_t> conn_info_pool;
     void *extend;
     struct server_base_conf_t 
     {
@@ -60,16 +77,6 @@ struct server_t
     } data;
 };
 
-struct conn_info_t
-{
-    server_t * server;
-    uint32_t ip;
-    int port;
-    int fd;
-    struct sockaddr_in addr;
-    coroutine_t *co;
-    void *extend;
-};
 
 int init_server(server_t *server, const char *ip, int port);
 int start_server(server_t *server);
