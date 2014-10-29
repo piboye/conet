@@ -23,6 +23,7 @@ cc_library(
         'src/random.cpp',
         'src/pb_obj_pool.cpp',
         'src/cpu_affinity.cpp',
+        'src/fixed_mempool.cpp',
     ],
 
     incs= [ 

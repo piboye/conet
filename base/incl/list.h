@@ -485,6 +485,27 @@ static inline void list_splice_tail_init(struct list_head *list,
 	     &pos->member != (head); 					\
 	     pos = n, n = list_entry(n->member.prev, typeof(*n), member))
 
+
+static inline list_head * list_pop_head(struct list_head * head)
+{
+    if (list_empty(head)) {
+        return NULL;
+    }
+    list_head * n = head->next;
+    list_del_init(n);
+    return n;
+}
+
+static inline list_head * list_pop_tail(struct list_head * head)
+{
+    if (list_empty(head)) {
+        return NULL;
+    }
+    list_head * n = head->prev;
+    list_del_init(n);
+    return n;
+}
+
 /*
  * Double linked lists with a single pointer list head.
  * Mostly useful for hash tables where the two pointer list head is

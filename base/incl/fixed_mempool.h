@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -18,22 +18,27 @@
 #ifndef __MEM_POOL_H_INC__
 #define __MEM_POOL_H_INC__
 
-struct mempool_t
+#include <stdint.h>
+#include "list.h"
+
+namespace conet
 {
+
+struct fixed_mempool_t
+{
+    uint64_t alloc_size;
     uint64_t total_num;
     uint64_t used_num;
+    uint64_t free_num;
     uint64_t max_num;
-    uint64_t alloc_size;
+    int32_t align_size;
     list_head free_list;
+
+    void * alloc();
+    void free(void *);
+    int init(uint64_t alloc_size,  uint64_t max_num, int align_size = 0);
 };
 
-int init_mempool(mempool_t *mgr, uint64_t alloc_size,  uint64_t max_num)
-{
-    mgr->total_num = 0;
-    mgr->used_num = 0;
-    mgr->max_num = max_num;
-    mgr->alloc_size = alloc_size;
-    INIT_LIST_HEAD(&mrg->free_list);
 }
 
 
