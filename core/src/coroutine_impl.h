@@ -25,10 +25,14 @@
 #include <map>
 #include <sys/epoll.h>
 #include "coctx.h"
+#include "base/incl/fixed_mempool.h"
+#include "gflags/gflags.h"
 
 #ifdef USE_VALGRIND
 #include <valgrind/valgrind.h>
 #endif
+
+DECLARE_int32(stack_size);
 
 namespace conet
 {
@@ -51,9 +55,9 @@ struct coroutine_env_t
     list_head run_queue;
     coroutine_t * curr_co;
     coroutine_t * main;
-
     list_head tasks;
     uint64_t spec_key_seed;
+    fixed_mempool_t default_stack_pool;
 };
 
 

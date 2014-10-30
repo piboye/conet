@@ -9,7 +9,7 @@
 #include "coroutine.h"
 #include "coroutine_impl.h"
 #include "timewheel.h"
-#include "thirdparty/gflags/gflags.h"
+#include "gflags/gflags.h"
 
 #include "base/incl/tls.h"
 #include "log.h"
@@ -128,14 +128,20 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
     // stack  group from high address to  low; align depend stack_size must be multiplies align size
     //
-    stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE * CACHE_LINE_SIZE;
-    if ((stack_size >= g_page_size) && (g_page_size > 0)) {
-        stack_size = (stack_size + g_page_size -1) / g_page_size * g_page_size;
-        self->stack = mmap(NULL, stack_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
-        self->is_page_stack = 1;
+    if (stack_size == FLAGS_stack_size && a_env) {
+        self->stack = a_env->default_stack_pool.alloc();
+        stack_size = a_env->default_stack_pool.alloc_size;
+        self->is_page_stack = a_env->default_stack_pool.is_page_alloc;
     } else {
-        self->stack = memalign(CACHE_LINE_SIZE, stack_size); 
-        self->is_page_stack = 0;
+        stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        if ((stack_size >= g_page_size) && (g_page_size > 0)) {
+            stack_size = (stack_size + g_page_size -1) / g_page_size * g_page_size;
+            self->stack = mmap(NULL, stack_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
+            self->is_page_stack = 1;
+        } else {
+            self->stack = memalign(CACHE_LINE_SIZE, stack_size); 
+            self->is_page_stack = 0;
+        }
     }
 
     self->stack_size = stack_size;
@@ -213,13 +219,21 @@ void free_coroutine(coroutine_t *co)
             VALGRIND_STACK_DEREGISTER(co->m_vid);
     #endif
 
-    if (co->is_page_stack)
+    if (co->stack_size == FLAGS_stack_size) 
     {
-        munmap(co->stack, co->stack_size);
-    }
-    else 
+        coroutine_env_t *env = get_coroutine_env();
+        env->default_stack_pool.free(co->stack);
+    } 
+    else
     {
-        free(co->stack);
+        if (co->is_page_stack)
+        {
+            munmap(co->stack, co->stack_size);
+        }
+        else 
+        {
+            free(co->stack);
+        }
     }
 
     free(co);

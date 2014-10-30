@@ -34,9 +34,19 @@ struct fixed_mempool_t
     int32_t align_size;
     list_head free_list;
 
+    struct {
+        unsigned int is_page_alloc:1;  
+    };
+
     void * alloc();
     void free(void *);
     int init(uint64_t alloc_size,  uint64_t max_num, int align_size = 0);
+
+    void fini();
+
+// help function
+    void * alloc_mem_help();
+    void free_mem_help(void *e);
 };
 
 }

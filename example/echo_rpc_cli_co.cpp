@@ -67,10 +67,9 @@ int proc_send(void *arg)
     task_t *task = (task_t *)(arg);
 
     int ret = 0;
+    EchoReq req;
+    EchoResp resp;
     for (int i=0, len = g_data.size(); i<len; ++i) {
-        EchoReq req;
-
-        EchoResp resp;
         req.set_msg(*g_data[i]);
         int retcode=0;
         ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
