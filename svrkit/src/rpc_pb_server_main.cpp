@@ -25,7 +25,7 @@
 #include <malloc.h>
 #include <sys/wait.h>
 #include <sys/types.h>
-#include <set>
+#include <map>
 
 #include "rpc_pb_server.h"
 #include "thirdparty/glog/logging.h"
@@ -173,7 +173,8 @@ struct Task
 
 static int g_master_controller = 1;
 
-static std::set<pid_t> g_childs;
+typedef int cpu_id_type;
+static std::map<pid_t, cpu_id_type> g_childs;
 
 int main(int argc, char * argv[])
 {
@@ -206,7 +207,7 @@ int main(int argc, char * argv[])
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_address, &ip_list);
     if (ip_list.empty()) {
-        fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_address.c_str());
+        LOG(ERROR)<<"server_addr:"<<FLAGS_server_address<<", format error!";
         return 1;
     }
 
@@ -253,24 +254,24 @@ int main(int argc, char * argv[])
         int num = FLAGS_work_num;
         for (int i=0; i< num; ++i)
         {
+            if (!cpu_set.empty()) {
+                task.cpu_id = cpu_set[i%cpu_set.size()];
+            }
             pid_t pid = fork();
             if (pid == 0) {
                 g_master_controller = 0;
-                if (!cpu_set.empty()) {
-                    task.cpu_id = cpu_set[i%cpu_set.size()];
-                }
                 task.http_address = http_address;
                 task.http_ip_list = http_ip_list;
                 task.ip_list = ip_list;
 
-                task.rpc_listen_fd = dup(rpc_listen_fd);
+                task.rpc_listen_fd = rpc_listen_fd;
                 if (http_listen_fd != rpc_listen_fd) {
-                    task.http_listen_fd = dup(http_listen_fd);
+                    task.http_listen_fd = http_listen_fd;
                 }
                 task.proc(&task);
                 break;
             } else {
-                g_childs.insert(pid);
+                g_childs[pid] = task.cpu_id;
             }
         }
         if (g_master_controller) {
@@ -278,27 +279,32 @@ int main(int argc, char * argv[])
             {
                 int status = 0;
                 pid_t pid = wait(&status);
+                if (g_childs.find(pid) == g_childs.end()) {
+                    continue;
+                }
+                int cpu_id = g_childs[pid];
                 g_childs.erase(pid);
                 if (!g_exit_flag) {
                    pid = fork(); 
                    if (pid == 0) {
                         g_master_controller = 0;
+                        task.cpu_id = cpu_id;
                         task.proc(&task);
                         break;
                    } else {
-                       g_childs.insert(pid);
+                       g_childs[pid] = cpu_id;
                    }
                 }
             }
             if (g_exit_flag && g_master_controller) {
                 AUTO_VAR(it, = , g_childs.begin());
                 for (; it != g_childs.end(); ++it) {
-                    kill(*it, SIGINT);
+                    kill(it->second, SIGINT);
                 }
                 for (it = g_childs.begin(); it != g_childs.end(); ++it)
                 {
                     int status =0;
-                    waitpid(*it, &status, 0);
+                    waitpid(it->second, &status, 0);
                 }
             }
         }
@@ -345,16 +351,6 @@ int main(int argc, char * argv[])
         for (int i=0; i< num; ++i)
         {
             pthread_join(tasks[i].tid, NULL);
-        }
-        for (int i = 0; i< num; ++i) 
-        {
-            pid_t pid = fork();
-            if (pid == 0) {
-                g_master_controller = 0;
-
-            } else {
-
-            }
         }
         delete[] tasks;
     }
