@@ -23,6 +23,7 @@ namespace conet
 {
     int parse_affinity(char const * txt, std::vector<int> *cpu_sets);
     int set_cur_thread_cpu_affinity(int cpu_id);
+    int set_proccess_cpu_affinity(int cpu_id);
 }
 
 #endif /* end of include guard */

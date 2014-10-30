@@ -131,6 +131,10 @@ int server_main(void *arg)
         if (listen_fd <0) 
         {
             server->state = server_t::SERVER_STOPED;
+            LOG(ERROR)<<"create listen socket failed, "
+                "["<<server->ip<<":"<<server->port<<"]"
+                "[errno:"<<errno<<"]"
+                "[errmsg:"<<strerror(errno)<<"]";
             return -1;
         }
         

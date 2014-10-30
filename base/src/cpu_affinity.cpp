@@ -74,6 +74,23 @@ namespace conet
         return sets.size(); 
     }
 
+    int set_proccess_cpu_affinity(int cpu_id)
+    {
+        cpu_set_t  mask;
+        CPU_ZERO(&mask);
+        CPU_SET(cpu_id, &mask);
+        int ret = 0;
+        pid_t pid = getpid();
+        ret = sched_setaffinity(pid, sizeof(mask), &mask);
+        if (ret) {
+            LOG(ERROR)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity failed, ret:"<<ret;
+        } else {
+            LOG(INFO)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity success";
+        }
+        return ret;
+        
+    }
+
     int set_cur_thread_cpu_affinity(int cpu_id)
     {
         cpu_set_t  mask;

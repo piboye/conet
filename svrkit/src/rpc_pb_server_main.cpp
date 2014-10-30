@@ -41,16 +41,17 @@ DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_string(server_name, "", "server name");
-DEFINE_bool(async_server, false, "async server");
-DEFINE_bool(thread_mode, false, "multithread");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
 DEFINE_int32(work_num, 1, "server work num");
 
 DEFINE_string(cpu_set, "", "cpu affinity set");
 
+DEFINE_bool(async_server, false, "async server");
+DEFINE_bool(thread_mode, false, "multithread");
 
 namespace conet
 {
+
 typedef void server_fini_func_t(void);
 std::vector<server_fini_func_t *> g_server_fini_funcs;
 
@@ -77,7 +78,6 @@ void sig_exit(int sig)
 {
    g_exit_flag=1; 
 }
-
 
 struct Task
 {
@@ -116,7 +116,11 @@ struct Task
 
             Task *self = (Task *)arg;
             if (self->cpu_id >=0) {
-                set_cur_thread_cpu_affinity(self->cpu_id);
+                if (FLAGS_thread_mode) {
+                    set_cur_thread_cpu_affinity(self->cpu_id);
+                } else {
+                    set_proccess_cpu_affinity(self->cpu_id);
+                }
             }
 
             if (self->http_ip_list.empty()) {
@@ -127,13 +131,6 @@ struct Task
                         self->ip_list[0].ip.c_str(), self->ip_list[0].port, true, 
                         self->http_ip_list[0].ip.c_str(), self->http_ip_list[0].port);
             }
-
-            if (ret) {
-                fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_address.c_str(), ret);
-                return 0;
-            }
-
-            fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), self->http_address.c_str());
 
 
             if (FLAGS_async_server) {
@@ -149,6 +146,14 @@ struct Task
             }
 
             start_server(&self->server);
+
+            if (self->server.server->state == server_t::SERVER_STOPED) {
+                fprintf(stderr, "listen to %s\n, failed\n", FLAGS_server_address.c_str());
+                return 0;
+            }
+
+            fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), self->http_address.c_str());
+
 
             coroutine_t *exit_co = NULL;
             while (!self->exit_finsished) {
@@ -235,12 +240,33 @@ int main(int argc, char * argv[])
             task.cpu_id = cpu_set[0];
         }
 
+        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
+        if (rpc_listen_fd<0) {
+            LOG(ERROR)<<"listen to "<<FLAGS_server_address<<" failed";
+            return 0;
+        }
+        int http_listen_fd = rpc_listen_fd;
+        if (!http_ip_list.empty()) {
+            http_listen_fd = conet::create_tcp_socket(http_ip_list[0].port, http_ip_list[0].ip.c_str(), true);
+        }
+
         int num = FLAGS_work_num;
         for (int i=0; i< num; ++i)
         {
             pid_t pid = fork();
             if (pid == 0) {
                 g_master_controller = 0;
+                if (!cpu_set.empty()) {
+                    task.cpu_id = cpu_set[i%cpu_set.size()];
+                }
+                task.http_address = http_address;
+                task.http_ip_list = http_ip_list;
+                task.ip_list = ip_list;
+
+                task.rpc_listen_fd = dup(rpc_listen_fd);
+                if (http_listen_fd != rpc_listen_fd) {
+                    task.http_listen_fd = dup(http_listen_fd);
+                }
                 task.proc(&task);
                 break;
             } else {
