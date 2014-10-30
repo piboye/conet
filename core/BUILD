@@ -63,11 +63,12 @@ cc_library(
     link_all_symbols = True,
 );
 
-cc_binary(
-    name = 'co_swap_test',
-    srcs = ['src/co_swap_test.cpp'],
-    deps = [
-        ':conet',
-    ],
-);
+
+#cc_binary(
+#    name = 'co_swap_test',
+#    srcs = ['src/co_swap_test.cpp'],
+#    deps = [
+#        ':conet',
+#    ],
+#);
 

@@ -24,6 +24,7 @@ extern "C" void co_setcontext(ucontext_t *co);
 
 namespace conet
 {
+
 void * get_yield_value(coroutine_t *co)
 {
     return co->yield_val;
@@ -191,6 +192,10 @@ void set_coroutine_desc(coroutine_t *co, char const *desc)
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
                               uint32_t stack_size, coroutine_env_t * env)
 {
+    if (env == NULL) 
+    {
+        env = get_coroutine_env();
+    }
     coroutine_t *co = ALLOC_VAR(coroutine_t);
     if (stack_size <=0) {
         stack_size = FLAGS_stack_size;

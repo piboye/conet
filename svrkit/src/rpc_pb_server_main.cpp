@@ -21,6 +21,12 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <malloc.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <set>
+
 #include "rpc_pb_server.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
@@ -28,18 +34,17 @@
 #include "base/incl/delay_init.h"
 #include "base/incl/net_tool.h"
 #include "base/incl/cpu_affinity.h"
+#include "base/incl/auto_var.h"
 #include <linux/netdevice.h>
-
-#include <signal.h>
-#include <malloc.h>
 
 DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_string(server_name, "", "server name");
 DEFINE_bool(async_server, false, "async server");
+DEFINE_bool(thread_mode, false, "multithread");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
-DEFINE_int32(thread_num, 1, "server thread num");
+DEFINE_int32(work_num, 1, "server work num");
 
 DEFINE_string(cpu_set, "", "cpu affinity set");
 
@@ -78,6 +83,7 @@ struct Task
 {
     public:    
         pthread_t tid;
+        pid_t  pid;
         int exit_finsished;
         std::vector<ip_port_t> ip_list, http_ip_list;
         std::string http_address;
@@ -160,6 +166,10 @@ struct Task
         }
 };
 
+static int g_master_controller = 1;
+
+static std::set<pid_t> g_childs;
+
 int main(int argc, char * argv[])
 {
     int ret = 0;
@@ -216,7 +226,7 @@ int main(int argc, char * argv[])
     }
 
 
-    if (FLAGS_thread_num <= 1) {
+    if (FLAGS_thread_mode== false || FLAGS_work_num <= 1) {
         Task task;
         task.ip_list = ip_list;
         task.http_ip_list = http_ip_list;
@@ -224,12 +234,53 @@ int main(int argc, char * argv[])
         if (!cpu_set.empty()) {
             task.cpu_id = cpu_set[0];
         }
-        task.proc(&task);
+
+        int num = FLAGS_work_num;
+        for (int i=0; i< num; ++i)
+        {
+            pid_t pid = fork();
+            if (pid == 0) {
+                g_master_controller = 0;
+                task.proc(&task);
+                break;
+            } else {
+                g_childs.insert(pid);
+            }
+        }
+        if (g_master_controller) {
+            while(!g_exit_flag && g_master_controller)
+            {
+                int status = 0;
+                pid_t pid = wait(&status);
+                g_childs.erase(pid);
+                if (!g_exit_flag) {
+                   pid = fork(); 
+                   if (pid == 0) {
+                        g_master_controller = 0;
+                        task.proc(&task);
+                        break;
+                   } else {
+                       g_childs.insert(pid);
+                   }
+                }
+            }
+            if (g_exit_flag && g_master_controller) {
+                AUTO_VAR(it, = , g_childs.begin());
+                for (; it != g_childs.end(); ++it) {
+                    kill(*it, SIGINT);
+                }
+                for (it = g_childs.begin(); it != g_childs.end(); ++it)
+                {
+                    int status =0;
+                    waitpid(*it, &status, 0);
+                }
+            }
+        }
     } else {
 
-#if HAVE_SO_REUSEPORT
-        int num = FLAGS_thread_num;
+        int num = FLAGS_work_num;
         Task *tasks = new Task[num];
+#if HAVE_SO_REUSEPORT
         for (int i=0; i< num; ++i)
         {
             tasks[i].http_address = http_address;
@@ -247,9 +298,6 @@ int main(int argc, char * argv[])
         if (!http_ip_list.empty()) {
             http_listen_fd = conet::create_tcp_socket(http_ip_list[0].port, http_ip_list[0].ip.c_str(), true);
         }
-
-        int num = FLAGS_thread_num;
-        Task *tasks = new Task[num];
         for (int i=0; i< num; ++i)
         {
             if (!cpu_set.empty()) {
@@ -263,8 +311,8 @@ int main(int argc, char * argv[])
             if (http_listen_fd != rpc_listen_fd) {
                 tasks[i].http_listen_fd = dup(http_listen_fd);
             }
-
             pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
+
         }
 #endif
 
@@ -272,13 +320,19 @@ int main(int argc, char * argv[])
         {
             pthread_join(tasks[i].tid, NULL);
         }
+        for (int i = 0; i< num; ++i) 
+        {
+            pid_t pid = fork();
+            if (pid == 0) {
+                g_master_controller = 0;
 
+            } else {
+
+            }
+        }
         delete[] tasks;
     }
     
-
-
-
     for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 
     {
         conet::server_fini_func_t *func = conet::g_server_fini_funcs[i];

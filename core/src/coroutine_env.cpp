@@ -35,7 +35,7 @@ void init_coroutine_env(coroutine_env_t *self)
     self->default_stack_pool.init(FLAGS_stack_size, 10000, 64); // 64 bytes for cache_line align
 
     self->main = ALLOC_VAR(coroutine_t);
-    init_coroutine(self->main, NULL, NULL, 128*1024, NULL);
+    //init_coroutine(self->main, NULL, NULL, 128*1024, NULL);
     self->main->is_main = 1;
     self->main->state = RUNNING;
     self->main->desc = "main";
