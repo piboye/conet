@@ -18,12 +18,36 @@
 #ifndef __NETWORK_HOOK_H__
 #define __NETWORK_HOOK_H__
 
+#include "coroutine_impl.h"
+
 namespace conet
 {
 
 void disable_sys_hook();
 void enable_sys_hook();
 int is_enable_sys_hook();
+
+inline 
+int is_enable_sys_hook()
+{
+    coroutine_t *co = get_curr_co_can_null();
+    return (!co->is_main) && (co->is_enable_sys_hook);
+}
+
+inline
+void enable_sys_hook()
+{
+
+    coroutine_t *co = get_curr_co_can_null();
+    co->is_enable_sys_hook = 1;
+}
+
+inline
+void disable_sys_hook()
+{
+    coroutine_t *co = get_curr_co_can_null();
+    co->is_enable_sys_hook = 0;
+}
 
 }
 

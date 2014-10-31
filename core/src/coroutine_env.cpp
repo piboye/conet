@@ -51,7 +51,7 @@ void init_coroutine_env(coroutine_env_t *self)
     self->spec_key_seed = 10000;
 }
 
-static __thread coroutine_env_t * g_env=NULL;
+__thread coroutine_env_t * g_coroutine_env=NULL;
 
 inline
 coroutine_env_t *alloc_coroutine_env()
@@ -70,12 +70,8 @@ void free_coroutine_env(void *arg)
     free(env);
 }
 
-DEF_TLS_GET(g_env, alloc_coroutine_env(), free_coroutine_env);
+DEF_TLS_GET(g_coroutine_env, alloc_coroutine_env(), free_coroutine_env);
 
-coroutine_env_t * get_coroutine_env()
-{
-    return tls_get(g_env);
-}
 
 int proc_netevent(int timeout);
 

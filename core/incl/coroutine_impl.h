@@ -27,6 +27,7 @@
 #include "coctx.h"
 #include "base/incl/fixed_mempool.h"
 #include "gflags/gflags.h"
+#include "base/incl/tls.h"
 
 #ifdef USE_VALGRIND
 #include <valgrind/valgrind.h>
@@ -113,6 +114,23 @@ struct coroutine_t
     std::map<pthread_key_t, void *> * pthread_spec;
 
 };
+
+extern __thread coroutine_env_t * g_coroutine_env;
+inline
+coroutine_env_t * get_coroutine_env()
+{
+    return tls_get(g_coroutine_env);
+}
+
+inline 
+coroutine_t *get_curr_co_can_null()
+{
+    if ( NULL == g_coroutine_env) {
+        return NULL;
+    }
+    return g_coroutine_env->curr_co;
+}
+
 
 }
 

@@ -1072,25 +1072,3 @@ HOOK_SYS_FUNC_DEF(int, pselect,(int nfds, fd_set *readfds, fd_set *writefds,
         return select(nfds, readfds, writefds, exceptfds, NULL);
     }    
 }
-
-namespace conet
-{
-
-int is_enable_sys_hook()
-{
-    coroutine_t *co = current_coroutine();
-    return (!co->is_main) && (co->is_enable_sys_hook);
-}
-
-void enable_sys_hook()
-{
-    current_coroutine()->is_enable_sys_hook = 1;
-}
-
-void disable_sys_hook()
-{
-    current_coroutine()->is_enable_sys_hook = 0;
-}
-
-}
-

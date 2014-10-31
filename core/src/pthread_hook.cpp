@@ -28,6 +28,7 @@
 
 #include "base/incl/tls.h"
 #include "base/incl/addr_map.h"
+#include "pthread_hook.h"
 
 #define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
@@ -45,26 +46,6 @@
         } \
     } while(0) \
 
-
-namespace conet
-{
-int is_enable_pthread_hook()
-{
-    coroutine_t *co = current_coroutine();
-    return !(co->is_main) && (co->is_enable_pthread_hook);
-}
-
-void enable_pthread_hook()
-{
-    current_coroutine()->is_enable_pthread_hook = 1;
-}
-
-void disable_pthread_hook()
-{
-    current_coroutine()->is_enable_pthread_hook = 0;
-}
-
-}
 
 HOOK_FUNC_DEF(
     void*, pthread_getspecific, (pthread_key_t key)
