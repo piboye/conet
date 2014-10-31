@@ -30,10 +30,6 @@ using namespace conet_rpc_pb;
 namespace conet
 {
 
-google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg)
-{
-    return msg->New();
-}
 
 static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
 static 
@@ -56,24 +52,30 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
 
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
 
-    google::protobuf::Message * req1 = self->req_pool.alloc();
-    req1 = alloc_pb_obj_from_pool(self->req_msg);
+    google::protobuf::Message * req1 = self->req_msg;
+    if (req1 ) {
+        req1  = self->req_pool.alloc();
+        if (req->method == conet::METHOD_GET) {  
+            Json::Value query(Json::objectValue); 
+            conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); 
+            ret = conet::json2pb(query, req1, NULL); 
+        } else { 
+            ret = conet::json2pb(req->body, req->content_length, req1, NULL); 
+        } 
 
-    if (req->method == conet::METHOD_GET) {  
-        Json::Value query(Json::objectValue); 
-        conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); 
-        ret = conet::json2pb(query, req1, NULL); 
-    } else { 
-        ret = conet::json2pb(req->body, req->content_length, req1, NULL); 
-    } 
 
-    if(ret) { 
-        conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
-        self->req_pool.release(req1);
-        return -1; 
-    } 
+        if(ret) { 
+            conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
+            self->req_pool.release(req1);
+            return -1; 
+        } 
+    }
     
-    google::protobuf::Message * rsp1 =  self->rsp_pool.alloc();
+    google::protobuf::Message * rsp1 = self->rsp_msg; 
+
+    if (rsp1) {
+        rsp1 = self->rsp_pool.alloc();
+    }
 
     ret = 0; 
     rpc_pb_ctx_t pb_ctx;  
@@ -84,25 +86,36 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); 
     cmdbase.set_cmd_name(self->method_name);
     cmdbase.set_seq_id(time(NULL)); 
+
     pb_ctx.req = &cmdbase; 
     std::string errmsg; 
-    ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
-    if (ret) { 
-        conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
-        self->req_pool.release(req1);
-        self->rsp_pool.release(rsp1);
-        return -1; 
-    } else {\
-        Json::Value root(Json::objectValue); 
-        Json::Value body(Json::objectValue);  
-        root["ret"]=0; 
+
+    AUTO_VAR(obj_mgr, =, self->obj_mgr);
+    if (obj_mgr) {
+        void *obj = obj_mgr->alloc();
+        ret = self->proc(obj, &pb_ctx, req1, rsp1, &errmsg); 
+        obj_mgr->free(obj);
+    } else {
+        ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
+    }
+
+    Json::Value root(Json::objectValue); 
+    Json::Value body(Json::objectValue);  
+    if (!errmsg.empty()) {
+        root["errmsg"] = errmsg;
+    }
+    if (rsp1) {
         conet::pb2json(rsp1, &body); 
         root["body"]=body; 
-        conet::response_to(resp, 200, root.toStyledString()); 
-    } 
+    }
+    conet::response_to(resp, 200, root.toStyledString()); 
 
-    self->req_pool.release(req1);
-    self->rsp_pool.release(rsp1);
+    if (req1) self->req_pool.release(req1);
+    if (rsp1) self->rsp_pool.release(rsp1);
+
+    if (ret) {
+        return -1;
+    }
     return 0; 
 } 
 
@@ -150,23 +163,42 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
         std::string *req, std::string *rsp, std::string *errmsg)
 {
-    google::protobuf::Message * req1 = self->req_pool.alloc();
-    if(!req1->ParseFromString(*req)) { 
-        self->req_pool.release(req1);
-        return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
-    } 
- 
-    google::protobuf::Message * rsp1 = self->rsp_pool.alloc();
     int ret = 0; 
-    ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
-    if (ret) { 
+
+    google::protobuf::Message * req1 = self->req_msg;
+    if (req1) {
+        req1 = self->req_pool.alloc();
+        if(!req1->ParseFromString(*req)) { 
+            self->req_pool.release(req1);
+            return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
+        } 
+    }
+ 
+    google::protobuf::Message * rsp1 = self->rsp_msg;
+
+    if (rsp1) {
+        rsp1 = self->rsp_pool.alloc();
+    }
+
+    AUTO_VAR(obj_mgr, =, self->obj_mgr);
+    if (obj_mgr) {
+        void *obj = obj_mgr->alloc();
+        ret = self->proc(obj, ctx, req1, rsp1, errmsg); 
+        obj_mgr->free(obj);
+    } else {
+        ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
+    }
+
+    if (rsp1) { 
+        rsp1->SerializeToString(rsp); 
+    }
+
+    if (req1) 
         self->req_pool.release(req1);
+
+    if (rsp1) 
         self->rsp_pool.release(rsp1);
-        return ret; 
-    } 
-    rsp1->SerializeToString(rsp); 
-    self->req_pool.release(req1);
-    self->rsp_pool.release(rsp1);
+
     return ret;
 }
 

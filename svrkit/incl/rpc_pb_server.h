@@ -35,6 +35,7 @@ namespace conet
 {
 
 struct rpc_pb_server_t;
+
 struct rpc_pb_ctx_t
 {
     int to_close; // close connection when set 1
@@ -53,7 +54,6 @@ R1 get_request_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R
 
 template <typename T1, typename R1, typename R2>
 R2 get_response_type_from_rpc_pb_func( int (*fun2) (T1 *arg, rpc_pb_ctx_t *ctx, R1 *req, R2*resp, std::string *errmsg));
-
 
 struct rpc_stat_base_t 
 {
@@ -108,7 +108,17 @@ struct rpc_pb_cmd_t
    rpc_pb_cmd_t * clone() const
    {
         rpc_pb_cmd_t * n = new rpc_pb_cmd_t();
-        n->init(this->method_name, this->req_msg, this->rsp_msg); 
+        google::protobuf::Message *req = this->req_msg; 
+        google::protobuf::Message *rsp = this->rsp_msg; 
+
+        if (req) {
+            req = req->New();
+        }
+        if (rsp) {
+            rsp = rsp->New();
+        }
+
+        n->init(this->method_name, req, rsp);
         n->arg = this->arg;
         n->proc = this->proc;
         if (n->obj_mgr) 
@@ -168,7 +178,19 @@ int start_server(rpc_pb_server_t *server);
 
 int stop_server(rpc_pb_server_t *server, int wait=0);
 
-google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg);
+template <typename T>
+inline 
+google::protobuf::Message *new_rpc_req_rsp_obj_help()
+{
+    return new T(); 
+}
+
+template <>
+inline 
+google::protobuf::Message *new_rpc_req_rsp_obj_help<void>()
+{
+    return NULL; 
+}
 
 template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &method_name,
@@ -177,7 +199,7 @@ int registry_rpc_pb_cmd(std::string const &method_name,
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
 
-    cmd->init(method_name, new typeof(R1), new typeof(R2));
+    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     cmd->proc = (rpc_pb_callback)(func); 
     cmd->arg = (void *)arg; 
@@ -190,11 +212,11 @@ int registry_rpc_pb_cmd(std::string const &method_name,
 
 template <typename T1, typename R1, typename R2>
 int registry_rpc_pb_cmd(std::string const &method_name,
-        int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), T1* arg)
+        int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2 *rsp, std::string *errmsg), T1* arg)
 {
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
-    cmd->init(method_name, new typeof(R1), new typeof(R2));
+    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     //cmd->proc = (rpc_pb_callback)(func);  // 这会引起告警， 换成下面的方式就不会, i hate c++ !!!
     memcpy(&(cmd->proc), &(func), sizeof(void *));
@@ -214,20 +236,19 @@ int registry_rpc_pb_cmd(std::string const &method_name,
 {
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
-    cmd->init(method_name, new typeof(R1), new typeof(R2));
+    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     //cmd->proc = (rpc_pb_callback)(func);  // 这会引起告警， 换成下面的方式就不会, i hate c++ !!!
     memcpy(&(cmd->proc), &(func), sizeof(void *));
 
     cmd->arg = (void *)NULL; 
     cmd->obj_mgr = obj_mgr;
-    ret = conet::registry_cmd(cmd); 
+    ret = conet::registry_cmd(cmd);
     if (ret) {
         delete cmd;
     }
     return 1; 
 }
-
 
 
 #define CONET_MACRO_CONCAT_IMPL(a, b) a##b
