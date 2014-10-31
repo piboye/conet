@@ -40,7 +40,7 @@ int main(int argc, char * argv[])
         EchoResp resp;
         req.set_msg(std::string(line, ret));
         int retcode = 0; 
-        ret = conet::rpc_pb_call(lb, "echo", "echo", &req, &resp, &retcode, NULL);
+        ret = conet::rpc_pb_call(lb, "echo", &req, &resp, &retcode, NULL);
         printf("ret:%d, retcode:%d, response:%s\n", ret, retcode, resp.msg().c_str());
     }
     free(line);

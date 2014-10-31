@@ -32,14 +32,12 @@ namespace conet
 {
 //client 
 int rpc_pb_call_impl(int fd,
-        std::string const &server_name,
         std::string const &cmd_name,
         std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
 
 
 template <typename ReqT, typename RespT>
 int rpc_pb_call(int fd, 
-        std::string const &server_name,
         std::string const &cmd_name,
         ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
@@ -50,7 +48,7 @@ int rpc_pb_call(int fd,
     std::string resp;
     int ret = 0;
 
-    ret = rpc_pb_call_impl(fd , server_name, cmd_name, req, &resp, retcode, errmsg, timeout);
+    ret = rpc_pb_call_impl(fd , cmd_name, req, &resp, retcode, errmsg, timeout);
 
     if (ret) {
         return ret;
@@ -66,7 +64,6 @@ int rpc_pb_call(int fd,
 
 template <typename ReqT, typename RespT>
 int rpc_pb_call(char const *ip, int port, 
-        std::string const &server_name,
         std::string const &cmd_name,
         ReqT const *a_req, RespT *a_resp,
         int *retcode, std::string *errmsg=NULL, int timeout=1000)
@@ -74,7 +71,7 @@ int rpc_pb_call(char const *ip, int port,
     int fd = 0;
     fd = connect_to(ip, port);
     if (fd <0) return -3;
-    int ret = rpc_pb_call(fd, server_name, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
+    int ret = rpc_pb_call(fd, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
     close(fd);
     return fd;
 }
@@ -83,7 +80,6 @@ int rpc_pb_call(char const *ip, int port,
 
 template <typename ReqT, typename RespT, typename LBT>
 int rpc_pb_call(LBT &lb,
-        std::string const &server_name,
         std::string const &cmd_name,
         ReqT const *a_req, RespT *a_resp, 
         int *retcode, std::string *errmsg=NULL, int timeout=1000)
@@ -93,7 +89,7 @@ int rpc_pb_call(LBT &lb,
     int port;
     fd = lb.get(&ip, &port);
     if (fd <0) return -3;
-    int ret =  rpc_pb_call(fd, server_name, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
+    int ret =  rpc_pb_call(fd, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
     lb.release(ip.c_str(), port, fd, ret);
     return ret;
 }

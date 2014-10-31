@@ -20,7 +20,7 @@
 #define __PB_OBJ_POOL_H_INC__
 
 #include "google/protobuf/message.h"
-#include "lifo_lockfree.h"
+#include "obj_pool.h"
 
 namespace conet
 {
@@ -30,10 +30,8 @@ class PbObjPool
 public:
     google::protobuf::Message * m_obj_proto;    
     
-    lifo_lockfree_t m_queue;
+    obj_pool_t m_queue;
     int m_hold_proto_flag;
-
-    typedef lifo_lockfree_t::node_t node_t;
 
     explicit
     PbObjPool()
@@ -44,58 +42,49 @@ public:
 
     ~PbObjPool() 
     {
-        node_t *n = NULL;
-        while (1)
-        {
-            n = m_queue.pop();
-            if (n) {
-                delete (google::protobuf::Message *)(n->value);
-                m_queue.free_node(n);
-            } else {
-                break;
-            }
-        }
-
         if (m_hold_proto_flag == 1) {
             delete m_obj_proto;
         }
     }
 
+    static 
+    void * pb_obj_new(void *arg) 
+    {
+       PbObjPool * self = (PbObjPool *)(arg);
+       return self->m_obj_proto->New(); 
+    }
+
+    static 
+    void pb_obj_free(void *arg, void *obj) 
+    {
+        google::protobuf::Message * msg = (google::protobuf::Message *)(obj);
+        delete msg;
+    }
 
     int init(google::protobuf::Message *pb, int hold=0)
     {
-        m_queue.init();
         if (m_hold_proto_flag && m_obj_proto) {
             delete m_obj_proto;
         }
 
         m_obj_proto = pb;
+
         m_hold_proto_flag = hold;
 
+        m_queue.set_alloc_obj_func(&pb_obj_new, this);
+        m_queue.set_free_obj_func(&pb_obj_free, this);
+
         return 0;
     }
 
-    int alloc(PbObjPool::node_t **o_node, google::protobuf::Message **o_msg) 
+    google::protobuf::Message * alloc()
     {
-        node_t *n = NULL;
-        n = m_queue.pop();
-        if (NULL == n) 
-        {
-            n = m_queue.alloc_node();
-        }
-
-        if (NULL == n->value) {
-            n->value = m_obj_proto->New();
-        } 
-
-        *o_msg = (google::protobuf::Message *)((n)->value);
-        *o_node = n;
-        return 0;
+        return (google::protobuf::Message *) m_queue.alloc(); 
     }
 
-    void release(PbObjPool::node_t *node, google::protobuf::Message *value)
+    void release(google::protobuf::Message *value)
     {
-        m_queue.push(node, value);
+        return m_queue.release(value);
     }
 
 };

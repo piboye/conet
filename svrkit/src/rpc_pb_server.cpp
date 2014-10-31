@@ -35,18 +35,7 @@ google::protobuf::Message * pb_obj_new(google::protobuf::Message *msg)
     return msg->New();
 }
 
-static std::map<std::string , StrMap*> *g_server_cmd_maps=NULL;
-
-static std::map<std::string , std::map<std::string, http_cmd_t> > *g_server_http_cmd_maps=NULL;
-
-std::string get_rpc_server_name_default()
-{
-    if (g_server_cmd_maps && g_server_cmd_maps->size() > 0) {
-       return g_server_cmd_maps->begin()->first;
-    }
-    return std::string();
-}
-
+static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
 static 
 void clear_server_maps(void)
 {
@@ -57,9 +46,7 @@ void clear_server_maps(void)
         }
     }
     delete g_server_cmd_maps;
-    delete g_server_http_cmd_maps;
     g_server_cmd_maps = NULL;
-    g_server_http_cmd_maps = NULL;
 }
 
 
@@ -68,11 +55,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     int ret = 0; 
 
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
-    //PbObjPool::node_t *req_node=NULL; 
-    //PbObjPool::node_t *rsp_node=NULL; 
 
-    google::protobuf::Message * req1 = NULL;
-    //self->m_req_pool.alloc(&req_node, &req1);
+    google::protobuf::Message * req1 = self->req_pool.alloc();
     req1 = alloc_pb_obj_from_pool(self->req_msg);
 
     if (req->method == conet::METHOD_GET) {  
@@ -85,14 +69,11 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
 
     if(ret) { 
         conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 
-        //self->m_req_pool.release(req_node, req1);
-        free_pb_obj_to_pool(self->req_msg, req1);
+        self->req_pool.release(req1);
         return -1; 
     } 
     
-    google::protobuf::Message * rsp1 =  NULL;
-    //self->m_rsp_pool.alloc(&rsp_node, &rsp1);
-    rsp1 = alloc_pb_obj_from_pool(self->rsp_msg);
+    google::protobuf::Message * rsp1 =  self->rsp_pool.alloc();
 
     ret = 0; 
     rpc_pb_ctx_t pb_ctx;  
@@ -101,7 +82,6 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     pb_ctx.server = (conet::rpc_pb_server_t *)ctx->server->extend;  
     conet_rpc_pb::CmdBase cmdbase; 
     cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); 
-    cmdbase.set_server_name(ctx->server->server_name); 
     cmdbase.set_cmd_name(self->method_name);
     cmdbase.set_seq_id(time(NULL)); 
     pb_ctx.req = &cmdbase; 
@@ -109,10 +89,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     if (ret) { 
         conet::response_format(resp, 200, "{\"ret\":%d, \"errmsg\":\"%s\"}", ret, errmsg.c_str()); 
-        //self->m_req_pool.release(req_node, req1);
-        //self->m_rsp_pool.release(rsp_node, rsp1);
-        free_pb_obj_to_pool(self->req_msg, req1);
-        free_pb_obj_to_pool(self->rsp_msg, rsp1);
+        self->req_pool.release(req1);
+        self->rsp_pool.release(rsp1);
         return -1; 
     } else {\
         Json::Value root(Json::objectValue); 
@@ -123,10 +101,8 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         conet::response_to(resp, 200, root.toStyledString()); 
     } 
 
-    //self->m_req_pool.release(req_node, req1);
-    //self->m_rsp_pool.release(rsp_node, rsp1);
-    free_pb_obj_to_pool(self->req_msg, req1);
-    free_pb_obj_to_pool(self->rsp_msg, rsp1);
+    self->req_pool.release(req1);
+    self->rsp_pool.release(rsp1);
     return 0; 
 } 
 
@@ -158,7 +134,7 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 
 
     StrMap::node_type * pn = NULL;
-    list_for_each_entry(pn, &self->cmd_maps->m_list, link_to)
+    list_for_each_entry(pn, &self->cmd_maps.m_list, link_to)
     {
         rpc_pb_cmd_t *cmd = container_of(pn, rpc_pb_cmd_t, cmd_map_node);
         list.append(Json::Value(cmd->method_name));
@@ -174,36 +150,23 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
         std::string *req, std::string *rsp, std::string *errmsg)
 {
-    //PbObjPool::node_t *req_node=NULL; 
-    //PbObjPool::node_t *rsp_node=NULL; 
-
-    google::protobuf::Message * req1 = NULL;
-    //self->m_req_pool.alloc(&req_node, &req1);
-    req1 = alloc_pb_obj_from_pool(self->req_msg);
+    google::protobuf::Message * req1 = self->req_pool.alloc();
     if(!req1->ParseFromString(*req)) { 
-        //self->m_req_pool.release(req_node, req1);
-        free_pb_obj_to_pool(self->req_msg, req1);
+        self->req_pool.release(req1);
         return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
     } 
  
-    google::protobuf::Message * rsp1 = NULL;
-    //self->m_rsp_pool.alloc(&rsp_node, &rsp1);
-    //google::protobuf::Message * rsp1 = self->rsp_msg->New();
-    rsp1 = alloc_pb_obj_from_pool(self->rsp_msg);
+    google::protobuf::Message * rsp1 = self->rsp_pool.alloc();
     int ret = 0; 
     ret = self->proc(self->arg, ctx, req1, rsp1, errmsg); 
     if (ret) { 
-        //self->m_req_pool.release(req_node, req1);
-        //self->m_rsp_pool.release(rsp_node, rsp1);
-        //free_pb_obj_to_pool(self->req_msg, req1);
-        //free_pb_obj_to_pool(self->rsp_msg, rsp1);
+        self->req_pool.release(req1);
+        self->rsp_pool.release(rsp1);
         return ret; 
     } 
     rsp1->SerializeToString(rsp); 
-    //self->m_req_pool.release(req_node, req1);
-    //self->m_rsp_pool.release(rsp_node, rsp1);
-    free_pb_obj_to_pool(self->req_msg, req1);
-    free_pb_obj_to_pool(self->rsp_msg, rsp1);
+    self->req_pool.release(req1);
+    self->rsp_pool.release(rsp1);
     return ret;
 }
 
@@ -250,93 +213,61 @@ static int delete_rpc_pb_cmd_obj(void *arg, StrMap::node_type *n)
     return 0;
 }
 
-int registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
+int registry_cmd(rpc_pb_cmd_t  *cmd)
 {
     if (NULL == g_server_cmd_maps) {
         g_server_cmd_maps = new typeof(*g_server_cmd_maps);
-        g_server_http_cmd_maps = new typeof(*g_server_http_cmd_maps);
         atexit(clear_server_maps);
     }
 
     std::string const & method_name = cmd->method_name;
 
-    StrMap * maps =  NULL;
-    if (g_server_cmd_maps->find(server_name) == g_server_cmd_maps->end()) {
-        maps = new StrMap();
-        maps->init(100);
-        maps->set_destructor_func(&delete_rpc_pb_cmd_obj, NULL);
-        g_server_cmd_maps->insert(std::make_pair(server_name, maps));
-    } else {
-        maps = (*g_server_cmd_maps)[server_name];
-    }
-    maps->add(&cmd->cmd_map_node);
-    //maps.insert(std::make_pair(method_name, cmd));
-
-
-    { // registry http api
-        std::map<std::string, http_cmd_t> * maps = &(*g_server_http_cmd_maps)[server_name];
-        registry_rpc_cmd_http_api(method_name, cmd, maps); 
-    }
-    return 0;
-}
-
-int registry_cmd(rpc_pb_server_t *server, rpc_pb_cmd_t *cmd)
-{
-    std::string const & method_name = cmd->method_name;
-
-    if (server->cmd_maps->find(ref_str(method_name)))
-    //if (server->cmd_maps.find(method_name) != server->cmd_maps.end()) 
+    if (g_server_cmd_maps->find(method_name) != g_server_cmd_maps->end())
     {
+        LOG(ERROR)<<"duplicate cmd:"<<method_name<<" has been registried!";
         return -1;
     }
-    
-    server->cmd_maps->add(&cmd->cmd_map_node);
-    //server->cmd_maps.insert(std::make_pair(method_name, cmd));
-
-    if (server->http_server) {
-        AUTO_VAR(maps, =, &server->http_server->cmd_maps);
-        registry_rpc_cmd_http_api(method_name, cmd, maps); 
-    }
+    g_server_cmd_maps->insert(std::make_pair(method_name, cmd));
 
     return 0;
 }
 
-
-int unregistry_cmd(rpc_pb_server_t *server, std::string const &name)
+rpc_pb_server_t::rpc_pb_server_t()
 {
-    /*
-    AUTO_VAR(it, =, server->cmd_maps.find(name));
-    if (it == server->cmd_maps.end()) {
-        return -1;
-    }
-    server->cmd_maps.erase(it);
-    */
-
-    StrMap::node_type * n = server->cmd_maps->find(ref_str(name));
-    if (NULL == n) {
-        return -1;
-    }
-
-    server->cmd_maps->remove(n);
-    server->http_server->cmd_maps.erase(name);
-    return 0;
+    this->cmd_maps.init(100);
+    this->cmd_maps.set_destructor_func(&delete_rpc_pb_cmd_obj, NULL);
 }
+
 
 rpc_pb_cmd_t * get_rpc_pb_cmd(rpc_pb_server_t *server, std::string const &name)
 {
-    StrMap::node_type * n = server->cmd_maps->find(ref_str(name));
+    StrMap::node_type * n = server->cmd_maps.find(ref_str(name));
     if ( NULL == n ) {
         return NULL;
     }
     return container_of(n, rpc_pb_cmd_t, cmd_map_node);
 }
 
-
 int get_global_server_cmd(rpc_pb_server_t * server) 
 {
-    server->cmd_maps = (*g_server_cmd_maps)[server->server_name];
-    server->http_server->cmd_maps = (*g_server_http_cmd_maps)[server->server_name];
-    return server->cmd_maps->size();
+    if (NULL == g_server_cmd_maps) {
+        LOG(ERROR)<<"no cmd has been registried!";
+        return -1;
+    }
+
+    AUTO_VAR(it, = , g_server_cmd_maps->begin());
+    for (; it != g_server_cmd_maps->end(); ++it) 
+    {
+        std::string const & method_name = it->first;
+        rpc_pb_cmd_t *cmd = it->second;
+        rpc_pb_cmd_t *cmd2 = cmd->clone(); 
+        server->cmd_maps.add(&cmd2->cmd_map_node);
+
+        registry_rpc_cmd_http_api(method_name, cmd2, &server->http_server->cmd_maps); 
+        
+    }
+
+    return server->cmd_maps.size();
 }
 
 static int proc_rpc_pb(conn_info_t *conn);
@@ -345,7 +276,6 @@ static int proc_rpc_pb(conn_info_t *conn);
 int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
 {
     std::string *data = (std::string *) arg; 
-    //LOG(ERROR)<<"static file size:"<< data->size(); 
     conet::response_to(resp, 200, *data);
     return 0;
 }
@@ -384,15 +314,12 @@ int registry_http_rpc_default_api(rpc_pb_server_t *server)
 
 int init_server(
         rpc_pb_server_t *self, 
-        std::string const &server_name, 
         char const *ip,
         int port,
-        bool use_global_cmd,
         char const * http_ip,
         int http_port
     )
 {
-    self->server_name =server_name;
     server_t *server_base = new server_t();
     int ret = 0;
     ret = init_server(server_base, ip, port);
@@ -401,8 +328,6 @@ int init_server(
         LOG(ERROR)<<"init server_base in rpc server failed, [ret:"<<ret<<"]";
         return -1;
     }
-
-    self->cmd_maps = NULL;
 
     self->server = server_base; 
 
@@ -425,9 +350,12 @@ int init_server(
         self->http_server = http_server;
     }
 
-    if (use_global_cmd) {
-        get_global_server_cmd(self);
+    ret = get_global_server_cmd(self);
+    if (ret <=0) {
+        LOG(ERROR)<<"init server failed, no cmd regsitried!";
+        return -2;
     }
+
     registry_http_rpc_default_api(self);
     self->async_flag = 0;
     return 0;
@@ -442,9 +370,6 @@ int start_server(rpc_pb_server_t *server)
         server->server->proc = proc_rpc_pb_async;
     } else {
         server->server->proc = proc_rpc_pb;
-    }
-    if (server->cmd_maps == NULL) {
-        return -1;
     }
     int ret =  0;
     ret = start_server(server->server);
@@ -535,18 +460,11 @@ static int proc_rpc_pb(conn_info_t *conn)
             break;
         }
 
-        if (cmd_base.server_name() != server->server_name) {
-            LOG(ERROR)<< "request server["<<cmd_base.server_name()<<"] nomatch the server["<<server->server_name<<"]";
-            break;
-
-        }
-
         std::string const & cmd_name = cmd_base.cmd_name();
         rpc_pb_cmd_t * cmd = get_rpc_pb_cmd(server, cmd_name);
         if (NULL == cmd) {
             // not unsuppend cmd;
-            LOG(ERROR)<< "unsuppend cmd, server:"<<server->server_name
-                <<"cmd:"<<cmd_name;
+            LOG(ERROR)<< "unsuppend cmd:"<<cmd_name;
 
             cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
             cmd_base.set_errmsg("unsuppored cmd");
@@ -823,19 +741,11 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
             break;
         }
 
-        if (cmd_base->server_name() != server->server_name) {
-            LOG(ERROR)<< "request server["<<cmd_base->server_name()<<"] nomatch the server["<<server->server_name<<"]";
-            delete cmd_base;
-            break;
-
-        }
-
         std::string const & cmd_name = cmd_base->cmd_name();
         rpc_pb_cmd_t * cmd = get_rpc_pb_cmd(server, cmd_name);
         if (NULL == cmd) {
             // not unsuppend cmd;
-            LOG(ERROR)<< "unsuppend cmd, server:"<<server->server_name
-                <<"cmd:"<<cmd_name;
+            LOG(ERROR)<< "unsuppend cmd:"<<cmd_name;
 
             cmd_base->set_ret(CmdBase::ERR_UNSUPPORED_CMD);
             cmd_base->set_errmsg("unsuppored cmd");
@@ -913,23 +823,23 @@ static int proc_rpc_pb_async(conn_info_t *conn)
 int stop_server(rpc_pb_server_t *server, int wait)
 {
     int ret = 0;
-    LOG(INFO)<<"["<<server->server_name<<"] stop rpc main server";
+    LOG(INFO)<<"stop rpc main server";
     ret = stop_server(server->server, wait);
     if (ret) {
-        LOG(INFO)<<"["<<server->server_name<<"] stop rpc main server success";
+        LOG(INFO)<<"stop rpc main server success";
     } else {
-        LOG(INFO)<<"["<<server->server_name<<"] stop rpc main server failed, [ret:"<<ret<<"]";
+        LOG(INFO)<<"stop rpc main server failed, [ret:"<<ret<<"]";
     }
     
-    LOG(INFO)<<"["<<server->server_name<<"] stop rpc http server";
+    LOG(INFO)<<"stop rpc http server";
     ret = stop_server(server->http_server, wait);
     if (ret) {
-        LOG(ERROR)<<"["<<server->server_name<<"] stop rpc http server failed, [ret:"<<ret<<"]";
+        LOG(ERROR)<<"stop rpc http server failed, [ret:"<<ret<<"]";
     } else {
-        LOG(INFO)<<"["<<server->server_name<<"] stop rpc http server success";
+        LOG(INFO)<<"stop rpc http server success";
     }
 
-    LOG(INFO)<<"["<<server->server_name<<"] stop rpc finished";
+    LOG(INFO)<<"stop rpc finished";
     return ret;
 }
 

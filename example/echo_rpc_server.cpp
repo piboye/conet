@@ -55,7 +55,7 @@ DELAY_INIT()
     return 0;
 }
 
-REGISTRY_RPC_PB_FUNC("echo", "echo", &EchoServer::proc_echo_impl, &echo_server);
+REGISTRY_RPC_PB_FUNC("echo", &EchoServer::proc_echo_impl, &echo_server);
 
 int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
         EchoReq *req, EchoResp *resp, std::string *errmsg) 
@@ -65,5 +65,5 @@ int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
    return 0;
 }
 
-REGISTRY_RPC_PB_FUNC("echo", "echo2", &proc_echo_impl, NULL);
+REGISTRY_RPC_PB_FUNC("echo2", &proc_echo_impl, NULL);
 

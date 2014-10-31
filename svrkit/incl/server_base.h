@@ -55,7 +55,8 @@ struct server_t
     int listen_fd;
     std::string ip;
     int port;
-    coroutine_t *co;
+
+    coroutine_t *main_co;
     int state;
     int to_stop;
     int (*proc)(conn_info_t *conn);

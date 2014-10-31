@@ -34,7 +34,6 @@ DEFINE_int32(max_packet_size, 102400, "default max packet size");
 namespace conet
 {
 
-
 int client_proc(conn_info_t *info)
 {
     conet::enable_sys_hook();
@@ -88,12 +87,19 @@ void * alloc_server_work_co(void *arg)
     return co;
 }
 
+static 
+void free_server_work_co(void *arg, void * val)
+{
+    conet::coroutine_t * co = (conet::coroutine_t *) (val);
+    resume(co, NULL);
+}
+
 int init_server(server_t *server, const char *ip, int port)
 {
     server->ip = ip;
     server->port = port;
     server->state = server_t::SERVER_START;
-    server->co = NULL;
+    server->main_co = NULL;
     server->extend = NULL;
     server->conf.listen_backlog = FLAGS_listen_backlog;
     server->conf.max_conn_num = FLAGS_max_conn_num;
@@ -102,6 +108,7 @@ int init_server(server_t *server, const char *ip, int port)
     server->to_stop = 0;
     server->listen_fd = -1;
     server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
+    server->co_pool.set_free_obj_func(free_server_work_co, server);
     return 0;
 }
 
@@ -110,8 +117,8 @@ int server_main(void *arg);
 
 int start_server(server_t *server)
 {
-    server->co = alloc_coroutine(server_main, server);
-    conet::resume(server->co);
+    server->main_co = alloc_coroutine(server_main, server);
+    conet::resume(server->main_co);
     return 0;
 }
 
@@ -139,7 +146,6 @@ int server_main(void *arg)
         }
         
         server->listen_fd = listen_fd;
-
     } 
 
     set_none_block(listen_fd, true);
@@ -198,7 +204,7 @@ int stop_server(server_t *server, int wait_ms)
     if (server->state == server_t::SERVER_STOPED) {
         return 0;
     }
-    conet::wait(server->co, 20);
+    conet::wait(server->main_co, 20);
     if (wait_ms >0) {
         for (int i=0; i< wait_ms; i+=1000) {
             if (server->data.cur_conn_num <= 0) break;

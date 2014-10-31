@@ -25,7 +25,6 @@ namespace conet
     class RpcPbClientDuplex::ReqCtx
     {
     public:
-        char const *m_server_name;
         char const *m_cmd_name;
 
         google::protobuf::Message const * m_req;
@@ -140,7 +139,6 @@ namespace conet
                 int ret = 0;
 
                 conet_rpc_pb::CmdBase req_base;
-                req_base.set_server_name(req_ctx->m_server_name);
                 req_base.set_cmd_name(req_ctx->m_cmd_name);
                 req_base.set_seq_id(req_ctx->m_seq_id);
                 req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
@@ -302,7 +300,6 @@ namespace conet
     }
 
     int RpcPbClientDuplex::rpc_call(
-            char const *server_name,
             char const *cmd_name,
             google::protobuf::Message const * req, 
             google::protobuf::Message * rsp, 
@@ -310,7 +307,6 @@ namespace conet
     {
         ReqCtx req_ctx;
 
-        req_ctx.m_server_name = server_name;
         req_ctx.m_cmd_name = cmd_name;
 
         req_ctx.m_req = req;

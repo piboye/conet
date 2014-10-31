@@ -24,11 +24,9 @@ TEST(p, a)
 {
     conet_rpc_pb::CmdBase a, b;
     a.set_seq_id(123);
-    b.set_server_name("abc");
     std::string s;
     b.SerializeToString(&s);
     a.ParseFromString(s);
     ASSERT_EQ(0, (int)a.seq_id());
-    ASSERT_STREQ("abc", a.server_name().c_str());
 }
 

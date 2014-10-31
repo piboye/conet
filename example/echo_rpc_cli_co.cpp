@@ -72,7 +72,7 @@ int proc_send(void *arg)
     for (int i=0, len = g_data.size(); i<len; ++i) {
         req.set_msg(*g_data[i]);
         int retcode=0;
-        ret = conet::rpc_pb_call(*task->lb, "echo", "echo", &req, &resp, &retcode);
+        ret = conet::rpc_pb_call(*task->lb, "echo", &req, &resp, &retcode);
         if (ret || retcode) {
             LOG(ERROR)<<"ret:"<<ret;
             continue;

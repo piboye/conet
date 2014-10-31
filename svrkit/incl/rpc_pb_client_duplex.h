@@ -61,7 +61,6 @@ public:
     uint64_t get_seq_id();
     
     int rpc_call(
-            char const *server_name,
             char const *cmd_name,
             google::protobuf::Message const * req, 
             google::protobuf::Message * rsp, 

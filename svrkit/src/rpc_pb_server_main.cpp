@@ -40,7 +40,6 @@
 DEFINE_string(http_server_address, "", "default use server address");
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
-DEFINE_string(server_name, "", "server name");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
 DEFINE_int32(work_num, 1, "server work num");
 
@@ -124,11 +123,11 @@ struct Task
             }
 
             if (self->http_ip_list.empty()) {
-                ret = init_server(&self->server, g_rpc_server_name.c_str(), 
+                ret = init_server(&self->server, 
                         self->ip_list[0].ip.c_str(), self->ip_list[0].port);
             } else {
-                ret = init_server(&self->server, g_rpc_server_name.c_str(), 
-                        self->ip_list[0].ip.c_str(), self->ip_list[0].port, true, 
+                ret = init_server(&self->server, 
+                        self->ip_list[0].ip.c_str(), self->ip_list[0].port, 
                         self->http_ip_list[0].ip.c_str(), self->http_ip_list[0].port);
             }
 
@@ -218,17 +217,6 @@ int main(int argc, char * argv[])
         parse_ip_list(http_address, &http_ip_list);
     } else {
         http_address = FLAGS_server_address;
-    }
-
-    if (g_rpc_server_name.empty()) {
-        g_rpc_server_name = FLAGS_server_name;
-        if (g_rpc_server_name.empty()) {
-            g_rpc_server_name = conet::get_rpc_server_name_default();
-            if (g_rpc_server_name.empty()) {
-                LOG(ERROR)<<"please set server_name!";
-                return 1;
-            }
-        }
     }
 
 

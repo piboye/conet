@@ -27,7 +27,6 @@ namespace conet
 {
 
 int rpc_pb_call_impl(int fd,
-        std::string const &server_name,
         std::string const &cmd_name,
         std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout)
 {
@@ -38,7 +37,6 @@ int rpc_pb_call_impl(int fd,
     int ret = 0;
 
     conet_rpc_pb::CmdBase req_base, resp_base;
-    req_base.set_server_name(server_name);
     req_base.set_cmd_name(cmd_name);
     req_base.set_seq_id(1);
     req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
