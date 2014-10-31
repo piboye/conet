@@ -54,8 +54,12 @@ gc_mgr_t *get_gc_mgr();
 #define CO_NEW(type) conet::gc_new<type>(1, conet::get_gc_mgr())
 
 
-// like new ClassA(val);
-#define CO_NEW_WITH(type, val) conet::gc_new_with_init<type>(val, conet::get_gc_mgr())
+// like new ClassA(...);
+#define CO_NEW_WITH1(type, v1) conet::gc_new_with_init1<type>(conet::get_gc_mgr(), v1)
+#define CO_NEW_WITH2(type, v1, v2) conet::gc_new_with_init2<type>(conet::get_gc_mgr(), v1, v2)
+#define CO_NEW_WITH3(type, v1, v2, v3) conet::gc_new_with_init3<type>(conet::get_gc_mgr(), v1, v2, v3)
+#define CO_NEW_WITH4(type, v1, v2, v3, v4) conet::gc_new_with_init4<type>(conet::get_gc_mgr(), v1, v2, v3, v4)
+#define CO_NEW_WITH5(type, v1, v2, v3, v4, v5) conet::gc_new_with_init5<type>(conet::get_gc_mgr(), v1, v2, v3, v4, v5)
 
 // like new ClassA[num];
 #define CO_NEW_ARRAY(type, num) conet::gc_new<type>(num, conet::get_gc_mgr())
@@ -67,7 +71,7 @@ gc_mgr_t *get_gc_mgr();
 #define CO_ALLOC_ARRAY(type, num) conet::gc_alloc<type>(num, conet::get_gc_mgr())
 
 #define MAKE_GC_LEVEL() \
-    conet::ScopeGC gc_scope_level_ ## __LINE__
+    conet::ScopeGC gc_scope_level_ ## __LINE__(conet::get_gc_mgr())
 
 void * get_static_var(void *key);
 void * set_static_var(void * key, void *val);
