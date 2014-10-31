@@ -32,7 +32,7 @@ void * fixed_mempool_t::alloc_mem_help()
     if (is_page_alloc) {
         return mmap(NULL, alloc_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
     } else {
-        if (align_size == 0)  {
+        if (align_size > 1)  {
             return malloc(alloc_size);
         } else {
             return  memalign(align_size, alloc_size); 

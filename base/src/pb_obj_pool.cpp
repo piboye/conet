@@ -84,19 +84,28 @@ namespace conet
 
     };
 
-    __thread PbObjPoolMgr * g_pb_obj_pool_mgr = NULL;
+__thread PbObjPoolMgr * g_pb_obj_pool_mgr = NULL;
+
+CONET_DEF_TLS_VAR_HELP(g_pb_obj_pool_mgr, 
+        ({
+            new PbObjPoolMgr();
+        }),
+        ({
+            delete self;
+        })
+);
 
 
 google::protobuf::Message * alloc_pb_obj_from_pool(google::protobuf::Message *proto)
 {
-    PbObjPoolMgr * mgr = tls_get(g_pb_obj_pool_mgr);
+    PbObjPoolMgr * mgr = TLS_GET(g_pb_obj_pool_mgr);
     obj_pool_t *pool = mgr->find(proto);
     return (google::protobuf::Message *) pool->alloc();
 }
 
 void free_pb_obj_to_pool(google::protobuf::Message *proto, google::protobuf::Message *obj)
 {
-    PbObjPoolMgr * mgr = tls_get(g_pb_obj_pool_mgr);
+    PbObjPoolMgr * mgr = TLS_GET(g_pb_obj_pool_mgr);
     obj_pool_t *pool = mgr->find(proto);
     return pool->release(obj);
 }

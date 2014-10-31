@@ -359,17 +359,18 @@ void free_epoll(epoll_ctx_t *ep)
     free(ep);
 }
 
-int get_epoll_pend_task_num() {
+int get_epoll_pend_task_num() 
+{
     return get_epoll_ctx()->wait_num;
 }
 
 __thread epoll_ctx_t * g_epoll_ctx = NULL;
 
-DEF_TLS_GET(g_epoll_ctx, create_epoll(FLAGS_epoll_size), free_epoll)
+CONET_DEF_TLS_GET(g_epoll_ctx, create_epoll(FLAGS_epoll_size), free_epoll);
 
 epoll_ctx_t * get_epoll_ctx()
 {
-    return tls_get(g_epoll_ctx);
+    return TLS_GET(g_epoll_ctx);
 }
 
 

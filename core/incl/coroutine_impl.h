@@ -123,20 +123,24 @@ extern __thread coroutine_env_t * g_coroutine_env;
 inline
 coroutine_env_t * get_coroutine_env()
 {
-    if (NULL == g_coroutine_env) {
-        g_coroutine_env = alloc_coroutine_env();
-        tls_onexit_add(g_coroutine_env, &free_coroutine_env);
+    coroutine_env_t *env = g_coroutine_env;
+    if (unlikely(NULL == env)) {
+        env = alloc_coroutine_env();
+        tls_onexit_add(env, &free_coroutine_env);
+        g_coroutine_env = env;
     }
-    return g_coroutine_env;
+    return env;
 }
 
 inline 
 coroutine_t *get_curr_co_can_null()
 {
-    if ( NULL == g_coroutine_env) {
+    coroutine_env_t *env = g_coroutine_env;
+    if (unlikely(NULL == env))
+    {
         return NULL;
     }
-    return g_coroutine_env->curr_co;
+    return env->curr_co;
 }
 
 

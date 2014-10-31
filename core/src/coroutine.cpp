@@ -14,16 +14,39 @@
 #include "base/incl/tls.h"
 #include "log.h"
 #include "coctx.h"
+#include "base/incl/fixed_mempool.h"
 
 DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
-#define ALLOC_VAR(type) (type *) malloc(sizeof(type))
+#define ALLOC_VAR(type) ((type *) malloc(sizeof(type)))
 
 extern "C" void co_swapcontext(ucontext_t *co, ucontext_t *co2);
 extern "C" void co_setcontext(ucontext_t *co);
 
+
+static __thread conet::fixed_mempool_t * g_coroutine_struct_pool = NULL;
+
+static 
+void free_co_struct_pool(void *arg)
+{
+    conet::fixed_mempool_t * pool = (conet::fixed_mempool_t *)(arg);
+    pool->fini();
+    free(pool);
+}
+
 namespace conet
 {
+
+conet::fixed_mempool_t * get_co_struct_pool()
+{
+    if (NULL == g_coroutine_struct_pool) {
+         g_coroutine_struct_pool = ALLOC_VAR(conet::fixed_mempool_t);
+         g_coroutine_struct_pool->init(sizeof(coroutine_t), 1000, __alignof__(coroutine_t));
+         conet::tls_onexit_add(g_coroutine_struct_pool, &free_co_struct_pool);
+    }
+    return g_coroutine_struct_pool;
+}
+
 
 void * get_yield_value(coroutine_t *co)
 {
@@ -196,7 +219,9 @@ coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
     {
         env = get_coroutine_env();
     }
-    coroutine_t *co = ALLOC_VAR(coroutine_t);
+
+    //coroutine_t *co = ALLOC_VAR(coroutine_t);
+    coroutine_t *co = (coroutine_t *)get_co_struct_pool()->alloc();
     if (stack_size <=0) {
         stack_size = FLAGS_stack_size;
     }
@@ -241,7 +266,8 @@ void free_coroutine(coroutine_t *co)
         }
     }
 
-    free(co);
+    //free(co);
+    get_co_struct_pool()->free(co);
 }
 
 
@@ -444,6 +470,8 @@ public:
 
 __thread class TimeoutMgr * g_timout_mgr = NULL;
 
+CONET_DEF_TLS_VAR_HELP_DEF(g_timout_mgr);
+
 class TimeoutHandle
 {
 public:
@@ -464,7 +492,7 @@ public:
         } else {
             set_timeout(&m_tm, m_ms);
         }
-        m_id = tls_get(g_timout_mgr)->add(this);
+        m_id = TLS_GET(g_timout_mgr)->add(this);
     }
 
     timeout_handle_t m_tm;
@@ -500,7 +528,7 @@ public:
    
     ~TimeoutHandle()
     {
-       tls_get(g_timout_mgr)->free(m_id);
+       TLS_GET(g_timout_mgr)->free(m_id);
     }
 };
 
@@ -518,7 +546,7 @@ uint64_t set_interval(void (*fn)(void *), void *arg, int ms, int stack_size)
 
 void cancel_timeout(uint64_t id) 
 {
-   TimeoutHandle * tm = tls_get(g_timout_mgr)->get(id); 
+   TimeoutHandle * tm = TLS_GET(g_timout_mgr)->get(id); 
    if (tm) {
        tm->m_exit_flag = 1;
        conet::resume(tm->m_co);

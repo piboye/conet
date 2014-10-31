@@ -65,7 +65,7 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
     free(mgr);
 }
 
-static __thread fd_ctx_mgr_t * g_fd_ctx_mgr = NULL;
+__thread fd_ctx_mgr_t * g_fd_ctx_mgr = NULL;
 
 static inline
 void expand(fd_ctx_mgr_t *mgr, int need_size)
@@ -98,14 +98,22 @@ int get_default_fd_ctx_size()
     }
 }
 
-DEF_TLS_GET(g_fd_ctx_mgr, create_fd_ctx_mgr(get_default_fd_ctx_size()), free_fd_ctx_mgr)
+CONET_DEF_TLS_VAR_HELP(g_fd_ctx_mgr, 
+        ({
+            create_fd_ctx_mgr(get_default_fd_ctx_size());
+         }),
+
+        ({
+            free_fd_ctx_mgr(self);
+         })
+);
 
 
 fd_ctx_t *get_fd_ctx(int fd, int type)
 {
     if (fd <0) return NULL;
 
-    fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
+    fd_ctx_mgr_t *mgr = TLS_GET(g_fd_ctx_mgr);
 
     if (fd >  mgr->size) {
         assert("!too many fd");
@@ -150,7 +158,7 @@ fd_ctx_t *alloc_fd_ctx(int fd, int type)
         return NULL;
     }
 
-    fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
+    fd_ctx_mgr_t *mgr = TLS_GET(g_fd_ctx_mgr);
 
     if (fd >= mgr->size ) {
         expand(mgr, fd);
@@ -191,7 +199,7 @@ int free_fd_ctx(int fd)
 {
     if (fd <0) return -1;
 
-    fd_ctx_mgr_t *mgr = tls_get(g_fd_ctx_mgr);
+    fd_ctx_mgr_t *mgr = TLS_GET(g_fd_ctx_mgr);
 
     if (fd > mgr->size ) {
         return -2;

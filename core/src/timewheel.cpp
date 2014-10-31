@@ -330,16 +330,17 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 }
 
 
-static
-DEF_TLS_GET(g_tw, alloc_timewheel(),  free_timewheel)
+CONET_DEF_TLS_GET(g_tw, alloc_timewheel(),  free_timewheel);
 
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
 {
-    set_timeout(tls_get(g_tw), obj, timeout);
+    timewheel_t *tw = TLS_GET(g_tw);
+    set_timeout(tw, obj, timeout);
 }
 
 
 void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
 {
-    set_interval(tls_get(g_tw), obj, timeout);
+    timewheel_t *tw = TLS_GET(g_tw);
+    set_interval(tw, obj, timeout);
 }

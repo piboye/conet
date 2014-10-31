@@ -49,6 +49,39 @@ struct fixed_mempool_t
     void free_mem_help(void *e);
 };
 
+template <typename T>
+class FixedMempool
+    :public fixed_mempool_t
+{
+public:
+    typedef T value_type; 
+    typedef fixed_mempool_t parent_type;
+
+    explicit 
+    FixedMempool(int max_num = 10000)
+    {
+        init(sizeof(value_type), max_num, __alignof__(value_type));
+       
+    }
+
+    ~FixedMempool()
+    {
+        fini();
+    }
+
+    value_type *alloc()
+    {
+        value_type *v = new ((parent_type::alloc())) value_type;
+        return v;
+    }
+
+    void free(value_type *v)
+    {
+        //delete (v) value_type;
+        parent_type::free(v);
+    }
+};
+
 }
 
 

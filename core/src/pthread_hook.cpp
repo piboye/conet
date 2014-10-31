@@ -73,6 +73,7 @@ HOOK_FUNC_DEF(
 
 
 
+/*
 static
 void tls_fin_mutex(void *arg)
 {
@@ -82,16 +83,21 @@ void tls_fin_mutex(void *arg)
 }
 
 static
+inline
 pthread_mutex_t *
     tls_get_mutex( pthread_mutex_t * &mutex)
 {
-    if (NULL == mutex) {
-        mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-        pthread_mutex_init(mutex, NULL);
-        conet::tls_onexit_add(mutex, &tls_fin_mutex);
+    pthread_mutex_t *m = mutex;
+    if (NULL == m) {
+        m = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+        pthread_mutex_init(m, NULL);
+        conet::tls_onexit_add(m, &tls_fin_mutex);
+        mutex = m;
+        return m;
     }
-    return mutex;
+    return m;
 }
+*/
 
 
 namespace {
@@ -174,10 +180,10 @@ list_head *get_lock_schedule_queue()
     if (NULL == g_lock_schedule_queue) {
         g_lock_schedule_queue = new list_head();
         INIT_LIST_HEAD(g_lock_schedule_queue);
-        conet::tls_onexit_add(g_lock_schedule_queue, conet::tls_destructor_fun<list_head>);
+        conet::tls_onexit_add(g_lock_schedule_queue, conet::tls_destructor_help<list_head>);
 
         g_lock_dipatch_task = new conet::task_t();
-        conet::tls_onexit_add(g_lock_dipatch_task, conet::tls_destructor_fun<conet::task_t>);
+        conet::tls_onexit_add(g_lock_dipatch_task, conet::tls_destructor_help<conet::task_t>);
 
         conet::init_task(g_lock_dipatch_task, 
                 proc_lock_schedule, g_lock_schedule_queue);
@@ -307,8 +313,38 @@ public:
 #define SCOPE_LOCK(mutex) \
     for (scope_lock scope_lock_##__LINE__(mutex); scope_lock_##__LINE__.cnt <=0; scope_lock_##__LINE__.cnt=1)
 
+
+static
+int proc_pcond_schedule(void *arg);
+
 static __thread list_head * g_pcond_schedule_queue =NULL;
+
+CONET_DEF_TLS_VAR_HELP(g_pcond_schedule_queue,
+        ({
+            list_head * v = new list_head();
+            INIT_LIST_HEAD(v);
+            conet::registry_task(proc_pcond_schedule, v); 
+            v;
+        }),
+        ({
+            list_del_init(self);
+            delete self; 
+        })
+); 
+
 static __thread pthread_mutex_t* g_pcond_schedule_mutex =NULL;
+
+CONET_DEF_TLS_VAR_HELP(g_pcond_schedule_mutex,
+ ({
+    pthread_mutex_t *self = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(self, NULL);
+    self;
+ }),
+ ({ 
+    pthread_mutex_destroy(self); 
+    free(self);
+ })
+);
 
 static pthread_mutex_t g_cond_mgr_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -347,18 +383,20 @@ int proc_pcond_schedule(void *arg)
 {
     int cnt = 0;
     list_head *it=NULL, *next=NULL;
-    _(pthread_mutex_lock)(tls_get_mutex(g_pcond_schedule_mutex));
-    list_for_each_safe(it, next, g_pcond_schedule_queue)
+    pthread_mutex_t * pcond_schedule_mutex =  TLS_GET(g_pcond_schedule_mutex);
+    _(pthread_mutex_lock)(pcond_schedule_mutex);
+    list_head * queue = TLS_GET(g_pcond_schedule_queue);
+    list_for_each_safe(it, next, queue)
     {
         pcond_ctx_t * ctx = container_of(it, pcond_ctx_t, wait_item);
         list_del_init(it);
         cancel_timeout(&ctx->tm);
-        pthread_mutex_unlock(tls_get_mutex(g_pcond_schedule_mutex));
+        pthread_mutex_unlock(pcond_schedule_mutex);
         conet::resume(ctx->co); 
         ++cnt;
-        _(pthread_mutex_lock)(tls_get_mutex(g_pcond_schedule_mutex));
+        _(pthread_mutex_lock)(pcond_schedule_mutex);
     }
-    pthread_mutex_unlock(tls_get_mutex(g_pcond_schedule_mutex));
+    pthread_mutex_unlock(pcond_schedule_mutex);
     return cnt;
 }
 
@@ -394,16 +432,20 @@ static pcond_mgr_t * find_cond_map(void *key)
 }
 
 
+/*
 static
 list_head *get_pcond_schedule_list() {
-    if (NULL == g_pcond_schedule_queue) {
-        g_pcond_schedule_queue = new list_head();
-        INIT_LIST_HEAD(g_pcond_schedule_queue);
-        conet::registry_task(proc_pcond_schedule, g_pcond_schedule_queue); 
-        conet::tls_onexit_add(g_pcond_schedule_queue, conet::tls_destructor_fun<list_head>);
+    list_head *v = g_pcond_schedule_queue;
+    if (NULL == v) {
+        v = new list_head();
+        INIT_LIST_HEAD(v);
+        conet::registry_task(proc_pcond_schedule, v); 
+        conet::tls_onexit_add(v, conet::tls_destructor_help<list_head>);
+        g_pcond_schedule_queue = v;
     }
-    return g_pcond_schedule_queue;
+    return v;
 }
+*/
 
 
 HOOK_FUNC_DEF(int, pthread_cond_wait,
@@ -424,8 +466,8 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 
     INIT_LIST_HEAD(&wait_item.wait_item);
 
-    wait_item.schedule_queue = get_pcond_schedule_list();
-    wait_item.schedule_mutex = tls_get_mutex(g_pcond_schedule_mutex);
+    wait_item.schedule_queue = TLS_GET(g_pcond_schedule_queue);
+    wait_item.schedule_mutex = TLS_GET(g_pcond_schedule_mutex);
 
     SCOPE_LOCK(&g_cond_mgr_mutex) 
     {
@@ -489,8 +531,8 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
 
     wait_item.co = conet::current_coroutine();
     INIT_LIST_HEAD(&wait_item.wait_item);
-    wait_item.schedule_queue = get_pcond_schedule_list();
-    wait_item.schedule_mutex = tls_get_mutex(g_pcond_schedule_mutex);
+    wait_item.schedule_queue = TLS_GET(g_pcond_schedule_queue);
+    wait_item.schedule_mutex = TLS_GET(g_pcond_schedule_mutex);
 
     SCOPE_LOCK(&g_cond_mgr_mutex)
     {

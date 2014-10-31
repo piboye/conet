@@ -58,3 +58,19 @@ cc_test(
          ],
 );
 
+cc_binary(
+    name = 'tls_bench',
+    srcs = [
+        'src/tls_bench.cpp',
+    ],
+
+    incs= [ 
+        "incl/",
+    ],
+
+    deps = [
+        ":base",
+        "//thirdparty/gflags:gflags",
+    ],
+) 
+
