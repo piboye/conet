@@ -21,6 +21,8 @@
 #define __TLS_H_INC__
 #include <pthread.h>
 
+namespace conet
+{
 int tls_onexit_add(void *arg, void (*free_fn)(void *));
 
 template<typename T>
@@ -38,7 +40,7 @@ T * tls_get(pthread_key_t  key)
     T * val= (T *) pthread_getspecific(key);
     if (NULL == val) {
         val = new T();
-        tls_onexit_add(val, tls_destructor_fun<T>);
+        conet::tls_onexit_add(val, conet::tls_destructor_fun<T>);
     }
     return val;
 }
@@ -50,7 +52,7 @@ T * tls_get(T * & val)
 {
     if (NULL == val) {
         val = new T();
-        tls_onexit_add(val, tls_destructor_fun<T>);
+        conet::tls_onexit_add(val, conet::tls_destructor_fun<T>);
     }
     return val;
 }
@@ -63,11 +65,11 @@ typeof(val) tls_get(typeof(val) &val) \
 {  \
     if (NULL == val) {  \
         val = create; \
-        tls_onexit_add(val, (void (*)(void *))&fini); \
+        conet::tls_onexit_add(val, (void (*)(void *))&fini); \
     }  \
     return val; \
 } \
- 
 
+}
 
 #endif

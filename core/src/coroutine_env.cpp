@@ -53,7 +53,6 @@ void init_coroutine_env(coroutine_env_t *self)
 
 __thread coroutine_env_t * g_coroutine_env=NULL;
 
-inline
 coroutine_env_t *alloc_coroutine_env()
 {
     coroutine_env_t *env = ALLOC_VAR(coroutine_env_t);
@@ -70,7 +69,6 @@ void free_coroutine_env(void *arg)
     free(env);
 }
 
-DEF_TLS_GET(g_coroutine_env, alloc_coroutine_env(), free_coroutine_env);
 
 
 int proc_netevent(int timeout);

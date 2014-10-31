@@ -27,6 +27,8 @@
 #define gettid() syscall(__NR_gettid)
 #define TLS_OUT_OF_INDEXES          0xffffffff
 
+namespace conet
+{
 struct pthread_atexit_t
 {
     void   (*free_fn)(void *);
@@ -96,4 +98,5 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
     item->arg = arg;
     list_add(&item->link_to, list);
     return 0;
+}
 }

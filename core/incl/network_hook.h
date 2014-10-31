@@ -31,7 +31,7 @@ inline
 int is_enable_sys_hook()
 {
     coroutine_t *co = get_curr_co_can_null();
-    return (!co->is_main) && (co->is_enable_sys_hook);
+    return co && !co->is_main && (co->is_enable_sys_hook);
 }
 
 inline
@@ -39,14 +39,16 @@ void enable_sys_hook()
 {
 
     coroutine_t *co = get_curr_co_can_null();
-    co->is_enable_sys_hook = 1;
+    if (co) 
+        co->is_enable_sys_hook = 1;
 }
 
 inline
 void disable_sys_hook()
 {
     coroutine_t *co = get_curr_co_can_null();
-    co->is_enable_sys_hook = 0;
+    if (co) 
+        co->is_enable_sys_hook = 0;
 }
 
 }

@@ -442,7 +442,7 @@ public:
 
 
 
-class TimeoutMgr * g_timout_mgr = NULL;
+__thread class TimeoutMgr * g_timout_mgr = NULL;
 
 class TimeoutHandle
 {
