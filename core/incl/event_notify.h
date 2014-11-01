@@ -61,6 +61,8 @@ struct event_notify_t
         this->cb = cb;
         this->cb_arg = cb_arg;
         this->stop_flag = 0;
+        set_auto_delete(this->work_co);
+        conet::resume(this->work_co);
         return 0;
     }
 
@@ -96,7 +98,9 @@ struct event_notify_t
     int stop()
     {
         this->stop_flag = 1;
-        return wait(this->work_co); 
+        int ret =  wait(this->work_co); 
+        this->work_co = NULL;
+        return ret;
     }
 };
 
