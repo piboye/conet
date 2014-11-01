@@ -24,17 +24,6 @@
 
 namespace conet
 {
-uint64_t rdtscp(void)
-{
-    uint64_t lo, hi;
-    uint64_t o;
-    __asm__ __volatile__ (
-        "rdtscp" : "=a"(lo), "=d"(hi)
-    );
-    o = hi;
-    o <<= 32;
-    return (o | lo);
-}
 
 uint64_t get_cpu_khz()
 {
@@ -57,8 +46,8 @@ uint64_t get_cpu_khz()
     return u;
 }
 
-
-uint64_t get_tick_ms()
+uint64_t get_tick_ms() __attribute__((weak));
+uint64_t get_tick_ms() 
 {
     static uint64_t khz = get_cpu_khz();
     return rdtscp() / khz;

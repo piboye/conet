@@ -4,7 +4,19 @@
 
 namespace conet
 {
-uint64_t rdtscp(void);
+
+inline 
+uint64_t rdtscp(void)
+{
+    volatile uint64_t tsc;
+__asm__ __volatile__("rdtscp; "         // serializing read of tsc
+                     "shl $32,%%rdx; "  // shift higher 32 bits stored in rdx up
+                     "or %%rdx,%%rax"   // and or onto rax
+                     : "=a"(tsc)        // output to tsc variable
+                     :
+                     : "%rcx", "%rdx"); // rcx and rdx are clobbered
+    return tsc;
+}
 
 uint64_t get_cpu_khz();
 

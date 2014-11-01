@@ -74,3 +74,18 @@ cc_binary(
     ],
 ) 
 
+cc_binary(
+    name = 'time_helper_test',
+    srcs = [
+        'src/time_helper_test.cpp',
+    ],
+
+    incs= [ 
+        "incl/",
+    ],
+
+    deps = [
+        ":base",
+        "//thirdparty/gflags:gflags",
+    ],
+) 

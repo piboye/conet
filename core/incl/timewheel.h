@@ -60,6 +60,7 @@ struct timewheel_t
     int update_timeofday_flag;
     struct timeval prev_tv;
     list_head *slots;
+    uint64_t now_ms;
 };
 
 void init_timewheel(timewheel_t *self, int solt_num = 60*1000);

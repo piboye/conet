@@ -80,7 +80,7 @@ int send_data(int fd, char const * buf, size_t len, int timeout)
     int ret = 0;
     size_t cur_len = 0;
     
-    uint64_t start_ms = conet::get_sys_ms();
+    uint64_t start_ms = conet::get_tick_ms();
     uint64_t cur = start_ms;
     int rest_ms = timeout;
 
@@ -96,7 +96,7 @@ int send_data(int fd, char const * buf, size_t len, int timeout)
 
         cur_len += ret;
 
-        cur = conet::get_sys_ms();
+        cur = conet::get_tick_ms();
 
         rest_ms = timeout - (int)(cur -start_ms); 
 
@@ -154,7 +154,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
 
 int read_data(int fd, char *buff, size_t len, int timeout)
 {
-    uint64_t start_ms = conet::get_sys_ms();
+    uint64_t start_ms = conet::get_tick_ms();
     uint64_t cur = start_ms;
     int rest_ms = timeout;
 
@@ -168,7 +168,7 @@ int read_data(int fd, char *buff, size_t len, int timeout)
         }
         cur_len += ret;
 
-        cur = conet::get_sys_ms();
+        cur = conet::get_tick_ms();
 
         rest_ms = timeout - (int)(cur -start_ms); 
 
@@ -319,7 +319,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
         memmove(buff, buff+prev_pos, cur_len);
     }
 
-    uint64_t start_ms = conet::get_sys_ms();
+    uint64_t start_ms = conet::get_tick_ms();
     uint64_t cur = start_ms;
     int rest_ms = timeout;
 
@@ -333,7 +333,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
 
         has_data = 0;
 
-        cur = conet::get_sys_ms();
+        cur = conet::get_tick_ms();
         rest_ms = timeout - (int)(cur -start_ms); 
         if (rest_ms <=0) {
             return ERR_TIMEOUT_NET_HELPER;
@@ -358,7 +358,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
         } 
         cur_len += ret;
 
-        cur = conet::get_sys_ms();
+        cur = conet::get_tick_ms();
         rest_ms = timeout - (int)(cur -start_ms); 
         if (rest_ms <=0) {
             return ERR_TIMEOUT_NET_HELPER;

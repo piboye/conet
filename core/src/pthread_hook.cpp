@@ -523,7 +523,7 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
     if(abstime) 
     {   
         uint64_t timeout = (abstime->tv_sec*1000 + abstime->tv_nsec/1000000);
-        uint64_t now = conet::get_sys_ms(); 
+        uint64_t now = conet::get_tick_ms(); 
         if (timeout < now) timeout = 0;
         timeout -= now;
         set_timeout(&wait_item.tm, timeout);
