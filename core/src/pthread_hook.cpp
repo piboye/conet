@@ -177,7 +177,6 @@ static __thread pthread_mgr_t *g_pthread_mgr = NULL;
 CONET_DEF_TLS_VAR_HELP(g_pthread_mgr,
         ({
             pthread_mgr_t * m = new pthread_mgr_t();
-            conet::registry_task(&m->schedule_task);
             m;
         }),
         ({
