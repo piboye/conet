@@ -18,7 +18,7 @@
 #include "base/incl/list.h"
 #include "base/incl/tls.h"
 
-DEFINE_int32(epoll_size, 100, "epoll event size ");
+DEFINE_int32(epoll_size, 10000, "epoll event size ");
 
 
 
@@ -168,8 +168,8 @@ static short epoll_event2poll( uint32_t events )
 void init_epoll_ctx(epoll_ctx_t *self, int size)
 {
     self->m_epoll_size = size;
-    self->m_epoll_events = (epoll_event *)malloc(sizeof(epoll_event)* size);
-    self->m_epoll_fd = epoll_create(200000);
+    self->m_epoll_events = new epoll_event[size];
+    self->m_epoll_fd = epoll_create(size);
     self->wait_num = 0;
     return;
 }
@@ -320,7 +320,7 @@ int task_proc(void *arg)
 
 epoll_ctx_t *create_epoll(int event_size)
 {
-    epoll_ctx_t * p = (epoll_ctx_t *) malloc(sizeof(epoll_ctx_t));
+    epoll_ctx_t * p = new epoll_ctx_t;
     init_epoll_ctx(p, event_size);
     registry_task(task_proc, p);
     return p;
@@ -356,7 +356,8 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 
 void free_epoll(epoll_ctx_t *ep)
 {
-    free(ep);
+    delete [] ep->m_epoll_events;
+    delete ep;
 }
 
 int get_epoll_pend_task_num() 

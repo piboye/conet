@@ -69,10 +69,11 @@ int proc_send(void *arg)
     int ret = 0;
     EchoReq req;
     EchoResp resp;
+    std::string method = "echo";
     for (int i=0, len = g_data.size(); i<len; ++i) {
         req.set_msg(*g_data[i]);
         int retcode=0;
-        ret = conet::rpc_pb_call(*task->lb, "echo", &req, &resp, &retcode);
+        ret = conet::rpc_pb_call(*task->lb, method, &req, &resp, &retcode);
         if (ret || retcode) {
             LOG(ERROR)<<"ret:"<<ret;
             continue;

@@ -7,7 +7,12 @@ cc_binary(
 cc_binary(
     name = "echo_cli_co",
     srcs = ["echo_cli_co.cpp"],
-    deps = ["//svrkit:client_base", "#dl", "#pthread"],
+    deps = [
+            "//svrkit:client_base",
+            "#dl", 
+            "//thirdparty/perftools:tcmalloc",
+            "#pthread"
+    ],
 )
 
 cc_binary(
@@ -45,7 +50,7 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            #"//thirdparty/perftools:tcmalloc_debug",
+            "//thirdparty/perftools:tcmalloc",
             #"//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )
