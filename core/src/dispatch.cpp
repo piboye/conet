@@ -121,7 +121,7 @@ void unregistry_task(task_t *task)
     list_del_init(&task->link_to);
 }
 
-void init_task(task_t *task, task_proc_fun_t proc, void *arg)
+void init_task(task_t *task, task_proc_func_t proc, void *arg)
 {
     task->proc= proc;
     task->arg = arg;
@@ -129,7 +129,7 @@ void init_task(task_t *task, task_proc_fun_t proc, void *arg)
     INIT_LIST_HEAD(&task->link_to);
 }
 
-void registry_task(list_head *list, task_proc_fun_t proc, void *arg)
+void registry_task(list_head *list, task_proc_func_t proc, void *arg)
 {
     task_t * t = (task_t *) malloc(sizeof(task_t));
     init_task(t, proc, arg);
@@ -137,7 +137,7 @@ void registry_task(list_head *list, task_proc_fun_t proc, void *arg)
     registry_task(list, t);
 }
 
-void registry_task(task_proc_fun_t proc, void *arg)
+void registry_task(task_proc_func_t proc, void *arg)
 {
     registry_task(&TLS_GET(g_dispatch_mgr)->tasks, proc, arg);
 }
