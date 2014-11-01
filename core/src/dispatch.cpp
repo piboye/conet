@@ -113,7 +113,11 @@ void registry_task(list_head *list, task_t *task)
 void registry_task(task_t *task)
 {
     dispatch_mgr_t *mgr = TLS_GET(g_dispatch_mgr);
-    list_add_tail(&task->link_to, &mgr->tasks);
+    if (list_empty(&task->link_to)) {
+        list_add_tail(&task->link_to, &mgr->tasks);
+    } else {
+        list_move_tail(&task->link_to, &mgr->tasks);
+    }
 }
 
 void unregistry_task(task_t *task)
@@ -144,7 +148,11 @@ void registry_task(task_proc_func_t proc, void *arg)
 
 void registry_delay_task(task_t *task)
 {
-    list_add_tail(&task->link_to, &TLS_GET(g_dispatch_mgr)->delay_tasks);
+    if (list_empty(&task->link_to)) {
+        list_add_tail(&task->link_to, &TLS_GET(g_dispatch_mgr)->delay_tasks);
+    }else {
+        list_move_tail(&task->link_to, &TLS_GET(g_dispatch_mgr)->delay_tasks);
+    }
 }
 
 struct delay_back_t
