@@ -50,7 +50,7 @@ uint64_t get_tick_ms2()
     return rdtscp() / khz;
 }
 
-uint64_t get_tick_ms() __attribute__((strong));
+//uint64_t get_tick_ms() __attribute__((strong));
 uint64_t get_tick_ms() 
 {
     if (g_tw) {
@@ -142,10 +142,6 @@ int check_timewheel(void * arg)
     return check_timewheel((timewheel_t *) arg, 0);
 }
 
-
-
-
-
 static
 int timewheel_task(void *arg)
 {
@@ -160,10 +156,10 @@ int timewheel_task(void *arg)
     int ret = 0; 
 
     struct itimerspec ts;
-    ts.it_value.tv_sec = 0;//now.tv_sec; 
-    ts.it_value.tv_nsec = 1000000;//((now.tv_nsec/1000)+1)*1000;
+    ts.it_value.tv_sec = 0;       //
+    ts.it_value.tv_nsec = 1000000; // 1ms
     ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 1000000;
+    ts.it_interval.tv_nsec = 1000000; //1ms
 
     ret = timerfd_settime(timerfd, 0, &ts, NULL);
     if (ret < 0) {
@@ -181,6 +177,7 @@ int timewheel_task(void *arg)
 
     //ret = _(gettimeofday)(&tw->prev_tv, NULL);
     //tw->update_timeofday_flag = 1;
+    tw->now_ms = get_tick_ms2(); 
 
     while (!tw->stop) {
        struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
@@ -193,7 +190,9 @@ int timewheel_task(void *arg)
        }
 
        //ret = _(gettimeofday)(&tw->prev_tv, NULL);
+       
        tw->now_ms = get_tick_ms2(); 
+       //tw->now_ms += cnt; 
 
        check_timewheel(tw, tw->now_ms);
     }
