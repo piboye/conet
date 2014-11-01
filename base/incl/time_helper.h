@@ -5,11 +5,12 @@
 namespace conet
 {
 
+// rdtscp 比 rdtsc 更安全， 做了cpu同步
 inline 
 uint64_t rdtscp(void)
 {
     volatile uint64_t tsc;
-__asm__ __volatile__("rdtscp; "         // serializing read of tsc
+    __asm__ __volatile__("rdtscp; "     // serializing read of tsc
                      "shl $32,%%rdx; "  // shift higher 32 bits stored in rdx up
                      "or %%rdx,%%rax"   // and or onto rax
                      : "=a"(tsc)        // output to tsc variable
