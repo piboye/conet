@@ -166,10 +166,7 @@ struct pthread_mgr_t
     {
         list_del(&lock_schedule_queue);
         list_del(&pcond_schedule_queue);
-        event_notify.stop_flag = 1;
-        if (event_notify.work_co) {
-            conet::free_coroutine(event_notify.work_co);
-        }
+        event_notify.stop();
         pthread_mutex_unlock(&pcond_schedule_mutex);
     }
 

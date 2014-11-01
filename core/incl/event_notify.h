@@ -86,7 +86,7 @@ struct event_notify_t
        } while(!self->stop_flag);
        
        close(self->fd);
-       self->fd = 0;
+       self->fd = -1;
        return 0; 
     }
 
@@ -98,7 +98,8 @@ struct event_notify_t
     int stop()
     {
         this->stop_flag = 1;
-        int ret =  wait(this->work_co); 
+        conet::resume(this->work_co);
+        int ret = wait(this->work_co); 
         this->work_co = NULL;
         return ret;
     }
