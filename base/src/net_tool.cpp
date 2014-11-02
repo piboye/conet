@@ -245,9 +245,9 @@ int can_reuse_port()
         int reuse_addr = 1;
         int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
         if (ret) {
-            g_can_reuse_port = 1;
+            g_can_reuse_port = 0; 
         } else {
-            g_can_reuse_port = 0;
+            g_can_reuse_port = 1;
         }
         close(fd);
         init = 1;
