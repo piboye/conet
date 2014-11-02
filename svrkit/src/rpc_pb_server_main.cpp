@@ -26,8 +26,11 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <map>
+#include <vector>
 
 #include "rpc_pb_server.h"
+#include "rpc_pb_server_base.h"
+
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/incl/ip_list.h"
@@ -35,9 +38,12 @@
 #include "base/incl/net_tool.h"
 #include "base/incl/cpu_affinity.h"
 #include "base/incl/auto_var.h"
+#include "base/incl/gcc_builtin_help.h"
+#include "base/incl/fn_ptr_cast.h"
 #include <linux/netdevice.h>
 
-DEFINE_string(http_server_address, "", "default use server address");
+//DEFINE_string(http_server_address, "", "default use server address");
+
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
@@ -45,7 +51,6 @@ DEFINE_int32(work_num, 1, "server work num");
 
 DEFINE_string(cpu_set, "", "cpu affinity set");
 
-DEFINE_bool(async_server, false, "async server");
 DEFINE_bool(thread_mode, false, "multithread");
 
 namespace conet
@@ -78,102 +83,290 @@ void sig_exit(int sig)
    g_exit_flag=1; 
 }
 
+struct TaskEnv;
+
 struct Task
 {
-    public:    
-        pthread_t tid;
-        pid_t  pid;
-        int exit_finsished;
-        std::vector<ip_port_t> ip_list, http_ip_list;
-        std::string http_address;
 
-        conet::rpc_pb_server_t server;    
-        int http_listen_fd;
+        conet::tcp_server_t tcp_server;    
+
+        conet::rpc_pb_server_t rpc_server;    
+
+        ip_port_t rpc_ip_port;
+
         int rpc_listen_fd;
-        int cpu_id;
+
+        TaskEnv *env;
 
         Task()
         {
-            exit_finsished = 0;
-            http_listen_fd = -1;
             rpc_listen_fd = -1;
-            cpu_id = -1;
         }
 
-        static int proc_server_exit(void *arg)
+
+        int init(TaskEnv *env);
+
+        int start()
         {
-            Task *self = (Task *)(arg);
-            int ret = 0;
-            ret = conet::stop_server(&self->server, FLAGS_server_stop_wait_seconds*1000);
-            self->exit_finsished = 1;
+            tcp_server.start();
+            if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
+                fprintf(stderr, "listen to [%s:%d]\n, failed\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
+                return 0;
+            }
+            fprintf(stderr, "listen to [%s:%d]\n, success\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
             return 0;
         }
 
-        static void *proc(void *arg)
+        int stop(int timeout)
         {
             int ret = 0;
-
-            Task *self = (Task *)arg;
-            if (self->cpu_id >=0) {
-                if (FLAGS_thread_mode) {
-                    set_cur_thread_cpu_affinity(self->cpu_id);
-                } else {
-                    set_proccess_cpu_affinity(self->cpu_id);
-                }
-            }
-
-            if (self->http_ip_list.empty()) {
-                ret = init_server(&self->server, 
-                        self->ip_list[0].ip.c_str(), self->ip_list[0].port);
-            } else {
-                ret = init_server(&self->server, 
-                        self->ip_list[0].ip.c_str(), self->ip_list[0].port, 
-                        self->http_ip_list[0].ip.c_str(), self->http_ip_list[0].port);
-            }
-
-
-            if (FLAGS_async_server) {
-                self->server.async_flag = 1;
-            }
-
-            if (self->http_listen_fd >=0) {
-                self->server.http_server->server->listen_fd = self->http_listen_fd;
-            }
-
-            if (self->rpc_listen_fd >=0) {
-                self->server.server->listen_fd = self->rpc_listen_fd;
-            }
-
-            start_server(&self->server);
-
-            if (self->server.server->state == server_t::SERVER_STOPED) {
-                fprintf(stderr, "listen to %s\n, failed\n", FLAGS_server_address.c_str());
-                return 0;
-            }
-
-            fprintf(stdout, "listen to %s, http_listen:%s, success\n", FLAGS_server_address.c_str(), self->http_address.c_str());
-
-
-            coroutine_t *exit_co = NULL;
-            while (!self->exit_finsished) {
-                if (g_exit_flag && exit_co == NULL) {
-                    exit_co = conet::alloc_coroutine(proc_server_exit, self);
-                    conet::resume(exit_co);
-                }
-                conet::dispatch();
-            }
-
-            if (exit_co) {
-                free_coroutine(exit_co);
-            }
-            return NULL;
+            ret = rpc_server.stop(timeout);
+            return ret;
         }
+
 };
+
+struct TaskEnv
+{
+  conet::rpc_pb_server_base_t base_server;    
+
+  pthread_t tid;
+  pid_t  pid;
+
+  int exit_finsished;
+  int cpu_id;
+
+  TaskEnv()
+  {
+      exit_finsished = 0;
+      cpu_id = -1;
+      base_server.get_global_server_cmd();
+  }
+
+  std::vector<Task *> tasks;
+
+  void add(Task *task)
+  {
+      tasks.push_back(task);
+  }
+
+  void * run()
+  {
+      if (this->cpu_id >=0) {
+          if (FLAGS_thread_mode) {
+              set_cur_thread_cpu_affinity(this->cpu_id);
+          } else {
+              set_proccess_cpu_affinity(this->cpu_id);
+          }
+      }
+
+      for(size_t i=0; i< tasks.size(); ++i)
+      {
+          tasks[i]->start();
+      }
+
+      coroutine_t *exit_co = NULL;
+
+      while (likely(!this->exit_finsished)) 
+      {
+          if (unlikely(g_exit_flag && exit_co == NULL)) 
+          {
+              exit_co = conet::alloc_coroutine(conet::fn_ptr_cast<conet::co_main_func_t>(&TaskEnv::proc_server_exit), this);
+              conet::resume(exit_co);
+          }
+          conet::dispatch();
+      }
+
+      if (exit_co) 
+      {
+          free_coroutine(exit_co);
+      }
+
+      return NULL;
+  }
+
+  int proc_server_exit()
+  {
+      int wait_ms = 10000; // 10s
+      for(size_t i=0; i< tasks.size(); ++i)
+      {
+          tasks[i]->stop(wait_ms);
+      }
+
+      this->exit_finsished = 1;
+      return 0;
+  }
+
+  ~TaskEnv()
+  {
+      for(size_t i=0; i< tasks.size(); ++i)
+      {
+          delete tasks[i];
+      }
+      //tasks.clear();
+  }
+
+};
+
+int Task::init(TaskEnv *env)
+{
+    this->env = env;
+    int ret = 0;
+    ret = tcp_server.init(rpc_ip_port.ip.c_str(), rpc_ip_port.port, rpc_listen_fd);
+    ret = rpc_server.init(&env->base_server, &tcp_server, NULL);
+
+    return ret;
+}
 
 static int g_master_controller = 1;
 
 typedef int cpu_id_type;
-static std::map<pid_t, cpu_id_type> g_childs;
+std::vector<int> g_cpu_set;
+std::vector<ip_port_t> g_rpc_ip_list;
+
+
+int proc_process_mode(int proc_num)
+{
+        static std::map<pid_t, cpu_id_type> g_childs;
+
+        TaskEnv  *env = new TaskEnv();
+
+        if (!g_cpu_set.empty()) {
+            env->cpu_id = g_cpu_set[0];
+        }
+
+        for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
+        {
+            int rpc_listen_fd = conet::create_tcp_socket(g_rpc_ip_list[i].port, g_rpc_ip_list[i].ip.c_str(), true);
+            if (rpc_listen_fd<0) {
+                LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
+                return 0;
+            }
+
+            Task  *task = new Task();
+            task->rpc_ip_port = g_rpc_ip_list[i];
+            task->rpc_listen_fd= rpc_listen_fd;
+            task->init(env);
+            env->add(task);
+        }
+
+        int num = proc_num;
+
+        for (int i=0; i< num; ++i)
+        {
+            if (!g_cpu_set.empty()) {
+                env->cpu_id = g_cpu_set[i%g_cpu_set.size()];
+            }
+            pid_t pid = fork();
+            if (pid == 0) {
+                g_master_controller = 0;
+                env->run();
+                break;
+            } else if (pid > 0) {
+                g_childs[pid] = env->cpu_id;
+            } else {
+                LOG(ERROR)<<"for child failed";
+            }
+        }
+
+        if (g_master_controller) {
+            while(!g_exit_flag && g_master_controller)
+            {
+                int status = 0;
+                pid_t pid = wait(&status);
+                if (g_childs.find(pid) == g_childs.end()) {
+                    continue;
+                }
+                int cpu_id = g_childs[pid];
+                g_childs.erase(pid);
+                if (!g_exit_flag) {
+                   pid = fork(); 
+                   if (pid == 0) {
+                        g_master_controller = 0;
+                        env->run();
+                        break;
+                   } else if (pid > 0) {
+                       g_childs[pid] = cpu_id;
+                   } else {
+                       LOG(ERROR)<<"for child failed";
+                   }
+                }
+            }
+
+            if (g_exit_flag && g_master_controller) {
+                AUTO_VAR(it, = , g_childs.begin());
+                for (; it != g_childs.end(); ++it) {
+                    if (it->second > 0) { 
+                        kill(it->second, SIGINT);
+                    }
+                }
+                for (it = g_childs.begin(); it != g_childs.end(); ++it)
+                {
+                    int status =0;
+                    if (it->second > 0) { 
+                        waitpid(it->second, &status, 0);
+                    }
+                }
+            }
+        }
+        delete env;
+
+        return 0;
+}
+
+
+int get_listen_fd(char const *ip, int port, int listen_fd)
+{
+#if HAVE_SO_REUSEPORT
+    
+    int rpc_listen_fd = conet::create_tcp_socket(port, ip, true);
+    return rpc_listen_fd;
+#else
+    return dup(listen_fd);
+#endif
+}
+
+int proc_thread_mode(int num)
+{
+        TaskEnv *envs = new TaskEnv[num];
+        std::vector<int> rpc_listen_fds;
+
+        for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
+        {
+            int rpc_listen_fd = conet::create_tcp_socket(g_rpc_ip_list[i].port, g_rpc_ip_list[i].ip.c_str(), true);
+            if (rpc_listen_fd<0) {
+                LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
+                return 0;
+            }
+            rpc_listen_fds.push_back(rpc_listen_fd);
+        }
+
+        for (int i=0; i< num; ++i)
+        {
+            TaskEnv * env = envs+i;
+            if (!g_cpu_set.empty()) {
+                env->cpu_id = g_cpu_set[i%g_cpu_set.size()];
+            }
+
+            for (size_t i=0; i<g_rpc_ip_list.size(); ++i) {
+                Task  *task = new Task();
+                task->rpc_ip_port = g_rpc_ip_list[i];
+                task->rpc_listen_fd= get_listen_fd(g_rpc_ip_list[i].ip.c_str(), g_rpc_ip_list[i].port, rpc_listen_fds[i]);
+                task->init(env);
+                env->add(task);
+            }
+
+            pthread_create(&env->tid, NULL, conet::fn_ptr_cast<void *(*)(void*)>(&TaskEnv::run), env);
+        }
+
+        for (int i=0; i< num; ++i)
+        {
+            pthread_join(envs[i].tid, NULL);
+        }
+
+        delete[] envs;
+        return 0;
+}
 
 int main(int argc, char * argv[])
 {
@@ -186,8 +379,7 @@ int main(int argc, char * argv[])
     ret = google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
-    std::vector<int> cpu_set;
-    parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
+    parse_affinity(FLAGS_cpu_set.c_str(), &g_cpu_set);
 
     {
         // delay init
@@ -203,144 +395,18 @@ int main(int argc, char * argv[])
         }
     }
 
-    std::vector<ip_port_t> ip_list;
-    parse_ip_list(FLAGS_server_address, &ip_list);
-    if (ip_list.empty()) {
+    parse_ip_list(FLAGS_server_address, &g_rpc_ip_list);
+    if (g_rpc_ip_list.empty()) {
         LOG(ERROR)<<"server_addr:"<<FLAGS_server_address<<", format error!";
         return 1;
     }
 
-    std::string http_address;
-    std::vector<ip_port_t> http_ip_list;
-    if (FLAGS_http_server_address.size() > 0) {
-        http_address = FLAGS_http_server_address;
-        parse_ip_list(http_address, &http_ip_list);
+
+    if (FLAGS_thread_mode == false && FLAGS_work_num > 0) {
+        proc_process_mode(FLAGS_work_num);
     } else {
-        http_address = FLAGS_server_address;
-    }
-
-
-    if (FLAGS_thread_mode== false || FLAGS_work_num <= 1) {
-        Task task;
-        task.ip_list = ip_list;
-        task.http_ip_list = http_ip_list;
-        task.http_address = http_address;
-        if (!cpu_set.empty()) {
-            task.cpu_id = cpu_set[0];
-        }
-
-        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
-        if (rpc_listen_fd<0) {
-            LOG(ERROR)<<"listen to "<<FLAGS_server_address<<" failed";
-            return 0;
-        }
-        int http_listen_fd = rpc_listen_fd;
-        if (!http_ip_list.empty()) {
-            http_listen_fd = conet::create_tcp_socket(http_ip_list[0].port, http_ip_list[0].ip.c_str(), true);
-        }
-
         int num = FLAGS_work_num;
-        for (int i=0; i< num; ++i)
-        {
-            if (!cpu_set.empty()) {
-                task.cpu_id = cpu_set[i%cpu_set.size()];
-            }
-            pid_t pid = fork();
-            if (pid == 0) {
-                g_master_controller = 0;
-                task.http_address = http_address;
-                task.http_ip_list = http_ip_list;
-                task.ip_list = ip_list;
-
-                task.rpc_listen_fd = rpc_listen_fd;
-                if (http_listen_fd != rpc_listen_fd) {
-                    task.http_listen_fd = http_listen_fd;
-                }
-                task.proc(&task);
-                break;
-            } else {
-                g_childs[pid] = task.cpu_id;
-            }
-        }
-        if (g_master_controller) {
-            while(!g_exit_flag && g_master_controller)
-            {
-                int status = 0;
-                pid_t pid = wait(&status);
-                if (g_childs.find(pid) == g_childs.end()) {
-                    continue;
-                }
-                int cpu_id = g_childs[pid];
-                g_childs.erase(pid);
-                if (!g_exit_flag) {
-                   pid = fork(); 
-                   if (pid == 0) {
-                        g_master_controller = 0;
-                        task.cpu_id = cpu_id;
-                        task.proc(&task);
-                        break;
-                   } else {
-                       g_childs[pid] = cpu_id;
-                   }
-                }
-            }
-            if (g_exit_flag && g_master_controller) {
-                AUTO_VAR(it, = , g_childs.begin());
-                for (; it != g_childs.end(); ++it) {
-                    kill(it->second, SIGINT);
-                }
-                for (it = g_childs.begin(); it != g_childs.end(); ++it)
-                {
-                    int status =0;
-                    waitpid(it->second, &status, 0);
-                }
-            }
-        }
-    } else {
-
-        int num = FLAGS_work_num;
-        Task *tasks = new Task[num];
-#if HAVE_SO_REUSEPORT
-        for (int i=0; i< num; ++i)
-        {
-            tasks[i].http_address = http_address;
-            tasks[i].http_ip_list = http_ip_list;
-            tasks[i].ip_list = ip_list;
-            if (!cpu_set.empty()) {
-                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
-            }
-            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
-        }
-#else
-
-        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
-        int http_listen_fd = rpc_listen_fd;
-        if (!http_ip_list.empty()) {
-            http_listen_fd = conet::create_tcp_socket(http_ip_list[0].port, http_ip_list[0].ip.c_str(), true);
-        }
-        for (int i=0; i< num; ++i)
-        {
-            if (!cpu_set.empty()) {
-                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
-            }
-            tasks[i].http_address = http_address;
-            tasks[i].http_ip_list = http_ip_list;
-            tasks[i].ip_list = ip_list;
-
-            tasks[i].rpc_listen_fd = dup(rpc_listen_fd);
-            if (http_listen_fd != rpc_listen_fd) {
-                tasks[i].http_listen_fd = dup(http_listen_fd);
-            }
-            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
-
-        }
-#endif
-
-        for (int i=0; i< num; ++i)
-        {
-            pthread_join(tasks[i].tid, NULL);
-        }
-        delete[] tasks;
+        proc_thread_mode(num);
     }
     
     for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 

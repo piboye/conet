@@ -18,7 +18,7 @@
 #ifndef HTTP_SERVER_H
 #define HTTP_SERVER_H
 
-#include "server_base.h"
+#include "tcp_server.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -61,32 +61,35 @@ struct http_cmd_t
    http_callback proc;
    void *arg; 
    std::string name;
+   void *extend;
 };
 
 
 struct http_server_t
 {
-    struct server_t *server;
-    std::string server_name;
+    struct tcp_server_t *tcp_server;
+
     std::map<std::string, http_cmd_t> cmd_maps;
 
     struct {
         unsigned int enable_keepalive:1;
     };
+
     void *extend;
+
+    int registry_cmd(std::string const & name,  http_callback proc, void *arg );
+    http_cmd_t * get_http_cmd(std::string const &name);
+
+    int init(tcp_server_t *tcp_server);
+    int start();
+
+    int stop(int wait=0);
+
+    int conn_proc(conn_info_t *conn);
 };
 
-int http_server_proc(conn_info_t *conn);
-int http_server_proc2(conn_info_t *conn, 
-        server_t *base_server, http_server_t *http_server);
-
-http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name);
-int start_server(http_server_t *server);
-
-int stop_server(http_server_t *server, int wait=0);
 
 
-int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg );
 }
 
 

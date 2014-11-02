@@ -1,7 +1,7 @@
 cc_library(
-    name = 'server_base',
+    name = 'tcp_server',
     srcs = [
-        "src/server_base.cpp",
+        "src/tcp_server.cpp",
     ],
     incs= [ 
         "incl/",
@@ -44,7 +44,7 @@ cc_library(
         "incl/",
     ],
     deps=[
-        ':server_base',
+        ':tcp_server',
     ],
 );
 
@@ -74,13 +74,14 @@ cc_library(
     name = 'rpc_pb_server',
     srcs = [
         "src/rpc_pb_server.cpp",
+        "src/rpc_pb_server_base.cpp",
     ],
     incs= [ 
         "incl/",
     ],
     deps =[
         ":rpc_base_pb_proto",
-        ":server_base",
+        ":tcp_server",
         ":http_server",
         ":client_base",
         ':static_resource',
@@ -89,6 +90,7 @@ cc_library(
     ],
     link_all_symbols = True,
 );
+
 
 cc_library(
     name = 'rpc_pb_server_main',
@@ -104,18 +106,19 @@ cc_library(
     ]
 );
 
-cc_test(
-    name = 'rpc_base_test',
-    srcs = [
-        "src/rpc_base_test.cpp",
-    ],
-    incs= [ 
-        "incl/",
-    ],
-    deps =[
-        ":rpc_base_pb_proto",
-    ]
-);
+#
+#cc_test(
+#    name = 'rpc_base_test',
+#    srcs = [
+#        "src/rpc_base_test.cpp",
+#    ],
+#    incs= [ 
+#        "incl/",
+#    ],
+#    deps =[
+#        ":rpc_base_pb_proto",
+#    ]
+#);
 
 
 

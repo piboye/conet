@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  piboye
  *   Organization:  
  *
  * =====================================================================================
@@ -19,13 +19,13 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "server_base.h"
 #include "http_server.h"
 #include "thirdparty/glog/logging.h"
 
 #include "base/incl/auto_var.h"
 #include "base/incl/http_parser.h"
 #include "base/incl/net_tool.h"
+#include "base/incl/fn_ptr_cast.h"
 
 namespace conet
 {
@@ -96,17 +96,17 @@ int output_response(http_response_t *resp, int fd)
 }
 
 
-http_cmd_t * get_http_cmd(http_server_t *server, std::string const &name)
+http_cmd_t * http_server_t::get_http_cmd(std::string const &name)
 {
-    AUTO_VAR(it, =, server->cmd_maps.find(name));
-    if (it == server->cmd_maps.end()) {
+    AUTO_VAR(it, =, this->cmd_maps.find(name));
+    if (it == this->cmd_maps.end()) {
         return NULL;
     }
     return &it->second;
 }
 
 int http_server_main(conn_info_t *conn, http_request_t *req,
-        server_t *server_base,
+        tcp_server_t *server_base,
         http_server_t *http_server
         )
 {
@@ -125,7 +125,7 @@ int http_server_main(conn_info_t *conn, http_request_t *req,
     ctx.server = http_server;
     ctx.conn_info = conn;
 
-    http_cmd_t *cmd = get_http_cmd(http_server, path);
+    http_cmd_t *cmd = http_server->get_http_cmd(path);
     if (cmd == NULL) {
         LOG(ERROR)<<"no found path cmd, [path:"<<path<<"]";
         ctx.to_close = 1;
@@ -150,17 +150,9 @@ int http_server_main(conn_info_t *conn, http_request_t *req,
     return 0;
 }
 
-int http_server_proc(conn_info_t *conn) 
+int http_server_t::conn_proc(conn_info_t *conn) 
 {
-
-    server_t *base_server = conn->server;
-    http_server_t *http_server = (http_server_t *) conn->extend;
-    return http_server_proc2(conn, base_server, http_server);
-}
-
-int http_server_proc2(conn_info_t *conn, 
-        server_t *base_server, http_server_t *http_server) 
-{
+    tcp_server_t *base_server = this->tcp_server;
 
     int fd  = conn->fd;
 
@@ -221,7 +213,7 @@ int http_server_proc2(conn_info_t *conn,
         {
             case 1: // finished;
                 {
-                    ret = http_server_main(conn, &req, base_server, http_server);
+                    ret = http_server_main(conn, &req, base_server, this);
                     nparsed = 0;
                     break;
                 }
@@ -242,33 +234,40 @@ int http_server_proc2(conn_info_t *conn,
     return 0;
 }
 
-int start_server(http_server_t *server)
+int http_server_t::init(tcp_server_t *tcp_server)
 {
-    server->server->extend = server;
-    server->server->proc = http_server_proc;
-    if (server->cmd_maps.empty() ) {
-        return -1;
-    }
-    return start_server(server->server);
+    this->tcp_server = tcp_server;
+    tcp_server->extend = this;
+    tcp_server->set_conn_cb(fn_ptr_cast<tcp_server_t::conn_proc_cb_t>(&http_server_t::conn_proc), this);
+    return 0;
 }
 
-int stop_server(http_server_t *server, int wait)
+int http_server_t::start()
+{
+    if (this->cmd_maps.empty() ) {
+        return -1;
+    }
+    return this->tcp_server->start();
+}
+
+int http_server_t::stop(int wait)
 {
     int ret = 0;
-    ret = stop_server(server->server, wait);
+    ret = tcp_server->stop(wait);
     return ret;
 }
 
-int registry_cmd(http_server_t *server, std::string const & name,  http_callback proc, void *arg )
+int http_server_t::registry_cmd(std::string const & name,  http_callback proc, void *arg )
 {
-    if (server->cmd_maps.find(name) != server->cmd_maps.end()) {
+    if (this->cmd_maps.find(name) != this->cmd_maps.end()) {
         return -1;
     }
     http_cmd_t item; 
     item.name = name;
     item.proc = proc;
     item.arg = arg;
-    server->cmd_maps.insert(std::make_pair(name, item));
+    this->cmd_maps.insert(std::make_pair(name, item));
     return 0;
 }
+
 }

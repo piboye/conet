@@ -33,16 +33,16 @@ cc_binary(
            ],
 )
 
-cc_binary(
-    name = "echo_rpc_cli_duplex",
-    srcs = ["echo_rpc_cli_duplex.cpp"],
-    deps = [
-            ":echo_rpc_proto", 
-            "//svrkit:client_base", 
-            #"//thirdparty/perftools:tcmalloc_debug",
-            #"//thirdparty/perftools:profiler",
-            "#dl", "#pthread"],
-)
+#cc_binary(
+#    name = "echo_rpc_cli_duplex",
+#    srcs = ["echo_rpc_cli_duplex.cpp"],
+#    deps = [
+#            ":echo_rpc_proto", 
+#            "//svrkit:client_base", 
+#            #"//thirdparty/perftools:tcmalloc_debug",
+#            #"//thirdparty/perftools:profiler",
+#            "#dl", "#pthread"],
+#)
 
 cc_binary(
     name = "echo_rpc_cli_co",
@@ -66,22 +66,22 @@ cc_binary(
     name = "echo_server",
     srcs = ["echo_server.cpp"],
     deps = [
-        "//svrkit:server_base", 
+        "//svrkit:tcp_server", 
         "#dl", 
         "//thirdparty/perftools:tcmalloc",
         "#pthread"
     ],
 )
 
-cc_binary(
-    name = "echo_server_async",
-    srcs = ["echo_server_async.cpp"],
-    deps = [
-        "//svrkit:server_base", 
-        "#dl", 
-        "#pthread"
-    ],
-)
+#cc_binary(
+#    name = "echo_server_async",
+#    srcs = ["echo_server_async.cpp"],
+#    deps = [
+#        "//svrkit:tcp_server", 
+#        "#dl", 
+#        "#pthread"
+#    ],
+#)
 
 cc_binary(
     name = "echo_rpc_server",

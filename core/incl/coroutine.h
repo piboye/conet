@@ -17,6 +17,7 @@ struct coroutine_t;
 struct coroutine_env_t;
 
 typedef int CO_MAIN_FUN(void *);
+typedef int (*co_main_func_t)(void *);
 
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \

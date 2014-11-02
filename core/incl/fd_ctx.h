@@ -49,6 +49,9 @@ struct fd_ctx_t
 
 
 fd_ctx_t * alloc_fd_ctx(int fd, int type=1);
+
+fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked);
+
 fd_ctx_t * get_fd_ctx(int fd, int type =1);
 
 int free_fd_ctx(int fd);

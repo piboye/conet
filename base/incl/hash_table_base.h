@@ -102,6 +102,8 @@ public:
         return m_num;
     }
 
+    typedef int (*foreach_cb_t)(Node *, void *arg);
+
     int foreach(int (*proc)(Node *, void *arg), void *arg)
     {
        int cnt = 0;

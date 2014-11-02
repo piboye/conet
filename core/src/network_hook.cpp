@@ -132,9 +132,15 @@ HOOK_SYS_FUNC_DEF(
         client_fd =  _(accept4)(fd, addr, len, flags);
     }
     if (client_fd >=0) {
-        fd_ctx_t *ctx = alloc_fd_ctx(client_fd);
+
+        fd_ctx_t *ctx = NULL;
+        if (flags & O_NONBLOCK) {
+            ctx = conet::alloc_fd_ctx2(client_fd, 1, true);
+        } else {
+            ctx = conet::alloc_fd_ctx(client_fd, 1);
+        }
         ctx->domain = lp->domain;
-        ctx->user_flag = flags;
+        //ctx->user_flag = flags;
     }
     return client_fd;
 

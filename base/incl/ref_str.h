@@ -31,9 +31,17 @@ typedef struct ref_str_t
 
 } ref_str_t;
 
+inline
+ref_str_t ref_str(char const * src, size_t len) 
+{
+    ref_str_t d; 
+    d.data = (char *)(src);
+    d.len = len;
+    return d;
+}
 
 inline
-ref_str_t ref_str(std::string const v)
+ref_str_t ref_str(std::string const &v)
 {
     ref_str_t d; 
     d.data = (char *)v.data();

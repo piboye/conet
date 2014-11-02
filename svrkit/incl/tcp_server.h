@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  server_base.h
+ *       Filename:  tcp_server.h
  *
  *    Description:
  *
@@ -15,8 +15,8 @@
  *
  * =====================================================================================
  */
-#ifndef __SERVER_BASE_H_INC__
-#define __SERVER_BASE_H_INC__
+#ifndef __TCP_SERVER_H_INC__
+#define __TCP_SERVER_H_INC__
 #include <string>
 #include <stdint.h>
 #include <netinet/in.h>
@@ -24,27 +24,14 @@
 #include "co_pool.h"
 #include "base/incl/list.h"
 #include "base/incl/obj_pool.h"
+#include "conn_info.h"
 
 namespace conet
 {
 
-struct server_t;
-struct conn_info_t
-{
-    server_t * server;
-    uint32_t ip;
-    int port;
-    int fd;
-    struct sockaddr_in addr;
-    coroutine_t *co;
-    void *extend;
-    conn_info_t()
-    {
-    }
-};
-
 struct coroutine_t;
-struct server_t
+
+struct tcp_server_t
 {
     enum {
         SERVER_START=0,
@@ -59,29 +46,49 @@ struct server_t
     coroutine_t *main_co;
     int state;
     int to_stop;
-    int (*proc)(conn_info_t *conn);
+    void *extend;
+
+    typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn);
+
+    conn_proc_cb_t conn_proc_cb;
+    void *cb_arg;
+
+    void set_conn_cb(conn_proc_cb_t cb, void *arg)
+    {
+        conn_proc_cb = cb;
+        cb_arg = arg;
+    }
 
     obj_pool_t co_pool;
 
     ObjPool<conn_info_t> conn_info_pool;
-    void *extend;
-    struct server_base_conf_t 
+
+
+    struct conf_t 
     {
         int listen_backlog;
         int max_packet_size;
         int max_conn_num;
     } conf;
 
-    struct server_base_data_t
+    struct data_t
     {
         int cur_conn_num;
     } data;
+
+
+
+    int main_proc();
+    
+
+    int init(const char *ip, int port, int listen_fd=-1);
+
+    int start();
+
+    int stop(int wait_ms=0);
 };
 
 
-int init_server(server_t *server, const char *ip, int port);
-int start_server(server_t *server);
-int stop_server(server_t *server, int wait_ms=0);
 
 
 }

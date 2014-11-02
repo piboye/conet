@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  server_base.cpp
+ *       Filename:  tcp_server.cpp
  *
  *    Description:
  *
@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (),
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -19,12 +19,15 @@
 #include <stdint.h>
 #include <string>
 #include <netinet/tcp.h>
+#include <fcntl.h>
+
 #include "conet_all.h"
-#include "server_base.h"
+#include "tcp_server.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #include "base/incl/net_tool.h"
+#include "base/incl/fn_ptr_cast.h"
 #include "core/incl/fd_ctx.h"
 
 DEFINE_int32(listen_backlog, 1000, "default listen backlog");
@@ -34,19 +37,23 @@ DEFINE_int32(max_packet_size, 102400, "default max packet size");
 namespace conet
 {
 
-int client_proc(conn_info_t *info)
+int conn_proc_co(conn_info_t *info)
 {
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
     conet::coroutine_t *co = CO_SELF();
     info = (conn_info_t *) conet::get_yield_value(co);
-    server_t *server = info->server;
+    tcp_server_t *server = (tcp_server_t *)info->server;
+
+    tcp_server_t::conn_proc_cb_t conn_proc = server->conn_proc_cb;
+    void * cb_arg = server->cb_arg;
+
     do
     {   //running;
 
         int ret = 0;
 
-        ret = server->proc(info);
+        ret = conn_proc(cb_arg, info);
         close(info->fd);
         co = info->co;
         --server->data.cur_conn_num;
@@ -72,7 +79,7 @@ int client_proc(conn_info_t *info)
 
 
 
-int proc_pool(server_t *server, conn_info_t *conn_info)
+int proc_pool(tcp_server_t *server, conn_info_t *conn_info)
 {
     conn_info->co = (coroutine_t *)server->co_pool.alloc();
     conet::resume(conn_info->co, conn_info);
@@ -82,7 +89,7 @@ int proc_pool(server_t *server, conn_info_t *conn_info)
 static 
 void * alloc_server_work_co(void *arg)
 {
-    conet::coroutine_t * co = alloc_coroutine((int (*)(void *))client_proc, NULL);
+    conet::coroutine_t * co = alloc_coroutine((int (*)(void *))conn_proc_co, NULL);
     set_auto_delete(co);
     return co;
 }
@@ -94,11 +101,12 @@ void free_server_work_co(void *arg, void * val)
     resume(co, NULL);
 }
 
-int init_server(server_t *server, const char *ip, int port)
+int tcp_server_t::init(const char *ip, int port, int listen_fd)
 {
+    tcp_server_t *server = this;
     server->ip = ip;
     server->port = port;
-    server->state = server_t::SERVER_START;
+    server->state = SERVER_START;
     server->main_co = NULL;
     server->extend = NULL;
     server->conf.listen_backlog = FLAGS_listen_backlog;
@@ -106,60 +114,60 @@ int init_server(server_t *server, const char *ip, int port)
     server->conf.max_packet_size = FLAGS_max_packet_size;
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
-    server->listen_fd = -1;
+    server->listen_fd = listen_fd;
     server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
     server->co_pool.set_free_obj_func(free_server_work_co, server);
     return 0;
 }
 
 
-int server_main(void *arg);
 
-int start_server(server_t *server)
+int tcp_server_t::start()
 {
-    server->main_co = alloc_coroutine(server_main, server);
-    conet::resume(server->main_co);
+    this->main_co = alloc_coroutine(conet::fn_ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), this);
+    conet::resume(this->main_co);
     return 0;
 }
 
 
-int server_main(void *arg)
+int tcp_server_t::main_proc()
 {
-    server_t *server = (server_t *)(arg);
-
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
-    server->state = server_t::SERVER_RUNNING;
 
-    int listen_fd = server->listen_fd; 
+    this->state = tcp_server_t::SERVER_RUNNING;
+
+    int listen_fd = this->listen_fd; 
     if (listen_fd <0) 
     {
-        listen_fd = create_tcp_socket(server->port, server->ip.c_str(), true);
+        listen_fd = create_tcp_socket(this->port, this->ip.c_str(), true);
         if (listen_fd <0) 
         {
-            server->state = server_t::SERVER_STOPED;
+            this->state = SERVER_STOPED;
             LOG(ERROR)<<"create listen socket failed, "
-                "["<<server->ip<<":"<<server->port<<"]"
+                "["<<this->ip<<":"<<this->port<<"]"
                 "[errno:"<<errno<<"]"
                 "[errmsg:"<<strerror(errno)<<"]";
             return -1;
         }
         
-        server->listen_fd = listen_fd;
+        this->listen_fd = listen_fd;
     } 
 
     set_none_block(listen_fd, true);
 
-    listen(listen_fd, server->conf.listen_backlog); 
+    listen(listen_fd, this->conf.listen_backlog); 
 
     int waits = 5; // 5 seconds;
     setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
 
     int ret = 0;
-    while (0==server->to_stop) {
-        while (server->data.cur_conn_num >= server->conf.max_conn_num) {
+
+    conn_info_t * conn_info = this->conn_info_pool.alloc();
+    while (0==this->to_stop) {
+        while (this->data.cur_conn_num >= this->conf.max_conn_num) {
             usleep(10000); // block 10ms
-            if (server->to_stop) {
+            if (this->to_stop) {
                 break;
             }
         }
@@ -175,35 +183,44 @@ int server_main(void *arg)
             break;
         }
 
-        struct sockaddr_in addr;
-        memset( &addr, 0, sizeof(addr) );
-        socklen_t len = sizeof(addr);
+        socklen_t len = sizeof(conn_info->addr);
 
-        int fd = accept(listen_fd, (struct sockaddr *)&addr, &len);
+        int fd = accept4(listen_fd, (struct sockaddr *)&conn_info->addr, &len, O_NONBLOCK);
 
         if (fd <0) continue;
 
-        ++server->data.cur_conn_num;
+        ++this->data.cur_conn_num;
 
-        conn_info_t *conn_info = server->conn_info_pool.alloc();
         //memset(conn_info, 0, sizeof(conn_info_t));
-        conn_info->server = server;
-        memcpy(&conn_info->addr, &addr,len);
+        
+        conn_info->server = this;
+        //memcpy(&conn_info->addr, &addr,len);
+        
         conn_info->fd = fd;
 
-        proc_pool(server, conn_info);
+        proc_pool(this, conn_info);
+
+        conn_info = this->conn_info_pool.alloc();
     }
+
+    if (conn_info) {
+        delete conn_info;
+    }
+
     close(listen_fd);
-    server->state = server_t::SERVER_STOPED;
+    this->state = SERVER_STOPED;
     return 0;
 }
 
-int stop_server(server_t *server, int wait_ms)
+int tcp_server_t::stop(int wait_ms)
 {
+    tcp_server_t *server = this;
+
     server->to_stop = 1;
-    if (server->state == server_t::SERVER_STOPED) {
+    if (server->state == SERVER_STOPED) {
         return 0;
     }
+
     conet::wait(server->main_co, 20);
     if (wait_ms >0) {
         for (int i=0; i< wait_ms; i+=1000) {
@@ -219,7 +236,7 @@ int stop_server(server_t *server, int wait_ms)
         }
     }
 
-    server->state = server_t::SERVER_STOPED;
+    server->state = SERVER_STOPED;
 
     if (server->data.cur_conn_num > 0) {
         LOG(ERROR)<<"server["<<server->ip<<":"<<server->port

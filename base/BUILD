@@ -89,3 +89,17 @@ cc_binary(
         "//thirdparty/gflags:gflags",
     ],
 ) 
+
+cc_binary(
+    name = 'fn_ptr_cast_test',
+    srcs = [
+        'src/fn_ptr_cast_test.cpp',
+    ],
+
+    incs= [ 
+        "incl/",
+    ],
+
+    deps = [
+    ],
+) 

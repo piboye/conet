@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/incl/server_base.h"
+#include "svrkit/incl/tcp_server.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/incl/cpu_affinity.h"
@@ -36,10 +36,10 @@ DEFINE_string(cpu_set, "", "cpu affinity set");
 
 
 inline
-int proc_echo(conn_info_t *conn)
+int proc_echo(void *arg, conn_info_t *conn)
 {
     conet::enable_sys_hook();
-    server_t * server= conn->server;
+    tcp_server_t * server= (tcp_server_t *)conn->server;
     int size = server->conf.max_packet_size;
     char * buff = CO_ALLOC_ARRAY(char, size);
     int ret = 0;
@@ -66,7 +66,7 @@ struct Task
         std::vector<ip_port_t> ip_list, http_ip_list;
         std::string http_address;
 
-        server_t server;
+        tcp_server_t server;
         int http_listen_fd;
         int rpc_listen_fd;
         int cpu_id;
@@ -83,7 +83,7 @@ struct Task
         {
             Task *self = (Task *)(arg);
             int ret = 0;
-            ret = conet::stop_server(&self->server, FLAGS_server_stop_wait_seconds*1000);
+            ret = self->server.stop(FLAGS_server_stop_wait_seconds*1000);
             self->exit_finsished = 1;
             return 0;
         }
@@ -97,9 +97,9 @@ struct Task
                 set_cur_thread_cpu_affinity(self->cpu_id);
             }
 
-            ret = init_server(&self->server, self->ip_list[0].ip.c_str(), self->ip_list[0].port);
-            self->server.proc = &proc_echo;
-            start_server(&self->server);
+            ret = self->server.init(self->ip_list[0].ip.c_str(), self->ip_list[0].port);
+            self->server.set_conn_cb(proc_echo, NULL);
+            self->server.start();
             while (1) 
             {
                 conet::dispatch();

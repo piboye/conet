@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
     google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
-    server_t base_server;
+    tcp_server_t tcp_server;
     int ret = 0;
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr, &ip_list);
@@ -55,16 +55,17 @@ int main(int argc, char * argv[])
         fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_addr.c_str());
         return 1;
     }
-    ret = init_server(&base_server, ip_list[0].ip.c_str(), ip_list[0].port);
+    ret = tcp_server.init(ip_list[0].ip.c_str(), ip_list[0].port);
     if (ret) {
         fprintf(stderr, "listen to %s\n, failed, ret:%d\n", FLAGS_server_addr.c_str(), ret);
         return 1;
     }
-    g_server.server = &base_server;
 
-    registry_cmd(&g_server, "/hello", proc_hello, NULL);
+    g_server.init(&tcp_server);
 
-    start_server(&g_server);
+    g_server.registry_cmd("/hello", proc_hello, NULL);
+
+    g_server.start();
     while (conet::get_epoll_pend_task_num() >0) {
         conet::dispatch();
     }

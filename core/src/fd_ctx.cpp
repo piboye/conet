@@ -150,7 +150,7 @@ fd_ctx_t *get_fd_ctx(int fd, int type)
     return NULL;
 }
 
-fd_ctx_t *alloc_fd_ctx(int fd, int type)
+fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
 {
     if (fd <0) {
         assert(!"fd <0");
@@ -180,19 +180,27 @@ fd_ctx_t *alloc_fd_ctx(int fd, int type)
         d->rcv_timeout = 1000;
         d->snd_timeout = 1000;
         int flags = 0;
-        flags = _(fcntl)(fd, F_GETFL, 0);
+        //flags = _(fcntl)(fd, F_GETFL, 0);
         //d->user_flag = flags;
         
         //default is block 
         d->user_flag = 0;
         d->wait_events = 0;
 
-        // 设置 none block, 方便hook 系统调用
-        // user_flag 只保存用户设置的标志。
-        _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
+        if (!has_nonblocked) {
+            // 设置 none block, 方便hook 系统调用
+            // user_flag 只保存用户设置的标志。
+            _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
+        }
         mgr->fds[fd] = d;
     }
     return mgr->fds[fd];
+
+}
+
+fd_ctx_t *alloc_fd_ctx(int fd, int type)
+{
+    return alloc_fd_ctx2(fd, type, false);
 }
 
 int free_fd_ctx(int fd)
