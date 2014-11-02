@@ -420,6 +420,11 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    if (conet::can_reuse_port()) {
+        LOG(INFO)<<"can reuse port, very_good";
+        fprintf(stderr, "can resue port, very good!\n");
+    }
+
     ret = pre_create_listen_fds();
     if (0 == ret) {
         if (FLAGS_thread_mode == false && FLAGS_work_num > 0) {
