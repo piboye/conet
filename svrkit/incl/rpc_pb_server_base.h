@@ -92,13 +92,18 @@ struct rpc_pb_cmd_t
    }
 
    void init(
+           uint64_t cmd_id,
            std::string const &method_name, 
            google::protobuf::Message *req, 
            google::protobuf::Message *rsp
            )
    {
+        this->cmd_id = cmd_id;
         this->method_name = method_name;
         this->cmd_map_node.init(ref_str(this->method_name));
+        if (cmd_id >0) {
+            this->cmd_id_map_node.init(cmd_id);
+        }
         this->req_msg = req;
         this->rsp_msg = rsp;
         this->req_pool.init(this->req_msg, 0);
@@ -118,7 +123,7 @@ struct rpc_pb_cmd_t
             rsp = rsp->New();
         }
 
-        n->init(this->method_name, req, rsp);
+        n->init(this->cmd_id, this->method_name, req, rsp);
         n->arg = this->arg;
         n->proc = this->proc;
         if (n->obj_mgr) 
@@ -138,7 +143,7 @@ struct rpc_pb_cmd_t
    // 命令的 Map 节点
    StrMap::node_type cmd_map_node;
 
-   IntMap::node_type cmdid_map_node;
+   IntMap::node_type cmd_id_map_node;
 
    // 请求和响应 的 protobuf 对象， 
    google::protobuf::Message * req_msg;
@@ -182,13 +187,13 @@ google::protobuf::Message *new_rpc_req_rsp_obj_help<void>()
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(std::string const &method_name,
+int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name, 
         int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)
 {
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
 
-    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
+    cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func); 
     cmd->arg = (void *)arg; 
@@ -200,12 +205,12 @@ int registry_rpc_pb_cmd(std::string const &method_name,
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(std::string const &method_name,
+int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name, 
         int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2 *rsp, std::string *errmsg), T1* arg)
 {
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
-    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
+    cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func);  
 
@@ -218,13 +223,13 @@ int registry_rpc_pb_cmd(std::string const &method_name,
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(std::string const &method_name,
+int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
         int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), 
         cmd_class_obj_mgr_base_t *obj_mgr)
 {
     int ret = 0;
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
-    cmd->init(method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
+    cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
     cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func);  
 
@@ -241,8 +246,8 @@ int registry_rpc_pb_cmd(std::string const &method_name,
 #define CONET_MACRO_CONCAT_IMPL(a, b) a##b
 #define CONET_MACRO_CONCAT(a, b) CONET_MACRO_CONCAT_IMPL(a,b)
 
-#define REGISTRY_RPC_PB_FUNC(method_name, func, arg) \
-    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) = conet::registry_rpc_pb_cmd(method_name, func, arg)
+#define REGISTRY_RPC_PB_FUNC(cmd_id, method_name, func, arg) \
+    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) = conet::registry_rpc_pb_cmd(cmd_id, method_name, func, arg)
 
 
 template <typename T>
@@ -274,9 +279,9 @@ public:
     }
 };
 
-#define REGISTRY_RPC_PB_CLASS_MEHTORD(method_name, Class, func) \
+#define REGISTRY_RPC_PB_CLASS_MEHTORD(cmd_id, method_name, Class, func) \
     static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_,__LINE__) = \
-        conet::registry_rpc_pb_cmd(method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
+        conet::registry_rpc_pb_cmd(cmd_id, method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
 
 }
 

@@ -8,7 +8,7 @@ message CmdBase
     }
     optional int32 type=1;
     optional bytes cmd_name=2;
-    optional bytes cmd_id=3;
+    optional uint64 cmd_id=3;
     optional uint64 seq_id=4;
     optional bytes body=5;
     enum ERROR {

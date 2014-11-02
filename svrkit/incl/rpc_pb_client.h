@@ -35,10 +35,13 @@ int rpc_pb_call_impl(int fd,
         std::string const &cmd_name,
         std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
 
+int rpc_pb_call_impl(int fd,
+        uint64_t cmd_id,
+        std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
 
-template <typename ReqT, typename RespT>
+template <typename ReqT, typename RespT, typename CmdNameT>
 int rpc_pb_call(int fd, 
-        std::string const &cmd_name,
+        CmdNameT const & cmd_name,
         ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
     std::string req;
@@ -62,9 +65,10 @@ int rpc_pb_call(int fd,
     return ret;
 }
 
-template <typename ReqT, typename RespT>
+
+template <typename ReqT, typename RespT, typename CmdNameT>
 int rpc_pb_call(char const *ip, int port, 
-        std::string const &cmd_name,
+        CmdNameT const & cmd_name,
         ReqT const *a_req, RespT *a_resp,
         int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
@@ -78,9 +82,9 @@ int rpc_pb_call(char const *ip, int port,
 
 
 
-template <typename ReqT, typename RespT, typename LBT>
+template <typename ReqT, typename RespT, typename LBT, typename CmdNameT>
 int rpc_pb_call(LBT &lb,
-        std::string const &cmd_name,
+        CmdNameT const & cmd_name,
         ReqT const *a_req, RespT *a_resp, 
         int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {

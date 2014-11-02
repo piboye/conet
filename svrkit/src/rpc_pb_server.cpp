@@ -33,8 +33,20 @@
 
 using namespace conet_rpc_pb;
 
+
+
 namespace conet
 {
+
+static 
+inline
+void append_to_str(uint64_t v, std::string *out)
+{
+    char buf[40];
+    size_t len = 0;
+    len = snprintf(buf, sizeof(buf), "%lu", v);
+    out->append(buf, len);
+}
 
 static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn);
 
@@ -165,19 +177,42 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
             break;
         }
 
-        std::string const & cmd_name = cmd_base.cmd_name();
-        rpc_pb_cmd_t * cmd = base_server->get_rpc_pb_cmd(cmd_name.c_str(), cmd_name.size());
-        if (NULL == cmd) {
-            // not unsuppend cmd;
-            LOG(ERROR)<< "unsuppend cmd:"<<cmd_name;
+        rpc_pb_cmd_t * cmd = NULL; 
+        uint64_t cmd_id = cmd_base.cmd_id();
+        if (cmd_id > 0) {
+            cmd = base_server->get_rpc_pb_cmd(cmd_id);
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
 
-            cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
-            cmd_base.set_errmsg("unsuppored cmd");
-            ret = send_pb_obj(fd, cmd_base, &out_buf);
-            if (ret <= 0) {
-                LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
+
+                std::string errmsg = "unsuppored cmd_id:";
+                append_to_str(cmd_id, &errmsg);
+
+                cmd_base.set_errmsg(errmsg);
+                ret = send_pb_obj(fd, cmd_base, &out_buf);
+                if (ret <= 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
             }
-            break;
+            
+        } else {
+            std::string const & cmd_name = cmd_base.cmd_name();
+            cmd = base_server->get_rpc_pb_cmd(cmd_name.c_str(), cmd_name.size());
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name;
+
+                cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
+                cmd_base.set_errmsg("unsuppored cmd:"+cmd_name);
+                ret = send_pb_obj(fd, cmd_base, &out_buf);
+                if (ret <= 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
+            }
         }
 
         std::string * req = cmd_base.mutable_body();

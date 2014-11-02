@@ -35,10 +35,11 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, std::string *req, std:
 struct rpc_pb_server_base_t
 {
     StrMap cmd_maps;
-    IntMap cmdid_maps;
+    IntMap cmd_id_maps;
 
     rpc_pb_server_base_t();
     rpc_pb_cmd_t * get_rpc_pb_cmd(char const *name, size_t name_len);
+    rpc_pb_cmd_t * get_rpc_pb_cmd(uint64_t cmd_id);
 
     int get_global_server_cmd();
 

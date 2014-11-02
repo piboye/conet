@@ -76,8 +76,9 @@ static int delete_rpc_pb_cmd_obj(void *arg, StrMap::node_type *n)
 
 rpc_pb_server_base_t::rpc_pb_server_base_t()
 {
-    this->cmd_maps.init(100);
+    this->cmd_maps.init(1000);
     this->cmd_maps.set_destructor_func(&delete_rpc_pb_cmd_obj, NULL);
+    this->cmd_id_maps.init(1000);
 }
 
 rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(char const *method_name, size_t len)
@@ -87,6 +88,15 @@ rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(char const *method_name, siz
         return NULL;
     }
     return container_of(n, rpc_pb_cmd_t, cmd_map_node);
+}
+
+rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(uint64_t cmd_id)
+{
+    IntMap::node_type * n = this->cmd_id_maps.find(cmd_id);
+    if ( NULL == n ) {
+        return NULL;
+    }
+    return container_of(n, rpc_pb_cmd_t, cmd_id_map_node);
 }
 
 int rpc_pb_server_base_t::get_global_server_cmd()
@@ -102,6 +112,9 @@ int rpc_pb_server_base_t::get_global_server_cmd()
         rpc_pb_cmd_t *cmd = it->second;
         rpc_pb_cmd_t *cmd2 = cmd->clone(); 
         this->cmd_maps.add(&cmd2->cmd_map_node);
+        if (cmd2->cmd_id > 0) {
+            this->cmd_id_maps.add(&cmd2->cmd_id_map_node);
+        }
     }
 
     return this->cmd_maps.size();

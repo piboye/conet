@@ -31,6 +31,8 @@
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
 DEFINE_string(data_file, "1.txt", "send data file");
+DEFINE_string(cmd_name, "", "echo or echo2");
+DEFINE_uint64(cmd_id, 1, " cmd id 1, 2");
 
 std::vector<std::string *> g_data;
 int prepare_data(char const *file)
@@ -69,18 +71,28 @@ int proc_send(void *arg)
     int ret = 0;
     EchoReq req;
     EchoResp resp;
-    std::string method = "echo";
+    std::string method = FLAGS_cmd_name;
+    uint64_t cmd_id = FLAGS_cmd_id;
+    std::string errmsg;
+    if (!method.empty())
+    {
+        cmd_id = 0;
+    }
     for (int i=0, len = g_data.size(); i<len; ++i) {
         req.set_msg(*g_data[i]);
         int retcode=0;
-        ret = conet::rpc_pb_call(*task->lb, method, &req, &resp, &retcode);
-        if (ret || retcode) {
+        if (cmd_id) {
+            ret = conet::rpc_pb_call(*task->lb, cmd_id, &req, &resp, &retcode, &errmsg);
+        } else {
+            ret = conet::rpc_pb_call(*task->lb, method, &req, &resp, &retcode, &errmsg);
+        }
+        if (ret) {
             LOG(ERROR)<<"ret:"<<ret;
             continue;
         }
 
         if (retcode)
-            LOG(ERROR)<<"ret_code:"<<retcode<<" resposne:"<<resp.DebugString();;
+            LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg "<<errmsg<<" resposne:"<<resp.DebugString();;
     }
     ++g_finish_task_num;
     return 0;
