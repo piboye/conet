@@ -219,11 +219,13 @@ int rpc_pb_server_t::stop(int wait)
     }
     
     LOG(INFO)<<"stop rpc http server";
-    ret = http_server->stop(wait);
-    if (ret) {
-        LOG(ERROR)<<"stop rpc http server failed, [ret:"<<ret<<"]";
-    } else {
-        LOG(INFO)<<"stop rpc http server success";
+    if (http_server) {
+        ret = http_server->stop(wait);
+        if (ret) {
+            LOG(ERROR)<<"stop rpc http server failed, [ret:"<<ret<<"]";
+        } else {
+            LOG(INFO)<<"stop rpc http server success";
+        }
     }
 
     LOG(INFO)<<"stop rpc finished";

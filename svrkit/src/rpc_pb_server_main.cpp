@@ -89,7 +89,7 @@ struct Task
 {
 
         conet::tcp_server_t tcp_server;    
-
+        conet::http_server_t http_server;    
         conet::rpc_pb_server_t rpc_server;    
 
         ip_port_t rpc_ip_port;
@@ -110,10 +110,11 @@ struct Task
         {
             tcp_server.start();
             if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
-                fprintf(stderr, "listen to [%s:%d]\n, failed\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
+                LOG(ERROR)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], failed"; 
                 return 0;
             }
             fprintf(stderr, "listen to [%s:%d]\n, success\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
+            LOG(INFO)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], success"; 
             return 0;
         }
 
@@ -213,7 +214,8 @@ int Task::init(TaskEnv *env)
     this->env = env;
     int ret = 0;
     ret = tcp_server.init(rpc_ip_port.ip.c_str(), rpc_ip_port.port, rpc_listen_fd);
-    ret = rpc_server.init(&env->base_server, &tcp_server, NULL);
+    ret = http_server.init(&tcp_server);
+    ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
 
     return ret;
 }
@@ -277,6 +279,13 @@ int proc_process_mode(int proc_num)
                 if (g_childs.find(pid) == g_childs.end()) {
                     continue;
                 }
+
+                LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
+
+                sleep(1);
+
+                LOG(INFO)<<"restore work process:";
+
                 int cpu_id = g_childs[pid];
                 g_childs.erase(pid);
                 if (!g_exit_flag) {
