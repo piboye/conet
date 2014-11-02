@@ -85,7 +85,7 @@ public:
 
 };
 
-
+int can_reuse_port();
 
 int set_none_block(int fd, bool enable=true);
 

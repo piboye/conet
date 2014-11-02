@@ -234,6 +234,27 @@ void set_addr(struct sockaddr_in *addr, const char *ip_txt,const unsigned short 
     addr->sin_addr.s_addr = ip;
 }
 
+
+static int g_can_reuse_port = can_reuse_port();
+
+int can_reuse_port() 
+{
+   static int init = 0;
+   if (0 == init) {
+        int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
+        int reuse_addr = 1;
+        int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+        if (ret) {
+            g_can_reuse_port = 1;
+        } else {
+            g_can_reuse_port = 0;
+        }
+        close(fd);
+        init = 1;
+   }
+   return g_can_reuse_port;
+}
+
 int create_tcp_socket(int port, const char *ip_txt, int reuse)
 {
     int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
@@ -241,11 +262,11 @@ int create_tcp_socket(int port, const char *ip_txt, int reuse)
         if(port != 0) {
             if(reuse) {
                 int reuse_addr = 1;
-#if HAVE_SO_REUSEPORT
-                setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
-#else 
-                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
-#endif
+                if (g_can_reuse_port) {
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+                } else {
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
+                }
             }
             struct sockaddr_in addr ;
             set_addr(&addr, ip_txt, port);

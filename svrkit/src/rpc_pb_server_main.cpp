@@ -226,6 +226,56 @@ typedef int cpu_id_type;
 std::vector<int> g_cpu_set;
 std::vector<ip_port_t> g_rpc_ip_list;
 
+int get_listen_fd(char const *ip, int port, int listen_fd)
+{
+    if (conet::can_reuse_port() || listen_fd <0) {
+        int rpc_listen_fd = conet::create_tcp_socket(port, ip, true);
+        return rpc_listen_fd;
+    } else {
+        if (FLAGS_thread_mode) { 
+            return dup(listen_fd);
+        } else {
+            return listen_fd;
+        }
+    }
+}
+
+
+std::vector<int> g_rpc_listen_fds;
+
+
+int pre_create_listen_fds()
+{
+    for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
+    {
+        int rpc_listen_fd = conet::create_tcp_socket(g_rpc_ip_list[i].port, g_rpc_ip_list[i].ip.c_str(), true);
+        if (rpc_listen_fd<0) {
+            LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
+            return -1;
+        }
+        g_rpc_listen_fds.push_back(rpc_listen_fd);
+    }
+    return 0;
+}
+
+int create_task(TaskEnv *env)
+{
+    for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
+    {
+        int rpc_listen_fd =  get_listen_fd(g_rpc_ip_list[i].ip.c_str(), g_rpc_ip_list[i].port, g_rpc_listen_fds[i]);
+        if (rpc_listen_fd<0) {
+            LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
+            return -1;
+        }
+
+        Task  *task = new Task();
+        task->rpc_ip_port = g_rpc_ip_list[i];
+        task->rpc_listen_fd= rpc_listen_fd;
+        task->init(env);
+        env->add(task);
+    }
+    return 0;
+}
 
 int proc_process_mode(int proc_num)
 {
@@ -235,21 +285,6 @@ int proc_process_mode(int proc_num)
 
         if (!g_cpu_set.empty()) {
             env->cpu_id = g_cpu_set[0];
-        }
-
-        for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
-        {
-            int rpc_listen_fd = conet::create_tcp_socket(g_rpc_ip_list[i].port, g_rpc_ip_list[i].ip.c_str(), true);
-            if (rpc_listen_fd<0) {
-                LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
-                return 0;
-            }
-
-            Task  *task = new Task();
-            task->rpc_ip_port = g_rpc_ip_list[i];
-            task->rpc_listen_fd= rpc_listen_fd;
-            task->init(env);
-            env->add(task);
         }
 
         int num = proc_num;
@@ -262,6 +297,7 @@ int proc_process_mode(int proc_num)
             pid_t pid = fork();
             if (pid == 0) {
                 g_master_controller = 0;
+                create_task(env);
                 env->run();
                 break;
             } else if (pid > 0) {
@@ -292,6 +328,7 @@ int proc_process_mode(int proc_num)
                    pid = fork(); 
                    if (pid == 0) {
                         g_master_controller = 0;
+                        create_task(env);
                         env->run();
                         break;
                    } else if (pid > 0) {
@@ -324,31 +361,11 @@ int proc_process_mode(int proc_num)
 }
 
 
-int get_listen_fd(char const *ip, int port, int listen_fd)
-{
-#if HAVE_SO_REUSEPORT
-    
-    int rpc_listen_fd = conet::create_tcp_socket(port, ip, true);
-    return rpc_listen_fd;
-#else
-    return dup(listen_fd);
-#endif
-}
 
 int proc_thread_mode(int num)
 {
         TaskEnv *envs = new TaskEnv[num];
         std::vector<int> rpc_listen_fds;
-
-        for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
-        {
-            int rpc_listen_fd = conet::create_tcp_socket(g_rpc_ip_list[i].port, g_rpc_ip_list[i].ip.c_str(), true);
-            if (rpc_listen_fd<0) {
-                LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
-                return 0;
-            }
-            rpc_listen_fds.push_back(rpc_listen_fd);
-        }
 
         for (int i=0; i< num; ++i)
         {
@@ -357,14 +374,7 @@ int proc_thread_mode(int num)
                 env->cpu_id = g_cpu_set[i%g_cpu_set.size()];
             }
 
-            for (size_t i=0; i<g_rpc_ip_list.size(); ++i) {
-                Task  *task = new Task();
-                task->rpc_ip_port = g_rpc_ip_list[i];
-                task->rpc_listen_fd= get_listen_fd(g_rpc_ip_list[i].ip.c_str(), g_rpc_ip_list[i].port, rpc_listen_fds[i]);
-                task->init(env);
-                env->add(task);
-            }
-
+            create_task(env);
             pthread_create(&env->tid, NULL, conet::fn_ptr_cast<void *(*)(void*)>(&TaskEnv::run), env);
         }
 
@@ -410,13 +420,16 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-
-    if (FLAGS_thread_mode == false && FLAGS_work_num > 0) {
-        proc_process_mode(FLAGS_work_num);
-    } else {
-        int num = FLAGS_work_num;
-        proc_thread_mode(num);
+    ret = pre_create_listen_fds();
+    if (0 == ret) {
+        if (FLAGS_thread_mode == false && FLAGS_work_num > 0) {
+            proc_process_mode(FLAGS_work_num);
+        } else {
+            int num = FLAGS_work_num;
+            proc_thread_mode(num);
+        }
     }
+
     
     for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 
     {
