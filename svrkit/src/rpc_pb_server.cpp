@@ -98,8 +98,6 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
     CmdBase cmd_base;
 
-    CmdBaseResp resp_base;
-
     ctx.server = server;
     ctx.conn_info = conn;
     ctx.req = &cmd_base;

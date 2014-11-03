@@ -36,19 +36,14 @@ struct fd_ctx_t
         DISK_FD_TYPE=2,
         TIMER_FD_TYPE=3,
     };
+    struct sockaddr_in dest; //maybe sockaddr_un;
     int type;
     int fd;
-    int use_cnt;
     int user_flag;
-    struct sockaddr_in dest; //maybe sockaddr_un;
-    int domain; //AF_LOCAL , AF_INET
 
     int rcv_timeout;
     int snd_timeout;
-    uint32_t wait_events;
-    uint32_t set_events;
-    int add_to_epoll;
-    list_head poll_wait_queue;
+    int domain;
 };
 
 
@@ -59,9 +54,6 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked);
 fd_ctx_t * get_fd_ctx(int fd, int type =1);
 
 int free_fd_ctx(int fd);
-
-void incr_ref_fd_ctx(fd_ctx_t *obj);
-void decr_ref_fd_ctx(fd_ctx_t *obj);
 
 }
 

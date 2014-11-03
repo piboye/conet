@@ -15,14 +15,6 @@ message CmdBase
         ERR_UNSUPPORED_CMD = 1;
         ERR_PARSE_REQ_BODY = 2;
     };
-    optional int32 ret=6;
+    optional sint32 ret=6;
     optional bytes errmsg=7;
 };
-
-message CmdBaseResp
-{
-    optional int64 retcode=1; 
-    optional bytes errmsg=2; 
-    optional bytes body=3;
-};
-

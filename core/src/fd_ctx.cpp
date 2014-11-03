@@ -59,9 +59,7 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
 {
     for (int i = 0; i <= mgr->size; i++) {
         fd_ctx_t *ctx = mgr->fds[i];
-        if (ctx) {
-            decr_ref_fd_ctx(ctx);
-        }
+        free(ctx);
     }
     free(mgr);
 }
@@ -166,39 +164,31 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     }
 
     fd_ctx_t * d = mgr->fds[fd];
-    if (d) {
-        decr_ref_fd_ctx(d);
-        d = NULL;
-    }
-    if (NULL == d)
-    {
-        HOOK_SYS_FUNC(fcntl);
-        d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
-        d->type = type;
-        d->fd = fd;
-        d->use_cnt = 1;
-        INIT_LIST_HEAD(&d->poll_wait_queue);
-        d->rcv_timeout = 1000;
-        d->snd_timeout = 1000;
-        int flags = 0;
-        //flags = _(fcntl)(fd, F_GETFL, 0);
-        //d->user_flag = flags;
-        
-        //default is block 
-        d->user_flag = 0;
-        d->wait_events = 0;
-        d->set_events = 0;
-        d->add_to_epoll = 0;
 
-        if (!has_nonblocked) {
-            // 设置 none block, 方便hook 系统调用
-            // user_flag 只保存用户设置的标志。
-            _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
-        }
+    if ( NULL == d ) {
+        d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
         mgr->fds[fd] = d;
     }
-    return mgr->fds[fd];
 
+    d->type = type;
+    d->fd = fd;
+    d->rcv_timeout = 1000;
+    d->snd_timeout = 1000;
+    d->domain = 0;
+    int flags = 0;
+    //flags = _(fcntl)(fd, F_GETFL, 0);
+    //d->user_flag = flags;
+    
+    //default is block 
+    d->user_flag = 0;
+
+    if (!has_nonblocked) {
+        // 设置 none block, 方便hook 系统调用
+        // user_flag 只保存用户设置的标志。
+        _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
+    }
+
+    return mgr->fds[fd];
 }
 
 fd_ctx_t *alloc_fd_ctx(int fd, int type)
@@ -222,22 +212,8 @@ int free_fd_ctx(int fd)
 
     mgr->fds[fd] = NULL;
 
-    decr_ref_fd_ctx(d);
+    free(d);
     return 0;
-}
-
-
-void incr_ref_fd_ctx(fd_ctx_t *obj)
-{
-    ++obj->use_cnt;
-}
-
-void decr_ref_fd_ctx(fd_ctx_t *obj)
-{
-    --obj->use_cnt;
-    if (obj->use_cnt <= 0) {
-        free(obj);
-    }
 }
 
 }
