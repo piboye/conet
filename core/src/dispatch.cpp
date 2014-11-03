@@ -17,10 +17,10 @@
  */
 #include <stdlib.h>
 #include "dispatch.h"
-#include "base/incl/tls.h"
-#include "base/incl/time_helper.h"
-#include "thirdparty/gflags/gflags.h"
+#include "gflags/gflags.h"
 #include "coroutine.h"
+#include "../../base/incl/tls.h"
+#include "../../base/incl/time_helper.h"
 
 namespace conet
 {

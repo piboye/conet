@@ -24,18 +24,18 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+#include "gflags/gflags.h"
 #include "hook_helper.h"
 #include "timewheel.h"
 #include "log.h"
 #include "dispatch.h"
 #include "conet_all.h"
 #include "fd_ctx.h"
-#include "thirdparty/gflags/gflags.h"
 #include "coroutine.h"
 #include "coroutine_impl.h"
 
-#include "base/incl/tls.h"
-#include "base/incl/time_helper.h"
+#include "../../base/incl/tls.h"
+#include "../../base/incl/time_helper.h"
 
 static __thread timewheel_t * g_tw = NULL;
 

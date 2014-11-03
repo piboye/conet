@@ -1,7 +1,3 @@
-#include "coroutine.h"
-#include "coroutine_impl.h"
-#include "fd_ctx.h"
-#include "log.h"
 
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -29,6 +25,11 @@
 #include "network_hook.h"
 #include "dispatch.h"
 #include "hook_helper.h"
+
+#include "coroutine.h"
+#include "coroutine_impl.h"
+#include "fd_ctx.h"
+#include "log.h"
 
 using conet::alloc_fd_ctx;
 using conet::get_fd_ctx;

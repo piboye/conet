@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <assert.h>
+#include <sys/resource.h>
 
 #include "coroutine.h"
 #include "coroutine_impl.h"
@@ -12,11 +13,10 @@
 #include "timewheel.h"
 #include "network_hook.h"
 #include "dispatch.h"
-#include "thirdparty/gflags/gflags.h"
+#include "gflags/gflags.h"
 
-#include "base/incl/list.h"
-#include "base/incl/tls.h"
-#include <sys/resource.h>
+#include "../../base/incl/list.h"
+#include "../../base/incl/tls.h"
 
 DEFINE_int32(epoll_size, 10000, "epoll event size ");
 

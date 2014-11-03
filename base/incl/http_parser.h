@@ -2,11 +2,10 @@
 #define HTTP_PARSER_H
 
 #include <sys/types.h>
-#include "base/incl/ref_str.h"
+#include "ref_str.h"
 
 namespace conet
 {
-
 
 typedef struct http_header_t
 {

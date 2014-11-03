@@ -16,8 +16,8 @@
  * =====================================================================================
  */
 #include <stdlib.h>
-#include "core/incl/wait_queue.h"
-#include "core/incl/coroutine.h"
+#include "wait_queue.h"
+#include "coroutine.h"
 
 namespace conet
 {

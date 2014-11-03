@@ -17,17 +17,16 @@
  */
 #ifndef __COROUTINE_IMPL_H_INCL__
 #define __COROUTINE_IMPL_H_INCL__
-#include "base/incl/list.h"
 #include <ucontext.h>
 #include "gc.h"
 #include "timewheel.h"
 #include "coroutine.h"
 #include <map>
 #include <sys/epoll.h>
-#include "coctx.h"
-#include "base/incl/fixed_mempool.h"
 #include "gflags/gflags.h"
-#include "base/incl/tls.h"
+#include "../../base/incl/fixed_mempool.h"
+#include "../../base/incl/tls.h"
+#include "../../base/incl/list.h"
 
 #ifdef USE_VALGRIND
 #include <valgrind/valgrind.h>
