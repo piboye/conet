@@ -174,7 +174,7 @@ void poll_ctx_timeout_proc(void *arg)
 void close_fd_notify_poll(int fd)
 {
     poll_wait_item_t *wait_item = get_wait_item(fd);
-    if (wait_item && wait_item->poll_ctx)  
+    if (wait_item && wait_item->poll_ctx && wait_item->wait_events)  
     {
         wait_item->poll_ctx->retcode = 2;
         epoll_ctx_t *ep_ctx = get_epoll_ctx();
