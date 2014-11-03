@@ -200,14 +200,15 @@ HOOK_SYS_FUNC_DEF(
 
 namespace conet
 {
-int remove_epoll_ctl(int fd);
+void close_fd_notify_poll(int fd);
 }
 
 HOOK_SYS_FUNC_DEF(
     int, close, (int fd)
 )
 {
-    //HOOK_SYS_FUNC(close);
+    conet::close_fd_notify_poll(fd);
+    HOOK_SYS_FUNC(close);
     if( !conet::is_enable_sys_hook() )
     {
         return syscall(SYS_close, fd );
@@ -216,12 +217,7 @@ HOOK_SYS_FUNC_DEF(
     fd_ctx_t *lp = get_fd_ctx(fd);
     if (lp) 
     {
-        if (lp->add_to_epoll && list_empty(&lp->poll_wait_queue)) {
-            free_fd_ctx( fd );
-            conet::remove_epoll_ctl(fd);
-        } else {
-            free_fd_ctx( fd );
-        }
+        free_fd_ctx( fd );
     }
     //close  必须在 free_fd_ctx 的前面
     int ret = syscall(SYS_close, fd);

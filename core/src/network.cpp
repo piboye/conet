@@ -134,7 +134,7 @@ struct poll_ctx_t
 
     int num_raise;
 
-    int is_timeout;
+    int retcode;
 
     coroutine_t * coroutine;
 
@@ -152,6 +152,7 @@ void init_poll_wait_item(poll_wait_item_t *self, poll_ctx_t *ctx, int pos)
     if (self->poll_ctx != NULL)
     {
         LOG(FATAL)<<"this fd, has been polled by other";
+        exit(1);
     }
     list_add_tail(&self->link_to, &ctx->wait_queue);
     self->poll_ctx = ctx;
@@ -163,13 +164,24 @@ void init_poll_wait_item(poll_wait_item_t *self, poll_ctx_t *ctx, int pos)
 void poll_ctx_timeout_proc(void *arg)
 {
     poll_ctx_t *self = (poll_ctx_t *)(arg);
-    self->is_timeout = 1;
+    self->retcode = 1;
     if (self->coroutine) {
         resume(self->coroutine);
     }
     return ;
 }
 
+void close_fd_notify_poll(int fd)
+{
+    poll_wait_item_t *wait_item = get_wait_item(fd);
+    if (wait_item && wait_item->poll_ctx)  
+    {
+        wait_item->poll_ctx->retcode = 2;
+        epoll_ctx_t *ep_ctx = get_epoll_ctx();
+        epoll_ctl(ep_ctx->m_epoll_fd, fd, EPOLL_CTL_DEL, NULL);
+        conet::resume(wait_item->poll_ctx->coroutine);
+    }
+}
 void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list_head *dispatch, int epoll_fd)
 {
     uint32_t rest_events  = 0;
@@ -267,7 +279,7 @@ void  init_poll_ctx(poll_ctx_t *self,
     self->num_raise = 0;
     self->all_event_detach = 0;
     self->coroutine = NULL;
-    self->is_timeout = 0;
+    self->retcode = 0;
 
     INIT_LIST_HEAD(&self->to_dispatch);
     INIT_LIST_HEAD(&self->wait_queue);
@@ -395,10 +407,17 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 
         destruct_poll_ctx(&poll_ctx, epoll_ctx);
 
-        if (poll_ctx.is_timeout) {
-            return 0;
+        switch (poll_ctx.retcode)
+        {
+            case 0: // 有事件
+                return poll_ctx.num_raise;
+            case 1: // 超时
+                return 0;
+            case 2: // 出错了
+                return -1;
+            default:
+                return -1;
         }
-        return poll_ctx.num_raise;
     }
 }
 
