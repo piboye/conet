@@ -198,6 +198,11 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
+namespace conet
+{
+int remove_epoll_ctl(int fd);
+}
+
 HOOK_SYS_FUNC_DEF(
     int, close, (int fd)
 )
@@ -209,6 +214,11 @@ HOOK_SYS_FUNC_DEF(
     }
 
     int ret = syscall(SYS_close, fd);
+
+    fd_ctx_t *lp = get_fd_ctx(fd);
+    if (lp->add_to_epoll && list_empty(&lp->poll_wait_queue)) {
+        conet::remove_epoll_ctl(fd);
+    }
     free_fd_ctx( fd );
     return ret;
 }

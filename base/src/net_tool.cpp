@@ -237,6 +237,10 @@ void set_addr(struct sockaddr_in *addr, const char *ip_txt,const unsigned short 
 
 static int g_can_reuse_port = can_reuse_port();
 
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 15
+#endif 
+
 int can_reuse_port() 
 {
    static int init = 0;

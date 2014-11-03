@@ -21,7 +21,6 @@
 DEFINE_int32(epoll_size, 10000, "epoll event size ");
 
 
-
 HOOK_DECLARE(
     int, epoll_wait,(int epfd, struct epoll_event *events,
                      int maxevents, int timeout)
@@ -130,18 +129,22 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         // increase fd num
     }
 
-    if (has_revents != events)
+    if ((has_revents != events) ||  //有网络事件， 但是没有侦听者， 需要去除，不然会cpu 100%
+            (((fd_ctx->set_events & EPOLLOUT) > 0) && ((rest_events & EPOLLOUT)== 0 )) // EPOLLOUT 如果没有人等待， 就删除
+       )
     {
         epoll_event ev;
         uint64_t diff_events = events & (~has_revents);
         rest_events &= (~diff_events);
-        if (rest_events) {
-            ev.events = rest_events;
-            ev.data.ptr = fd_ctx;
-            fd_ctx->wait_events = ev.events;
-            fd_ctx->set_events = ev.events;
-            epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd_ctx->fd,  &ev);
-        } 
+        if (rest_events & EPOLLOUT) 
+        {
+            rest_events &= ~EPOLLOUT;
+        }
+        ev.events = rest_events;
+        ev.data.ptr = fd_ctx;
+        fd_ctx->wait_events = ev.events;
+        fd_ctx->set_events = ev.events;
+        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd_ctx->fd,  &ev);
     }
     
     /*
@@ -228,14 +231,17 @@ void  init_poll_ctx(poll_ctx_t *self,
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_ADD, fds[i].fd,  &ev);
                 } else {
                     // change events;
-                    item->wait_events |= ev.events;
-                    item->set_events |= ev.events;
-                    ev.events = item->set_events;
-                    epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
+                    uint32_t events = ev.events;
+                    events |= item->set_events;
+                    if (events != item->set_events) {
+                        item->wait_events = events;
+                        item->set_events = events;
+                        ev.events = item->set_events;
+                        epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
+                    }
                 }
             } else {
-                LOG(FATAL)<<"conet::poll [fd:"<<fds[i].fd<<"] don't have fd_ctx_t";
-                
+                LOG(FATAL)<<"conet::poll [fd:"<<fds[i].fd<<"] haven`t fd_ctx_t";
             }
         } else {
             init_poll_wait_item(self->wait_items+i,  self, i,  NULL);
@@ -374,6 +380,11 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
     }
 }
 
+int remove_epoll_ctl(int fd)
+{
+    epoll_ctx_t *ctx = get_epoll_ctx(); 
+    return epoll_ctl(ctx->m_epoll_fd, fd, EPOLL_CTL_DEL, NULL);
+}
 
 
 void free_epoll(epoll_ctx_t *ep)
