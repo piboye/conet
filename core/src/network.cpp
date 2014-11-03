@@ -87,6 +87,8 @@ struct poll_wait_item_mgr_t
         memset(ws, 0, (new_size+1)*sizeof(void *));
         memcpy(ws, this->wait_items, (this->size+1) * sizeof(void *) ); 
         this->size = new_size;
+        free(this->wait_items);
+        this->wait_items = ws;
         return new_size;
     }
 
@@ -95,7 +97,7 @@ struct poll_wait_item_mgr_t
         for(int i=0;i<= this->size; ++i) 
         {
             if (this->wait_items[i]) {
-                delete wait_items[i];
+                delete this->wait_items[i];
             }
         }
         free(this->wait_items);
@@ -115,7 +117,7 @@ poll_wait_item_t * get_wait_item(int fd)
     }
     if ( fd >= mgr->size)
     {
-        return NULL;
+        mgr->expand(fd);
     }
     poll_wait_item_t *wait_item = mgr->wait_items[fd];
     if (NULL == wait_item )
@@ -123,6 +125,9 @@ poll_wait_item_t * get_wait_item(int fd)
         wait_item = new poll_wait_item_t();
         mgr->wait_items[fd] = wait_item;
         wait_item->fd = fd;
+        wait_item->wait_events = 0;
+        wait_item->poll_ctx = NULL;
+        wait_item->pos = 0;
     }
     return wait_item;
 }
@@ -186,7 +191,7 @@ void close_fd_notify_poll(int fd)
         if (fd != ep_ctx->m_epoll_fd ) {
             int ret = epoll_ctl(ep_ctx->m_epoll_fd, fd, EPOLL_CTL_DEL, &ev);
             if (ret) {
-                //LOG_SYS_CALL(epoll_ctl, ret);
+                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
         }
         wait_item->wait_events = 0;
@@ -198,6 +203,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     int pos = wait_item-> pos;
 
     uint32_t wait_events = wait_item->wait_events;
+    int fd = wait_item->fd;
 
     int ret =0;
     poll_ctx_t *poll_ctx = wait_item->poll_ctx;
@@ -209,14 +215,14 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
         if (ev.events) {
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wait_item->fd,  &ev);
             if (ret) {
-                LOG(ERROR)<<"change epoll event failed";
+                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
             }
             wait_item->wait_events= ev.events;
 
         } else {
             epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_item->fd,  &ev);
             if (ret) {
-                LOG(ERROR)<<"del epoll event failed";
+                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
             wait_item->wait_events= 0;
         }
@@ -225,7 +231,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
 
     int nfds = (int) poll_ctx->nfds;
     if ( (pos < 0) || ( nfds <= pos) ) {
-        LOG(ERROR)<<"error fd ctx pos";
+        LOG(ERROR)<<"error fd ctx [pos:"<<pos<<"]";
         return;
     }
 
@@ -243,8 +249,6 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
 
     // increase fd num
     epoll_event ev;
-
-    int fd = fds[pos].fd;
 
     ev.events = wait_events; 
     ev.data.ptr = wait_item;  
@@ -264,13 +268,13 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
         if (ev.events) {
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
             if (ret) {
-                LOG(ERROR)<<"change epoll event failed";
+                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
             }
             wait_item->wait_events = ev.events;
         } else {
             epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
             if (ret) {
-                LOG(ERROR)<<"del epoll event failed";
+                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
             wait_item->wait_events= 0;
         }
@@ -349,7 +353,7 @@ void  init_poll_ctx(poll_ctx_t *self,
                         ev.events = events;
                         ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
                         if (ret) {
-                            LOG(ERROR)<<"change epoll event failed";
+                            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
                         }
                         wait_item->wait_events = ev.events;
                     } 
@@ -357,7 +361,7 @@ void  init_poll_ctx(poll_ctx_t *self,
                     // 新句柄
                     ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
                     if (ret) {
-                        LOG(ERROR)<<"set new epoll event failed";
+                        LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_add [fd:"<<fd<<"]";
                     }
                     wait_item->wait_events = ev.events;
                 }
@@ -365,7 +369,7 @@ void  init_poll_ctx(poll_ctx_t *self,
                 LOG(ERROR)<<"get wait item failed, [fd:"<<fd<<"]";
             }
         } else {
-            LOG(ERROR)<<"fd is -1!";
+            LOG(ERROR)<<"error fd, [fd:"<<fd<<"]";
         }
     }
 

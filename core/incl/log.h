@@ -27,6 +27,6 @@
         LOG(ERROR)<<"syscall "<<#func <<" failed, [ret:"<<ret<<"]" \
                     "[errno:"<<errno<<"]" \
                     "[errmsg:"<<strerror(errno)<<"]" \
-                    ; \
+                     \
 
 #endif  //__CO_LOG_H_INC__

@@ -316,7 +316,18 @@ int proc_process_mode(int proc_num)
                     continue;
                 }
 
-                LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
+                if (status != 0)
+                {
+                    LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
+                }
+                else {
+                    LOG(INFO)<<"work process:"<<pid<<" succes exit, status:"<<status;
+                }
+
+                if (g_exit_flag) {
+                    continue;
+                }
+
 
                 sleep(1);
 
