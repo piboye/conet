@@ -213,13 +213,18 @@ HOOK_SYS_FUNC_DEF(
         return syscall(SYS_close, fd );
     }
 
-    int ret = syscall(SYS_close, fd);
-
     fd_ctx_t *lp = get_fd_ctx(fd);
-    if (lp->add_to_epoll && list_empty(&lp->poll_wait_queue)) {
-        conet::remove_epoll_ctl(fd);
+    if (lp) 
+    {
+        if (lp->add_to_epoll && list_empty(&lp->poll_wait_queue)) {
+            free_fd_ctx( fd );
+            conet::remove_epoll_ctl(fd);
+        } else {
+            free_fd_ctx( fd );
+        }
     }
-    free_fd_ctx( fd );
+    //close  必须在 free_fd_ctx 的前面
+    int ret = syscall(SYS_close, fd);
     return ret;
 }
 
