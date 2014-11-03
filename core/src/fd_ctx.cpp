@@ -186,6 +186,8 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
         //default is block 
         d->user_flag = 0;
         d->wait_events = 0;
+        d->set_events = 0;
+        d->add_to_epoll = 0;
 
         if (!has_nonblocked) {
             // 设置 none block, 方便hook 系统调用

@@ -97,6 +97,7 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
     list_head *it=NULL, *next=NULL;
 
     uint32_t rest_events  = 0;
+    uint32_t has_revents  = 0;
 
     list_for_each_safe(it, next, &fd_ctx->poll_wait_queue)
     {
@@ -115,10 +116,10 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         uint32_t mask = fds[pos].events;
         uint32_t revents = (mask & events);
         if (revents && dispatch) {
+            has_revents |= revents;
             fds[pos].revents |= revents;
             // add to dispatch
-            list_del_init(&poll_ctx->to_dispatch);
-            list_add_tail(&poll_ctx->to_dispatch, dispatch);
+            list_move_tail(&poll_ctx->to_dispatch, dispatch);
             ++poll_ctx->num_raise;
             cancel_timeout(&poll_ctx->timeout_ctl);
             list_del_init(it);
@@ -128,6 +129,22 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         }
         // increase fd num
     }
+
+    if (has_revents != events)
+    {
+        epoll_event ev;
+        uint64_t diff_events = events & (~has_revents);
+        rest_events &= (~diff_events);
+        if (rest_events) {
+            ev.events = rest_events;
+            ev.data.ptr = fd_ctx;
+            fd_ctx->wait_events = ev.events;
+            fd_ctx->set_events = ev.events;
+            epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd_ctx->fd,  &ev);
+        } 
+    }
+    
+    /*
     if (rest_events) {
         epoll_event ev;
         ev.events = rest_events;
@@ -135,6 +152,7 @@ void fd_notify_events_to_poll(fd_ctx_t *fd_ctx, uint32_t events, list_head *disp
         fd_ctx->wait_events = rest_events;
         epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd_ctx->fd,  &ev);
     }
+    */
 
 }
 
@@ -145,7 +163,7 @@ epoll_ctx_t *create_epoll(int event_size);
 
 static uint32_t poll_event2epoll( short events )
 {
-    uint32_t e = EPOLLET;
+    uint32_t e = 0;
     if( events & POLLIN ) 	e |= EPOLLIN;
     if( events & POLLOUT )  e |= EPOLLOUT;
     if( events & POLLHUP ) 	e |= EPOLLHUP;
@@ -203,13 +221,16 @@ void  init_poll_ctx(poll_ctx_t *self,
                 epoll_event ev;
                 ev.events = poll_event2epoll( fds[i].events);
                 ev.data.ptr = item;
-                if (item->wait_events == 0)  {
+                if (item->add_to_epoll == 0)  {
                     item->wait_events = ev.events;
+                    item->set_events = ev.events;
+                    item->add_to_epoll = 1;
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_ADD, fds[i].fd,  &ev);
                 } else {
                     // change events;
-                    ev.events |= item->wait_events;
-                    item->wait_events = ev.events;
+                    item->wait_events |= ev.events;
+                    item->set_events |= ev.events;
+                    ev.events = item->set_events;
                     epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_MOD, fds[i].fd,  &ev);
                 }
             } else {
@@ -233,13 +254,14 @@ void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
             list_del_init(&self->wait_items[i].to_fd);
 
             fd_ctx_t *fd_ctx = self->wait_items[i].fd_ctx;
-            if (list_empty_careful(&fd_ctx->poll_wait_queue)) {
+            if (list_empty(&fd_ctx->poll_wait_queue)) {
+                fd_ctx->wait_events = 0;
+                /*
                 epoll_event ev;
                 ev.events = fd_ctx->wait_events;
                 ev.data.ptr = fd_ctx;
-                fd_ctx->wait_events = 0;
                 epoll_ctl(epoll_ctx->m_epoll_fd, EPOLL_CTL_DEL, self->fds[i].fd,  &ev);
-                //fd_ctx->wait_events = EPOLLERR;
+                */
             } else {
                 //timeout but other coroutine poll on here
                 fd_notify_events_to_poll(fd_ctx, 0, NULL, epoll_ctx->m_epoll_fd);
