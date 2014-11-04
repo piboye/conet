@@ -188,13 +188,13 @@ void close_fd_notify_poll(int fd)
         epoll_event ev;
         ev.events = wait_item->wait_events;
         ev.data.ptr = wait_item;
+        wait_item->wait_events = 0;
         if (fd != ep_ctx->m_epoll_fd ) {
             int ret = epoll_ctl(ep_ctx->m_epoll_fd, fd, EPOLL_CTL_DEL, &ev);
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
         }
-        wait_item->wait_events = 0;
     }
 }
 
@@ -214,17 +214,17 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
         ev.data.ptr = wait_item;
         if (ev.events) {
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wait_item->fd,  &ev);
+            wait_item->wait_events= ev.events;
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
             }
-            wait_item->wait_events= ev.events;
 
         } else {
-            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_item->fd,  &ev);
+            ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_item->fd,  &ev);
+            wait_item->wait_events= 0;
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
-            wait_item->wait_events= 0;
         }
         return;
     }
@@ -267,16 +267,16 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     if (change) {
         if (ev.events) {
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
+            wait_item->wait_events = ev.events;
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
             }
-            wait_item->wait_events = ev.events;
         } else {
-            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
+            ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
+            wait_item->wait_events= 0;
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
             }
-            wait_item->wait_events= 0;
         }
     }
 }
@@ -352,18 +352,18 @@ void  init_poll_ctx(poll_ctx_t *self,
                     if (events != ev.events) { // 有变化， 修改事件
                         ev.events = events;
                         ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
+                        wait_item->wait_events = ev.events;
                         if (ret) {
                             LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
                         }
-                        wait_item->wait_events = ev.events;
                     } 
                 } else {
                     // 新句柄
                     ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
+                    wait_item->wait_events = ev.events;
                     if (ret) {
                         LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_add [fd:"<<fd<<"]";
                     }
-                    wait_item->wait_events = ev.events;
                 }
             } else {
                 LOG(ERROR)<<"get wait item failed, [fd:"<<fd<<"]";
