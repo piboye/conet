@@ -133,7 +133,6 @@ HOOK_SYS_FUNC_DEF(
         client_fd =  _(accept4)(fd, addr, len, flags);
     }
     if (client_fd >=0) {
-
         fd_ctx_t *ctx = NULL;
         if (flags & O_NONBLOCK) {
             ctx = conet::alloc_fd_ctx2(client_fd, 1, true);
