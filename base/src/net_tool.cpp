@@ -19,6 +19,8 @@
 
 #include <stack>
 
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -28,12 +30,12 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <linux/netdevice.h>
+#include <netinet/tcp.h>
 
 #include <vector>
 #include <string>
 
 #include "time_helper.h"
-#include <sys/syscall.h>
 #include "glog/logging.h"
 
 namespace conet 
@@ -192,6 +194,12 @@ int read_data(int fd, char *buff, size_t len)
         cur_len += ret;
     }
     return cur_len;
+}
+
+int set_nodelay(int fd, bool enable)
+{
+   int flag =  enable ? 1: 0;
+   return setsockopt(fd , IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag));
 }
 
 int set_none_block(int fd, bool enable)

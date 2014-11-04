@@ -162,6 +162,7 @@ public:
                 ip_port_t * host = m_ip_lists.get_node();
                 fd = connect_to(host->ip.c_str(), host->port);
                 if (fd >=0)  {
+                    set_nodelay(fd);
                     *ip = host->ip;
                     *port = host->port;
                     break;

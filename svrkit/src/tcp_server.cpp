@@ -158,11 +158,12 @@ int tcp_server_t::main_proc()
 
     listen(listen_fd, this->conf.listen_backlog); 
 
-    int waits = 5; // 5 seconds;
-    setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+    //int waits = 5; // 5 seconds;
+    //setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
 
     int ret = 0;
 
+    std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
     while (0==this->to_stop) {
         while (this->data.cur_conn_num >= this->conf.max_conn_num) {
@@ -185,22 +186,31 @@ int tcp_server_t::main_proc()
 
         socklen_t len = sizeof(conn_info->addr);
 
-        int fd = accept4(listen_fd, (struct sockaddr *)&conn_info->addr, &len, O_NONBLOCK);
+        new_fds.clear();
+        for(int i=0; i<100; ++i)
+        {
+            int fd = accept4(listen_fd, (struct sockaddr *)&conn_info->addr, &len, O_NONBLOCK);
 
-        if (fd <0) continue;
+            if (fd <0) break;
+            new_fds.push_back(fd);
 
-        ++this->data.cur_conn_num;
+        } 
+        for (size_t i=0; i<new_fds.size(); ++i)
+        {
+            int fd = new_fds[i];
+            set_nodelay(fd);
+            ++this->data.cur_conn_num;
+            //memset(conn_info, 0, sizeof(conn_info_t));
 
-        //memset(conn_info, 0, sizeof(conn_info_t));
-        
-        conn_info->server = this;
-        //memcpy(&conn_info->addr, &addr,len);
-        
-        conn_info->fd = fd;
+            conn_info->server = this;
+            //memcpy(&conn_info->addr, &addr,len);
 
-        proc_pool(this, conn_info);
+            conn_info->fd = fd;
 
-        conn_info = this->conn_info_pool.alloc();
+            proc_pool(this, conn_info);
+
+            conn_info = this->conn_info_pool.alloc();
+        }
     }
 
     if (conn_info) {
