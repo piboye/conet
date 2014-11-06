@@ -195,39 +195,45 @@ void close_fd_notify_poll(int fd)
     }
 }
 
+void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll_fd)
+{
+    int ret = 0;
+    int fd = wait_item->fd;
+    uint32_t wait_events = wait_item->wait_events;
+    epoll_event ev;
+    ev.events = wait_events & (~events);
+    ev.data.ptr = wait_item;
+    wait_item->wait_events= ev.events;
+    if (ev.events) {
+        ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
+        if (ret) {
+            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
+        }
+
+    } else {
+        ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
+        if (ret) {
+            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
+        }
+    }
+    return;
+}
+
 void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list_head *dispatch, int epoll_fd)
 {
-    int pos = wait_item-> pos;
-
-    uint32_t wait_events = wait_item->wait_events;
-    int fd = wait_item->fd;
-
-    int ret =0;
     poll_ctx_t *poll_ctx = wait_item->poll_ctx;
     if (NULL == poll_ctx)
     { // poll 已经返回了， 这个事件可以清除
-        epoll_event ev;
-        ev.events = wait_events & (~events);
-        ev.data.ptr = wait_item;
-        wait_item->wait_events= ev.events;
-        if (ev.events) {
-            ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
-            if (ret) {
-                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
-            }
-
-        } else {
-            ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
-            if (ret) {
-                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
-            }
-        }
+        clear_invalid_event(wait_item, events, epoll_fd);
         return;
     }
 
     int nfds = (int) poll_ctx->nfds;
+    int pos = wait_item-> pos;
     if ( (pos < 0) || ( nfds <= pos) ) {
-        LOG(ERROR)<<"error fd ctx [pos:"<<pos<<"]";
+        clear_invalid_event(wait_item, events, epoll_fd);
+        int fd = wait_item->fd;
+        LOG(ERROR)<<"error [fd:"<<fd<<"] ctx [pos:"<<pos<<"]";
         return;
     }
 
@@ -237,45 +243,17 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     uint32_t revents = (mask & events);
     fds[pos].revents |= revents;
 
-    //if (poll_ctx->timeout >=0) 
+    if (poll_ctx->timeout >=0) 
     {
         cancel_timeout(&poll_ctx->timeout_ctl);
     }
 
-        // add to dispatch
+    //add to dispatch
     list_move_tail(&poll_ctx->to_dispatch, dispatch);
-    if (revents ) ++poll_ctx->num_raise;
+    if (revents) ++poll_ctx->num_raise;
 
-    // increase fd num
-    epoll_event ev;
-
-    ev.events = wait_events; 
-    ev.data.ptr = wait_item;  
-
-    int change = 0;
-    if (revents == 0) {
-        ev.events &=~events;
-        change = 1;
-    } 
-
-    if (((wait_events & EPOLLOUT) && (events & EPOLLOUT)))
-    {
-        ev.events &=~EPOLLOUT;     
-        change = 1;
-    }
-    if (change) {
-        wait_item->wait_events = ev.events;
-        if (ev.events) {
-            ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
-            if (ret) {
-                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
-            }
-        } else {
-            ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
-            if (ret) {
-                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
-            }
-        }
+    if (0 == revents) {
+        clear_invalid_event(wait_item, events, epoll_fd);
     }
 }
 
@@ -324,10 +302,11 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
     this->retcode = 0;
     this->timeout = timeout;
 
-    //if (timeout >=0) {
+    if (timeout >=0) 
+    {
         init_timeout_handle(&this->timeout_ctl, poll_ctx_timeout_proc, this);
         set_timeout(&this->timeout_ctl, timeout);
-    //}
+    }
 
     INIT_LIST_HEAD(&this->to_dispatch);
 
