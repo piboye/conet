@@ -16,8 +16,6 @@
 
 DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
-#define ALLOC_VAR(type) ((type *) malloc(sizeof(type)))
-
 extern "C" void co_swapcontext(ucontext_t *co, ucontext_t *co2);
 extern "C" void co_setcontext(ucontext_t *co);
 
@@ -29,7 +27,7 @@ void free_co_struct_pool(void *arg)
 {
     conet::fixed_mempool_t * pool = (conet::fixed_mempool_t *)(arg);
     pool->fini();
-    free(pool);
+    delete pool;
 }
 
 namespace conet
@@ -38,7 +36,7 @@ namespace conet
 conet::fixed_mempool_t * get_co_struct_pool()
 {
     if (NULL == g_coroutine_struct_pool) {
-         g_coroutine_struct_pool = ALLOC_VAR(conet::fixed_mempool_t);
+         g_coroutine_struct_pool = new conet::fixed_mempool_t();
          g_coroutine_struct_pool->init(sizeof(coroutine_t), 1000, __alignof__(coroutine_t));
          conet::tls_onexit_add(g_coroutine_struct_pool, &free_co_struct_pool);
     }
@@ -168,11 +166,6 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
 
     self->stack_size = stack_size;
 
-/*
-    coctx_init(&self->ctx);
-    self->ctx.ss_sp = (char *)self->stack;
-    self->ctx.ss_size = stack_size;
-*/
 
     self->ctx.uc_stack.ss_sp = self->stack;
     self->ctx.uc_stack.ss_size = stack_size;

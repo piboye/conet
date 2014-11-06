@@ -51,8 +51,6 @@ void fixed_mempool_t::free_mem_help(void *e)
 
 int fixed_mempool_t::init(uint64_t alloc_size,  uint64_t max_num, int align_size)
 {
-    this->total_num = 0;
-    this->used_num = 0;
     this->max_num = max_num;
     if (g_page_size ==0) {
         g_page_size = syscall(_SC_PAGESIZE); 
@@ -72,7 +70,6 @@ int fixed_mempool_t::init(uint64_t alloc_size,  uint64_t max_num, int align_size
     }
     this->alloc_size = alloc_size;
     this->align_size = align_size;
-    INIT_LIST_HEAD(&this->free_list);
     return 0;
 }
 

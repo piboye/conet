@@ -48,8 +48,8 @@ struct fd_ctx_mgr_t
 
 fd_ctx_mgr_t *create_fd_ctx_mgr(int size)
 {
-    fd_ctx_mgr_t *mgr = (fd_ctx_mgr_t *)malloc(sizeof(fd_ctx_mgr_t));
-    mgr->fds = (fd_ctx_t**)malloc(sizeof(void *) *(size+1));
+    fd_ctx_mgr_t *mgr = new fd_ctx_mgr_t();
+    mgr->fds = new fd_ctx_t *[size+1];
     memset(mgr->fds, 0, (size+1) * sizeof(fd_ctx_t *));
     mgr->size = size;
     return mgr;
@@ -59,9 +59,10 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
 {
     for (int i = 0; i <= mgr->size; i++) {
         fd_ctx_t *ctx = mgr->fds[i];
-        free(ctx);
+        delete ctx;
     }
-    free(mgr);
+    delete [] mgr->fds;
+    delete mgr;
 }
 
 __thread fd_ctx_mgr_t * g_fd_ctx_mgr = NULL;
@@ -74,7 +75,7 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
         size +=10000;
     }
 
-    fd_ctx_t ** fds= (fd_ctx_t **) malloc(sizeof(void *) * (size+1));
+    fd_ctx_t ** fds=  new fd_ctx_t * [size+1];
     memset(fds, 0, (size+1) *sizeof(void *));
     memcpy(fds, mgr->fds, (mgr->size+1) * sizeof(void *) ); 
     mgr->fds = fds;
@@ -166,7 +167,7 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     fd_ctx_t * d = mgr->fds[fd];
 
     if ( NULL == d ) {
-        d = ( fd_ctx_t *) malloc(sizeof(fd_ctx_t));
+        d =  new fd_ctx_t;
         mgr->fds[fd] = d;
     }
 
@@ -212,7 +213,7 @@ int free_fd_ctx(int fd)
 
     mgr->fds[fd] = NULL;
 
-    free(d);
+    delete d;
     return 0;
 }
 

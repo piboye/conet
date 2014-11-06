@@ -110,7 +110,7 @@ uint64_t get_cur_ms(timewheel_t *tw)
 void init_timewheel(timewheel_t *self, int slot_num)
 {
     assert(slot_num > 0);
-    list_head *slots = (list_head *) malloc(sizeof(list_head) * slot_num);
+    list_head *slots = new list_head[slot_num];
     for(int i=0; i<slot_num; ++i) {
         INIT_LIST_HEAD(&slots[i]);
     }
@@ -132,7 +132,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
 
 void fini_timewheel(timewheel_t *self)
 {
-    free(self->slots);
+    delete [] self->slots;
 }
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
@@ -208,7 +208,7 @@ void stop_timewheel(timewheel_t *self)
 
 timewheel_t *alloc_timewheel()
 {
-    timewheel_t *tw = (timewheel_t *) malloc(sizeof(timewheel_t));
+    timewheel_t *tw =  new timewheel_t();
     init_timewheel(tw, FLAGS_timewheel_slot_num);
     coroutine_t *co = alloc_coroutine(timewheel_task, tw);
     tw->co = co;
@@ -226,15 +226,19 @@ void free_timewheel(timewheel_t *tw)
         }
         free_coroutine((coroutine_t *)tw->co);
     }
-    free(tw);
+    delete tw;
 }
 
 
 void cancel_timeout(timeout_handle_t *obj) {
-    list_del_init(&obj->link_to);
-    timewheel_t * tw = obj->tw;
-    if (tw)  {
-        --tw->task_num;
+    if (!list_empty(&obj->link_to)) 
+    { // timeout must check empty
+
+        list_del_init(&obj->link_to);
+        timewheel_t * tw = obj->tw;
+        if (tw)  {
+            --tw->task_num;
+        }
     }
     obj->tw = NULL;
 }

@@ -38,6 +38,18 @@ struct fixed_mempool_t
         unsigned int is_page_alloc:1;  
     };
 
+    fixed_mempool_t()
+    {
+        alloc_size = 0;
+        total_num = 0;
+        used_num = 0;
+        free_num = 0;
+        max_num = 0;
+        align_size = 0;
+        INIT_LIST_HEAD(&free_list);
+        is_page_alloc = 0;
+    }
+
     void * alloc();
     void free(void *);
     int init(uint64_t alloc_size,  uint64_t max_num, int align_size = 0);

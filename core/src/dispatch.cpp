@@ -43,23 +43,23 @@ void free_dispach_mgr(dispatch_mgr_t * mgr)
     list_for_each_entry_safe(t, n, &mgr->tasks, link_to) {
         list_del_init(&t->link_to);
         if (t->auto_del) {
-            free(t);
+            delete t;
         }
     }
 
     list_for_each_entry_safe(t, n, &mgr->delay_tasks, link_to) {
         list_del_init(&t->link_to);
         if (t->auto_del) {
-            free(t);
+            delete t;
         }
     }
     
-    free(mgr);
+    delete mgr;
 }
 
 dispatch_mgr_t *alloc_dispatch_mgr()
 {
-    dispatch_mgr_t *mgr = (dispatch_mgr_t *)malloc(sizeof(dispatch_mgr_t));
+    dispatch_mgr_t *mgr = new dispatch_mgr_t();
     mgr->init();
     return mgr;
 }
@@ -92,7 +92,7 @@ int proc_tasks(dispatch_mgr_t *mgr)
         int ret = t->proc(t->arg);
         if(ret >0) num+=ret;
         if (t->auto_del) {
-            free(t);
+            delete t;
         }
     }
 
@@ -107,7 +107,12 @@ int dispatch()
 
 void registry_task(list_head *list, task_t *task)
 {
-    list_add_tail(&task->link_to, list);
+    if (list_empty(&task->link_to))
+    {
+        list_add_tail(&task->link_to, list);
+    } else {
+        list_move_tail(&task->link_to, list);
+    }
 }
 
 void registry_task(task_t *task)
@@ -135,7 +140,7 @@ void init_task(task_t *task, task_proc_func_t proc, void *arg)
 
 void registry_task(list_head *list, task_proc_func_t proc, void *arg)
 {
-    task_t * t = (task_t *) malloc(sizeof(task_t));
+    task_t * t = new task_t();
     init_task(t, proc, arg);
     t->auto_del = 1;
     registry_task(list, t);

@@ -25,7 +25,7 @@ cc_library(
         "src/coroutine.cpp",
         "src/coroutine_env.cpp",
         "src/gc.cpp",
-        "src/network_safe.cpp",
+        "src/network.cpp",
         "src/fd_ctx.cpp",
         "src/network_hook.cpp",
         "src/pthread_hook.cpp",

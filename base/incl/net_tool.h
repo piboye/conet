@@ -70,6 +70,7 @@ public:
         this->fd = fd;
         this->max_size = max_size;
         buff = (char *)malloc(max_size);
+        memset(buff, 0, max_size);
         prev_pos = 0;
         total_len = 0;
         return 0;
