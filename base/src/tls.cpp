@@ -57,9 +57,9 @@ void pthread_atexit_done(void *arg)
         if (id_ptr->free_fn)
             id_ptr->free_fn(id_ptr->arg);
         list_del(it);
-        free(id_ptr);
+        delete id_ptr;
     }
-    free(list);
+    delete list;
 }
 
 
@@ -87,12 +87,12 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
 
     list_head * list = (list_head *)pthread_getspecific(g_pthread_atexit_key);
     if (NULL == list) {
-        list = (list_head *)malloc(sizeof(list_head));
+        list = (list_head *)new (list_head);
         INIT_LIST_HEAD(list);
         pthread_setspecific(g_pthread_atexit_key, list);
     }
 
-    pthread_atexit_t *item = (pthread_atexit_t *)malloc(sizeof(pthread_atexit_t));
+    pthread_atexit_t *item = (pthread_atexit_t *)(new(pthread_atexit_t));
     INIT_LIST_HEAD(&item->link_to);
     item->free_fn = free_fn;
     item->arg = arg;

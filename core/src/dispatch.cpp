@@ -159,6 +159,13 @@ void registry_delay_task(task_t *task)
         list_move_tail(&task->link_to, &TLS_GET(g_dispatch_mgr)->delay_tasks);
     }
 }
+void registry_delay_task(task_proc_func_t proc, void *arg)
+{
+    task_t * t = new task_t();
+    init_task(t, proc, arg);
+    t->auto_del = 1;
+    registry_delay_task(t);
+}
 
 struct delay_back_t
 {

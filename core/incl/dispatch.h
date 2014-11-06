@@ -44,6 +44,7 @@ void registry_task(task_t *task);
 void unregistry_task(task_t *task);
 
 void registry_delay_task(task_t *task);
+void registry_delay_task(task_proc_func_t proc, void *arg);
 
 int proc_tasks(list_head *list);
 int dispatch();

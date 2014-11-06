@@ -206,13 +206,21 @@ void stop_timewheel(timewheel_t *self)
 }
 
 
-timewheel_t *alloc_timewheel()
+static int start_timewheel_task(void *arg)
 {
-    timewheel_t *tw =  new timewheel_t();
-    init_timewheel(tw, FLAGS_timewheel_slot_num);
+     
+    timewheel_t *tw =  (timewheel_t *)(arg);
     coroutine_t *co = alloc_coroutine(timewheel_task, tw);
     tw->co = co;
-    resume(co);
+    conet::resume((coroutine_t *)tw->co);
+    return 0;
+}
+
+timewheel_t *alloc_timewheel()
+{
+    timewheel_t *tw =  new timewheel_t;
+    init_timewheel(tw, FLAGS_timewheel_slot_num);
+    conet::registry_delay_task(&start_timewheel_task, tw);
     return tw;
 }
 

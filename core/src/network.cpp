@@ -185,6 +185,7 @@ void close_fd_notify_poll(int fd)
     poll_wait_item_t *wait_item = get_wait_item(fd);
     if (wait_item && wait_item->wait_events)  
     {
+        /*
         epoll_ctx_t *ep_ctx = get_epoll_ctx();
         uint32_t events = wait_item->wait_events;
         wait_item->wait_events = 0;
@@ -192,6 +193,7 @@ void close_fd_notify_poll(int fd)
         if (ret) {
             LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"] [events:"<<events<<"]";
         }
+        */
     }
 }
 
@@ -236,16 +238,15 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     uint32_t mask = fds[pos].events;
     uint32_t revents = (mask & events);
     fds[pos].revents |= revents;
+
     if (poll_ctx->timeout >=0) 
     {
         cancel_timeout(&poll_ctx->timeout_ctl);
     }
 
-    if (dispatch) {
         // add to dispatch
-        list_move_tail(&poll_ctx->to_dispatch, dispatch);
-        if (revents ) ++poll_ctx->num_raise;
-    }
+    list_move_tail(&poll_ctx->to_dispatch, dispatch);
+    if (revents ) ++poll_ctx->num_raise;
 
     // increase fd num
     epoll_event ev;
