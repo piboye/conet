@@ -134,9 +134,7 @@ void co_main_helper2(void *p, void *p2)
 
 uint64_t g_coroutine_next_id=1;
 
-#define CACHE_LINE_SIZE 64
-int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
-                   int stack_size, coroutine_env_t *a_env)
+int init_coroutine(coroutine_t * self)
 {
 
     self->ret_val = 0;
@@ -145,14 +143,49 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     self->is_enable_pthread_hook = 1;
     self->is_enable_disk_io_hook = 1;
     self->is_main =0;
+    self->desc = NULL;
+    self->gc_mgr = NULL;
+    self->static_vars = NULL;
+    self->spec = NULL;
+    self->pthread_spec = NULL;
+    self->id = g_coroutine_next_id++;
+    self->stack = NULL;
+    self->stack_size = 0;
+    INIT_LIST_HEAD(&self->wait_to);
+    INIT_LIST_HEAD(&self->exit_notify_queue);
+    self->state = CREATE;
+    return 0;
+}
 
-    // stack  group from high address to  low; align depend stack_size must be multiplies align size
-    //
-    if (stack_size == FLAGS_stack_size && a_env) {
-        self->stack = a_env->default_stack_pool.alloc();
-        stack_size = a_env->default_stack_pool.alloc_size;
-        self->is_page_stack = a_env->default_stack_pool.is_page_alloc;
+__thread fixed_mempool_t * g_default_stack_pool=NULL;
+
+
+fixed_mempool_t *get_default_stack_pool()
+{
+    if (NULL == g_default_stack_pool)
+    {
+        fixed_mempool_t *pool = new fixed_mempool_t();
+        pool->init(FLAGS_stack_size, 10000, 64); // 64 bytes for cache_line align
+        if (NULL == g_default_stack_pool)
+        {
+            g_default_stack_pool = pool;
+        } else {
+            delete g_default_stack_pool;
+        }
+    }
+    return g_default_stack_pool;
+}
+
+#define CACHE_LINE_SIZE 64
+int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_size)
+{
+    fixed_mempool_t * pool = get_default_stack_pool();
+    if (stack_size == FLAGS_stack_size) {
+        self->stack = pool->alloc();
+        stack_size = pool->alloc_size;
+        self->is_page_stack = pool->is_page_alloc;
     } else {
+        // stack  group from high address to  low; align depend stack_size must be multiplies align size
         stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE * CACHE_LINE_SIZE;
         if ((stack_size >= g_page_size) && (g_page_size > 0)) {
             stack_size = (stack_size + g_page_size -1) / g_page_size * g_page_size;
@@ -165,26 +198,12 @@ int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
     }
 
     self->stack_size = stack_size;
-
-
     self->ctx.uc_stack.ss_sp = self->stack;
     self->ctx.uc_stack.ss_size = stack_size;
     self->ctx.uc_link = NULL;
 
     self->pfn = fn;
     self->pfn_arg = arg;
-
-    self->state = CREATE;
-
-    INIT_LIST_HEAD(&self->wait_to);
-    INIT_LIST_HEAD(&self->exit_notify_queue);
-
-    self->desc = NULL;
-    self->gc_mgr = NULL;
-    self->static_vars = NULL;
-    self->spec = NULL;
-    self->pthread_spec = NULL;
-    self->id = g_coroutine_next_id++;
 
 #ifdef USE_VALGRIND
     self->m_vid = VALGRIND_STACK_REGISTER(self->stack, (char *)self->stack + stack_size);
@@ -203,20 +222,15 @@ void set_coroutine_desc(coroutine_t *co, char const *desc)
     co->desc = desc;
 }
 
-coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-                              uint32_t stack_size, coroutine_env_t * env)
+coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  uint32_t stack_size)
 {
-    if (env == NULL) 
-    {
-        env = get_coroutine_env();
-    }
-
     //coroutine_t *co = ALLOC_VAR(coroutine_t);
     coroutine_t *co = (coroutine_t *)get_co_struct_pool()->alloc();
     if (stack_size <=0) {
         stack_size = FLAGS_stack_size;
     }
-    init_coroutine(co, fn, arg, stack_size, env);
+    init_coroutine(co);
+    set_callback(co, fn, arg, stack_size);
     return co;
 }
 
@@ -229,11 +243,11 @@ void free_coroutine(coroutine_t *co)
         co->gc_mgr = NULL;
     }
 
-    delete co->static_vars;
+    if (co->static_vars ) delete co->static_vars;
 
-    delete co->spec;
+    if (co->spec) delete co->spec;
 
-    delete co->pthread_spec;
+    if (co->pthread_spec) delete co->pthread_spec;
 
 
     #ifdef USE_VALGRIND
@@ -242,8 +256,7 @@ void free_coroutine(coroutine_t *co)
 
     if (co->stack_size == FLAGS_stack_size) 
     {
-        coroutine_env_t *env = get_coroutine_env();
-        env->default_stack_pool.free(co->stack);
+        get_default_stack_pool()->free(co->stack);
     } 
     else
     {
@@ -256,8 +269,7 @@ void free_coroutine(coroutine_t *co)
             free(co->stack);
         }
     }
-
-    //free(co);
+    co->stack = NULL;
     get_co_struct_pool()->free(co);
 }
 
@@ -275,7 +287,6 @@ void *resume(coroutine_t * co, void * val)
         //getcontext(&co->ctx);
         makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
                     (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
-        //coctx_make( &co->ctx,(coctx_pfn_t)co_main_helper2, co, NULL);
     }
     co->ctx.uc_link = &cur->ctx;
     co->state = RUNNING;
@@ -284,7 +295,6 @@ void *resume(coroutine_t * co, void * val)
     list_add_tail(&cur->wait_to, &env->run_queue);
 
     co_swapcontext(&(cur->ctx), &(co->ctx) );
-    //coctx_swap( &(cur->ctx), &(co->ctx));
     return cur->yield_val;
 }
 
@@ -314,7 +324,6 @@ void * yield(list_head *wait_to, void * val)
     last->state = RUNNING;
     last->yield_val = val;
     co_swapcontext(&cur->ctx, &last->ctx);
-    //coctx_swap(&(cur->ctx), &(last->ctx));
     return cur->yield_val;
 }
 

@@ -185,7 +185,6 @@ void close_fd_notify_poll(int fd)
     poll_wait_item_t *wait_item = get_wait_item(fd);
     if (wait_item && wait_item->wait_events)  
     {
-        /*
         epoll_ctx_t *ep_ctx = get_epoll_ctx();
         uint32_t events = wait_item->wait_events;
         wait_item->wait_events = 0;
@@ -193,7 +192,6 @@ void close_fd_notify_poll(int fd)
         if (ret) {
             LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"] [events:"<<events<<"]";
         }
-        */
     }
 }
 

@@ -29,24 +29,22 @@
 namespace conet
 {
 
+int init_coroutine(coroutine_t * self);
 void init_coroutine_env(coroutine_env_t *self)
 {
-    self->default_stack_pool.init(FLAGS_stack_size, 10000, 64); // 64 bytes for cache_line align
 
     self->main = new coroutine_t();
-    init_coroutine(self->main, NULL, NULL, 128*1024, NULL);
+    init_coroutine(self->main);
     self->main->is_main = 1;
     self->main->state = RUNNING;
     self->main->desc = "main";
+
     getcontext(&self->main->ctx);
-    //makecontext(&self->main->ctx, NULL, 0);
     self->curr_co = self->main;
     INIT_LIST_HEAD(&self->run_queue);
     list_add_tail(&self->main->wait_to, &self->run_queue);
 
     INIT_LIST_HEAD(&self->tasks);
-
-
     self->spec_key_seed = 10000;
 }
 
@@ -64,7 +62,6 @@ void free_coroutine_env(void *arg)
 {
     coroutine_env_t *env = (coroutine_env_t *)arg;
     delete env->main;
-    env->default_stack_pool.fini();  // free stack pool
     delete(env);
 }
 

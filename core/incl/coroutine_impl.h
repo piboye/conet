@@ -57,7 +57,6 @@ struct coroutine_env_t
     coroutine_t * main;
     list_head tasks;
     uint64_t spec_key_seed;
-    fixed_mempool_t default_stack_pool;
 };
 
 
@@ -72,7 +71,6 @@ enum {
 struct coroutine_t
 {
     ucontext_t ctx;
-    //coctx_t ctx;
     
     void * stack;
     int stack_size;

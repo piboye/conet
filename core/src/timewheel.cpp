@@ -167,10 +167,6 @@ int timewheel_task(void *arg)
         return -3;
     }
 
-    fd_ctx_t *fd_ctx = NULL;
-    fd_ctx = conet::alloc_fd_ctx(timerfd, fd_ctx_t::SOCKET_FD_TYPE);
-    fd_ctx->user_flag |= O_NONBLOCK;
-
     tw->timerfd = timerfd;
 
     uint64_t cnt = 0;
@@ -205,27 +201,10 @@ void stop_timewheel(timewheel_t *self)
     conet::wait((coroutine_t *)self->co);
 }
 
-
-static int start_timewheel_task(void *arg)
-{
-     
-    timewheel_t *tw =  (timewheel_t *)(arg);
-    coroutine_t *co = alloc_coroutine(timewheel_task, tw);
-    tw->co = co;
-    conet::resume((coroutine_t *)tw->co);
-    return 0;
-}
-
 timewheel_t *alloc_timewheel()
 {
     timewheel_t *tw =  new timewheel_t;
     init_timewheel(tw, FLAGS_timewheel_slot_num);
-    conet::registry_delay_task(&start_timewheel_task, tw);
-    /*
-    coroutine_t *co = alloc_coroutine(timewheel_task, tw);
-    tw->co = co;
-    conet::resume((coroutine_t *)tw->co);
-    */
     return tw;
 }
 
@@ -240,6 +219,23 @@ void free_timewheel(timewheel_t *tw)
         free_coroutine((coroutine_t *)tw->co);
     }
     delete tw;
+}
+
+timewheel_t *get_timewheel()
+{
+    if (NULL == g_tw) {
+        timewheel_t *tw = alloc_timewheel();
+        if (NULL == g_tw) {
+            g_tw = tw;
+            tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
+            coroutine_t *co = alloc_coroutine(timewheel_task, tw);
+            tw->co = co;
+            conet::resume((coroutine_t *)tw->co);
+        } else {
+            free_timewheel(tw);
+        }
+    }
+    return g_tw;
 }
 
 
@@ -343,17 +339,15 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 }
 
 
-CONET_DEF_TLS_GET(g_tw, alloc_timewheel(),  free_timewheel);
-
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
 {
-    timewheel_t *tw = TLS_GET(g_tw);
+    timewheel_t *tw = get_timewheel();
     set_timeout(tw, obj, timeout);
 }
 
 
 void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
 {
-    timewheel_t *tw = TLS_GET(g_tw);
+    timewheel_t *tw = get_timewheel();
     set_interval(tw, obj, timeout);
 }

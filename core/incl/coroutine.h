@@ -20,13 +20,12 @@ typedef int CO_MAIN_FUN(void *);
 typedef int (*co_main_func_t)(void *);
 
 
-coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  \
-                              uint32_t stack_size=0, coroutine_env_t * env=NULL);
+coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg, uint32_t stack_size=0);
 
 void free_coroutine(coroutine_t *co);
 
-int init_coroutine(coroutine_t * self, CO_MAIN_FUN * fn, void * arg,  \
-                   int stack_size, coroutine_env_t *a_env);
+int init_coroutine(coroutine_t * self);
+int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_size);
 
 coroutine_t * current_coroutine();
 
