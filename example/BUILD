@@ -50,7 +50,7 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            #"//thirdparty/perftools:tcmalloc",
+            "//thirdparty/perftools:tcmalloc",
             #"//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )

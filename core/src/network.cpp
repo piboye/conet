@@ -239,7 +239,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     uint32_t revents = (mask & events);
     fds[pos].revents |= revents;
 
-    if (poll_ctx->timeout >=0) 
+    //if (poll_ctx->timeout >=0) 
     {
         cancel_timeout(&poll_ctx->timeout_ctl);
     }
@@ -326,10 +326,10 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
     this->retcode = 0;
     this->timeout = timeout;
 
-    if (timeout >=0) {
+    //if (timeout >=0) {
         init_timeout_handle(&this->timeout_ctl, poll_ctx_timeout_proc, this);
         set_timeout(&this->timeout_ctl, timeout);
-    }
+    //}
 
     INIT_LIST_HEAD(&this->to_dispatch);
 

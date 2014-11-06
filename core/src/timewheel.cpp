@@ -221,6 +221,11 @@ timewheel_t *alloc_timewheel()
     timewheel_t *tw =  new timewheel_t;
     init_timewheel(tw, FLAGS_timewheel_slot_num);
     conet::registry_delay_task(&start_timewheel_task, tw);
+    /*
+    coroutine_t *co = alloc_coroutine(timewheel_task, tw);
+    tw->co = co;
+    conet::resume((coroutine_t *)tw->co);
+    */
     return tw;
 }
 

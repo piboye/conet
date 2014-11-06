@@ -103,10 +103,14 @@ typeof(var_name) conet_tls_get_##var_name() \
    typeof(var_name) v = var_name;  \
    if (unlikely(NULL == v)) { \
        v = conet_tls_##var_name##_create(); \
-       conet::tls_onexit_add(v, &conet_tls_##var_name##_fini); \
-       var_name = v; \
+       if (var_name ==  NULL) { \
+           var_name =v; \
+           conet::tls_onexit_add(v, &conet_tls_##var_name##_fini); \
+       } else { \
+           conet_tls_##var_name##_fini(v); \
+       } \
    } \
-   return v; \
+   return var_name; \
 } \
 static int __attribute__((__unused__)) conet_tls_##var_name##_unused_end = 0 \
 
@@ -126,10 +130,14 @@ typeof(var_name) conet_tls_get_##var_name() \
    typeof(var_name) v = var_name;  \
    if (unlikely(NULL == v)) { \
        v = (create_exp); \
-       conet::tls_onexit_add(v, (void (*)(void *))&fini_func);\
-       var_name = v; \
+       if (var_name ==  NULL) { \
+           var_name =v; \
+           conet::tls_onexit_add(v, (void (*)(void *))&fini_func);\
+       } else { \
+           fini_func(v); \
+       } \
    } \
-   return v; \
+   return var_name; \
 } \
 static int __attribute__((__unused__)) conet_tls_##var_name##_unused_end = 0 \
 
