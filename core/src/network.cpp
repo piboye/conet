@@ -174,6 +174,7 @@ epoll_ctx_t * get_epoll_ctx();
 
 void close_fd_notify_poll(int fd)
 {
+    return ;
     poll_wait_item_t *wait_item = get_wait_item(fd);
     if (wait_item && wait_item->wait_events)  
     {
