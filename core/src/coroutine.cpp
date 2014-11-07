@@ -16,8 +16,8 @@
 
 DEFINE_int32(stack_size, 128*1024, "default stack size bytes");
 
-extern "C" void co_swapcontext(ucontext_t *co, ucontext_t *co2);
-extern "C" void co_setcontext(ucontext_t *co);
+extern "C" void conet_swapcontext(ucontext_t *co, ucontext_t *co2);
+extern "C" void conet_setcontext(ucontext_t *co);
 
 
 static __thread conet::fixed_mempool_t * g_coroutine_struct_pool = NULL;
@@ -68,10 +68,8 @@ void co_return(void *val=NULL) {
     env->curr_co = last;
     last->state = RUNNING;
     last->yield_val = val;
-    //setcontext(&last->ctx);
-    //co_setcontext(&last->ctx);
-    co_swapcontext(&(curr_co->ctx), &(last->ctx));
-    //coctx_swap(&(curr_co->ctx), &(last->ctx));
+    //conet_setcontext(&last->ctx);
+    conet_swapcontext(&(curr_co->ctx), &(last->ctx));
 }
 
 void delay_del_coroutine(void *arg)
@@ -294,7 +292,7 @@ void *resume(coroutine_t * co, void * val)
     env->curr_co = co;
     list_add_tail(&cur->wait_to, &env->run_queue);
 
-    co_swapcontext(&(cur->ctx), &(co->ctx) );
+    conet_swapcontext(&(cur->ctx), &(co->ctx) );
     return cur->yield_val;
 }
 
@@ -323,7 +321,7 @@ void * yield(list_head *wait_to, void * val)
     cur->state = SUSPEND;
     last->state = RUNNING;
     last->yield_val = val;
-    co_swapcontext(&cur->ctx, &last->ctx);
+    conet_swapcontext(&cur->ctx, &last->ctx);
     return cur->yield_val;
 }
 

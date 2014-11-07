@@ -1,25 +1,7 @@
-#gen_rule (
-#    name = 'gen_co_context',
-#    cmd = 
-#    'gcc -c $SRCS.dir/coctx_swap.S -o coctx_swap.o;' +
-#    'gcc -c $SRCS.dir/co_context.S -o co_context.o;' +
-#          'ar -csr $SRCS.dir/libco_context.a co_context.o coctx_swap.o;' +
-#          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_debug;' +
-#          'cp $SRCS.dir/libco_context.a $SRCS.dir/../lib64_release;',
-#    srcs = ['src/co_context.S'],
-#    outs = ['libco_context.a'],
-#);
-
-
-cc_library (
-    name = 'co_context',
-    prebuilt=True,
-    #deps = [':gen_co_context'],
-);
-
 cc_library(
     name = 'conet',
     srcs = [
+        'src/swap_context.s',
         "src/version.cpp",
         "src/wait_queue.cpp",
         "src/coroutine.cpp",
@@ -34,7 +16,6 @@ cc_library(
         "src/dispatch.cpp",
         "src/co_pool.cpp",
         "src/stacktrace.cpp",
-        "src/coctx.cpp",
     ],
 
     incs= [ 
@@ -43,7 +24,6 @@ cc_library(
 
     deps=[
         '//base:base',
-        ':co_context',
         '//thirdparty/gflags:gflags',
         '//thirdparty/glog:glog',
         '#aio',
@@ -62,6 +42,7 @@ cc_library(
     export_incs=["incl/"],
     link_all_symbols = True,
 );
+
 
 
 cc_binary(
