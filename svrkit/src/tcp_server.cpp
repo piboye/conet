@@ -54,7 +54,10 @@ int conn_proc_co(conn_info_t *info)
         int ret = 0;
 
         ret = conn_proc(cb_arg, info);
-        close(info->fd);
+        if (info->fd >=0) {
+            close(info->fd);
+            info->fd = -1;
+        }
         co = info->co;
         --server->data.cur_conn_num;
         server->conn_info_pool.release(info);
@@ -68,7 +71,10 @@ int conn_proc_co(conn_info_t *info)
     } while(!server->to_stop);
 
     if (info) {
-        close(info->fd);
+        if (info->fd >=0) {
+            close(info->fd);
+            info->fd = -1;
+        }
         --server->data.cur_conn_num;
         server->conn_info_pool.release(info);
         info = NULL;
@@ -158,8 +164,8 @@ int tcp_server_t::main_proc()
 
     listen(listen_fd, this->conf.listen_backlog); 
 
-    //int waits = 5; // 5 seconds;
-    //setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+    int waits = 5; // 5 seconds;
+    setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
 
     int ret = 0;
 

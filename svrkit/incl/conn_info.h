@@ -39,6 +39,9 @@ struct conn_info_t
     conn_info_t()
     {
         server = NULL;
+        fd = -1;
+        co = NULL;
+        extend = NULL;
         memset(&addr, 0, sizeof(addr));
     }
 };

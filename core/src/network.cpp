@@ -342,16 +342,16 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             events |= wait_events;
             if (events != wait_events) { // 有变化， 修改事件
                 ev.events = events;
+                wait_item->wait_events = events;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
-                wait_item->wait_events = ev.events;
                 if (ret) {
                     LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
                 }
             } 
         } else {
             // 新句柄
-            ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             wait_item->wait_events = ev.events;
+            ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             if (ret) {
                 LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_add [fd:"<<fd<<"]";
             }
