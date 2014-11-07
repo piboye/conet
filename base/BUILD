@@ -5,6 +5,13 @@ gen_rule(
     outs=['src/http_parser.cpp'],
 );
 
+gen_rule(
+    name='query_string_rl',
+    srcs=['src/query_string.rl'],
+    cmd='ragel $SRCS -o $OUTS',
+    outs=['src/query_string.cpp'],
+);
+
 cc_library(
     name="base",
     srcs = [
@@ -34,6 +41,7 @@ cc_library(
 
     deps = [
         ":http_parser_rl",
+        ":query_string_rl",
         "//thirdparty/jsoncpp:jsoncpp",
         "//thirdparty/protobuf:protobuf",
         "//thirdparty/sqlite:sqlite3",

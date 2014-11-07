@@ -17,6 +17,7 @@
 
 #include "../../base/incl/list.h"
 #include "../../base/incl/tls.h"
+#include "../../base/incl/gcc_builtin_help.h"
 
 DEFINE_int32(epoll_size, 10000, "epoll event size ");
 
@@ -240,7 +241,7 @@ inline uint32_t poll_event2epoll(uint32_t  events )
 void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list_head *dispatch, int epoll_fd)
 {
     poll_ctx_t *poll_ctx = wait_item->poll_ctx;
-    if (NULL == poll_ctx)
+    if (unlikely(NULL == poll_ctx))
     { // poll 已经返回了， 这个事件可以清除
         clear_invalid_event(wait_item, events, epoll_fd);
         return;
@@ -249,7 +250,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     int fd = wait_item->fd;
     int nfds = (int) poll_ctx->nfds;
     int pos = wait_item->pos;
-    if ( (pos < 0) || ( nfds <= pos) ) {
+    if (unlikely((pos < 0) || ( nfds <= pos))) {
         clear_invalid_event(wait_item, events, epoll_fd);
         LOG(ERROR)<<"error [fd:"<<fd<<"] ctx [pos:"<<pos<<"]";
         abort();
@@ -261,15 +262,18 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     uint32_t mask = poll_event2epoll(fds[pos].events);
     uint32_t revents = (mask & events);
 
-    if (revents) {
+    if (likely(revents)) {
         //epoll 事件必须转换为 poll 的事件
         fds[pos].revents |= epoll_event2poll(revents);
-        if (poll_ctx->timeout >=0) 
+        if (unlikely(poll_ctx->timeout >=0)) 
         {
             cancel_timeout(&poll_ctx->timeout_ctl);
         }
         //add to dispatch
-        list_move_tail(&poll_ctx->to_dispatch, dispatch);
+        if (likely(list_empty(&poll_ctx->to_dispatch)))
+        {
+            list_add_tail(&poll_ctx->to_dispatch, dispatch);
+        }
         ++poll_ctx->num_raise;
     } else {
         clear_invalid_event(wait_item, events, epoll_fd);
