@@ -100,26 +100,16 @@ int rpc_pb_server_t::start()
     return ret;
 }
 
-int rpc_pb_server_t::send_pb(int fd, cmd_base_t *cmd_base)
+
+int rpc_pb_server_t::send_pb(int fd, cmd_base_t *cmd_base, google::protobuf::Message *rsp)
 {
-    PacketStream *ps = (PacketStream *)this->m_packet_stream_pool.alloc();
-    ps->init(fd);
-    uint32_t out_len = 0;
     int ret = 0;
-
-    ret = cmd_base->serialize_to(ps->buff+4, ps->max_size-4, &out_len);
-    if (ret) {
-        this->m_packet_stream_pool.release(ps);
-        return -1;
-    }
-     
-    *((uint32_t *)ps->buff) = htonl(out_len);
-
-    ret = send_data(fd, ps->buff, out_len+4, 1000);
-
+    PacketStream *ps  = (PacketStream *)this->m_packet_stream_pool.alloc();
+    ret = send_cmd_base(fd, ps, cmd_base, rsp, 1000);
     this->m_packet_stream_pool.release(ps);
     return ret;
 }
+
 
 
 static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
@@ -139,7 +129,6 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
     ctx.to_close = 0;
     cmd_base_t & cmd_base = ctx.cmd_base;
 
-    std::string rsp;
     while(0 == tcp_server->to_stop)
     {
 
@@ -257,14 +246,14 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
 
         int retcode = 0;
-        retcode = rpc_pb_call_cb(cmd, &ctx, cmd_base.body, &rsp, &errmsg);
+        google::protobuf::Message *rsp = NULL;
+        retcode = rpc_pb_call_cb(cmd, &ctx, cmd_base.body, rsp, &errmsg);
 
         cmd_base.init();
         cmd_base.type = CmdBase::RESPONSE_TYPE;
         cmd_base.ret = retcode;
 
-        init_ref_str(&cmd_base.body, rsp);
-        ret = server->send_pb(fd, &cmd_base);
+        ret = server->send_pb(fd, &cmd_base, rsp);
         if (ret <=0) {
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;

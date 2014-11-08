@@ -21,6 +21,8 @@
 #include "../../base/incl/pbc.h"
 #include "../../base/incl/ref_str.h"
 #include <string.h>
+#include "../../base/incl/net_tool.h"
+#include "google/protobuf/message.h"
 
 namespace conet
 {
@@ -82,11 +84,9 @@ struct cmd_base_t
         return 0;
     }
 
-    int serialize_to(char const *buff, uint32_t len, uint32_t *out_len)
+    inline
+    int serialize_common(pb_buff_t &pb_buff)
     {
-        pb_buff_t pb_buff;
-        pb_init_buff(&pb_buff, (void *)buff, (size_t)len);
-
         if (type >0) { 
             pb_add_varint(&pb_buff, 1, (uint32_t)(type));  
         }
@@ -104,10 +104,6 @@ struct cmd_base_t
             pb_add_varint(&pb_buff, 4, (uint64_t)(seq_id));  
         }
 
-        if (body.len >0) {
-            pb_add_string(&pb_buff, 5, body.data, body.len);
-        }
-
         if (ret >0) {
             pb_add_fixed32(&pb_buff, 6, (uint32_t)(ret));
         }
@@ -116,10 +112,72 @@ struct cmd_base_t
             pb_add_string(&pb_buff, 7, errmsg.data, errmsg.len);
         }
 
+        return 0;
+    }
+
+    inline
+    int serialize_reset(pb_buff_t &pb_buff)
+    {
+        if (body.len >0) {
+            pb_add_string(&pb_buff, 5, body.data, body.len);
+        }
+        return 0;
+    }
+    
+
+
+    int serialize_to(char const *buff, uint32_t len, uint32_t *out_len)
+    {
+        pb_buff_t pb_buff;
+        pb_init_buff(&pb_buff, (void *)buff, (size_t)len);
+
+        serialize_common(pb_buff);
+        serialize_reset(pb_buff);
+
         *out_len = pb_get_encoded_length(&pb_buff);
         return 0;
     }
 };
+
+inline 
+int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::protobuf::Message const *msg, int timeout)
+{
+    ps->init(fd);
+    uint32_t out_len = 0;
+    int ret = 0;
+
+    pb_buff_t pb_buff;
+    pb_init_buff(&pb_buff, (void *)(ps->buff+4), ps->max_size -4);
+    
+    cmd_base->serialize_common(pb_buff);
+    if (msg) 
+    {
+        uint32_t rsp_len = msg->ByteSize();
+        ret = pb_add_string_head(&pb_buff, 5, rsp_len);
+        if (ret) {
+            return -1;
+        }
+
+        if (pb_buff.left - rsp_len<=0) 
+        {
+            return -2;
+        }
+
+        msg->SerializeWithCachedSizesToArray((uint8_t *)pb_buff.ptr);
+
+        pb_buff.ptr += rsp_len;
+        pb_buff.left -= rsp_len;
+    }
+
+    out_len = pb_get_encoded_length(&pb_buff);
+
+     
+    *((uint32_t *)ps->buff) = htonl(out_len);
+
+    ret = send_data(fd, ps->buff, out_len+4, timeout);
+
+    return ret;
+}
 
 }
 

@@ -58,7 +58,7 @@ struct rpc_pb_server_t
     int stop(int wait_ms);
 
     PacketStream *alloc_packet_stream();
-    int send_pb(int fd, cmd_base_t *);
+    int send_pb(int fd, cmd_base_t *, google::protobuf::Message *rsp=NULL);
 };
 
 }

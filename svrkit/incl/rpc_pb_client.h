@@ -22,51 +22,117 @@
 #include <list>
 #include <queue>
 
+#include "cmd_base.h"
 #include "svrkit/rpc_base_pb.pb.h"
 #include "base/incl/net_tool.h"
 #include "base/incl/list.h"
 #include "base/incl/ip_list.h"
 #include "load_balance.h"
+#include "../../base/incl/obj_pool.h"
+#include "glog/logging.h"
 
 namespace conet
 {
+
 //client 
-int rpc_pb_call_impl(int fd,
-        std::string const &cmd_name,
-        std::string * req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
+obj_pool_t * get_rpc_pb_client_packet_stream_pool();
 
 int rpc_pb_call_impl(int fd,
-        uint64_t cmd_id,
-        std::string *req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
+        conet::cmd_base_t *req_base,
+        google::protobuf::Message const *req, ref_str_t * rsp, int *retcode, 
+        std::string *errmsg, int timeout, 
+        obj_pool_t *ps_pool,
+        PacketStream **ps2
+        );
 
-template <typename ReqT, typename RespT, typename CmdNameT>
+template <typename ReqT, typename RespT>
+inline
 int rpc_pb_call(int fd, 
-        CmdNameT const & cmd_name,
-        ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
+        cmd_base_t *req_base,
+        ReqT const *req, RespT *a_rsp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
-    std::string req;
-    if (!a_req->SerializeToString(&req)) {
-        return -8;
+    if (fd <0) {
+        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"]";
+        return -3;
     }
-    std::string resp;
+
     int ret = 0;
 
-    ret = rpc_pb_call_impl(fd , cmd_name, &req, &resp, retcode, errmsg, timeout);
+    ref_str_t rsp;
+    
+    obj_pool_t * ps_pool = get_rpc_pb_client_packet_stream_pool();
+    PacketStream *ps = NULL;
+    ret = rpc_pb_call_impl(fd , req_base, req, &rsp,  retcode, errmsg, timeout, ps_pool,  &ps);
+    if (ps) {
+        ps_pool->release(ps);
+    }
 
     if (ret) {
         return ret;
     }
 
-    if (a_resp) {
-        if (!a_resp->ParseFromString(resp)) {
+    if (a_rsp && rsp.len >0) {
+        if (!a_rsp->ParseFromArray(rsp.data, rsp.len)) {
+            LOG(ERROR)<<"[rpc_pb_client] paser response msg failed!";
             return -7;
         }
     }
-    return ret;
+    return 0;
+}
+
+template <typename ReqT, typename RespT>
+inline
+int rpc_pb_call(int fd, 
+        uint64_t const & cmd_id,
+        ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
+{
+
+    conet::cmd_base_t req_base;
+    req_base.init();
+    req_base.cmd_id = cmd_id;
+    return rpc_pb_call(fd, &req_base, a_req, a_resp, retcode, errmsg, timeout);
+}
+
+template <typename ReqT, typename RespT>
+inline
+int rpc_pb_call(int fd, 
+        ref_str_t cmd_name,
+        ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
+{
+
+    conet::cmd_base_t req_base;
+    req_base.init();
+    req_base.cmd_name = cmd_name;
+    return rpc_pb_call(fd, &req_base, a_req, a_resp, retcode, errmsg, timeout);
+}
+
+template <typename ReqT, typename RespT>
+inline
+int rpc_pb_call(int fd, 
+        std::string const &cmd_name,
+        ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
+{
+
+    ref_str_t cmd_name2;
+    init_ref_str(&cmd_name2, cmd_name);
+    return rpc_pb_call(fd, cmd_name2, a_req, a_resp, retcode, errmsg, timeout);
+}
+
+template <typename ReqT, typename RespT>
+inline
+int rpc_pb_call(int fd, 
+        char const * cmd_name,
+        ReqT const *a_req, RespT *a_resp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
+{
+
+    ref_str_t cmd_name2;
+    init_ref_str(&cmd_name2, cmd_name);
+    return rpc_pb_call(fd, cmd_name2, a_req, a_resp, retcode, errmsg, timeout);
 }
 
 
 template <typename ReqT, typename RespT, typename CmdNameT>
+inline
 int rpc_pb_call(char const *ip, int port, 
         CmdNameT const & cmd_name,
         ReqT const *a_req, RespT *a_resp,
@@ -83,6 +149,7 @@ int rpc_pb_call(char const *ip, int port,
 
 
 template <typename ReqT, typename RespT, typename LBT, typename CmdNameT>
+inline
 int rpc_pb_call(LBT &lb,
         CmdNameT const & cmd_name,
         ReqT const *a_req, RespT *a_resp, 

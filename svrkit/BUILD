@@ -117,19 +117,19 @@ cc_test(
     ],
 )
 
-#
-#cc_test(
-#    name = 'rpc_base_test',
-#    srcs = [
-#        "src/rpc_base_test.cpp",
-#    ],
-#    incs= [ 
-#        "incl/",
-#    ],
-#    deps =[
-#        ":rpc_base_pb_proto",
-#    ]
-#);
+
+cc_test(
+    name = 'rpc_base_test',
+    srcs = [
+        "src/rpc_base_test.cpp",
+    ],
+    incs= [ 
+        "incl/",
+    ],
+    deps =[
+        ":rpc_base_pb_proto",
+    ]
+);
 
 
 

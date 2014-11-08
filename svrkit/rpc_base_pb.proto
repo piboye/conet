@@ -14,11 +14,14 @@ message CmdBase
         ERR_PARSE_REQ_BODY = 2;
     };
 
+    //请求和响应共用部分
     optional uint32 type=1;
     optional bytes cmd_name=2;
     optional uint64 cmd_id=3;
     optional uint64 seq_id=4;
     optional bytes body=5;
+
+    //可变部分
     optional sint32 ret=6;
     optional bytes errmsg=7;
 };
