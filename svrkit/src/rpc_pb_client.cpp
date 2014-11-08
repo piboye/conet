@@ -42,16 +42,15 @@ int rpc_pb_call_impl(int fd,
     req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
     req_base.set_body(req);
 
-    std::vector<char> out_buf;
+    PacketStream stream(1024);
+    stream.init(fd);
 
-    ret = send_pb_obj(fd, req_base, &out_buf, timeout);
+    ret = send_pb_obj(fd, req_base, stream.buff, stream.max_size, timeout);
 
     if (ret <=0) {
         LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
         return -4;
     }
-    PacketStream stream;
-    stream.init(fd, 1024*1024);
     char * data = NULL;
     int packet_len = 0;
 
@@ -96,16 +95,15 @@ int rpc_pb_call_impl(int fd,
     req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
     req_base.set_body(req);
 
-    std::vector<char> out_buf;
+    PacketStream stream(1024);
+    stream.init(fd);
 
-    ret = send_pb_obj(fd, req_base, &out_buf, timeout);
+    ret = send_pb_obj(fd, req_base, stream.buff, stream.max_size, timeout);
 
     if (ret <=0) {
         LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
         return -4;
     }
-    PacketStream stream;
-    stream.init(fd, 1024*1024);
     char * data = NULL;
     int packet_len = 0;
 
@@ -133,8 +131,6 @@ int rpc_pb_call_impl(int fd,
     }
     return 0;
 }
-
-
 
 }
 

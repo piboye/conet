@@ -19,7 +19,7 @@
 #include "../../base/incl/tls.h"
 #include "../../base/incl/gcc_builtin_help.h"
 
-DEFINE_int32(epoll_size, 10000, "epoll event size ");
+DEFINE_int32(epoll_size, 1024*10, "epoll event size ");
 
 
 HOOK_DECLARE(
@@ -174,7 +174,6 @@ epoll_ctx_t * get_epoll_ctx();
 
 void close_fd_notify_poll(int fd)
 {
-    return ;
     poll_wait_item_t *wait_item = get_wait_item(fd);
     if (wait_item && wait_item->wait_events)  
     {
@@ -184,7 +183,8 @@ void close_fd_notify_poll(int fd)
         epoll_event ev;
         ev.events = 0;
         ev.data.ptr = wait_item;
-        int ret = epoll_ctl(ep_ctx->m_epoll_fd, fd, EPOLL_CTL_DEL, &ev);
+        //epoll_ctl 参数顺序出现过错误， 一定要注意
+        int ret = epoll_ctl(ep_ctx->m_epoll_fd, EPOLL_CTL_DEL, fd, &ev);
         if (ret) {
             LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"] [events:"<<events<<"]";
         }
@@ -265,7 +265,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
 
     if (likely(revents)) {
         //epoll 事件必须转换为 poll 的事件
-        fds[pos].revents |= epoll_event2poll(revents);
+        fds[pos].revents = epoll_event2poll(revents);
         if (unlikely(poll_ctx->timeout >=0)) 
         {
             cancel_timeout(&poll_ctx->timeout_ctl);
@@ -284,15 +284,12 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
 epoll_ctx_t *create_epoll(int event_size);
 
 
-
-
-
 void init_epoll_ctx(epoll_ctx_t *self, int size)
 {
     self->m_epoll_size = size;
     self->m_epoll_events = new epoll_event[size];
     memset(self->m_epoll_events, 0, sizeof(epoll_event) *size);
-    self->m_epoll_fd = epoll_create(size);
+    self->m_epoll_fd = epoll_create(102400);
     self->wait_num = 0;
     return;
 }
@@ -455,6 +452,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
     ++ epoll_ctx->wait_num;
     
     yield();
+    poll_ctx.coroutine = NULL;
 
     -- epoll_ctx->wait_num;
 
@@ -497,6 +495,7 @@ epoll_ctx_t * get_epoll_ctx()
 void poll_ctx_timeout_proc(void *arg)
 {
     poll_ctx_t *self = (poll_ctx_t *)(arg);
+
     self->retcode = 1;
 
     if (self->coroutine) 

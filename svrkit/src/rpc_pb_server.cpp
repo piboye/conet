@@ -57,6 +57,22 @@ rpc_pb_server_t::rpc_pb_server_t()
     http_server = NULL;
 }
 
+static 
+void free_packet_stream(void *arg, void *ps)
+{
+    PacketStream *ps2 = (PacketStream *)(ps);
+    delete ps2;
+}
+
+
+PacketStream *rpc_pb_server_t::alloc_packet_stream()
+{
+    int max_size = this->tcp_server->conf.max_packet_size;    
+    PacketStream *ps = new PacketStream(max_size);
+    ps->is_http = this->http_server && (this->tcp_server == this->http_server->tcp_server);
+    return ps;
+}
+
 int rpc_pb_server_t::init(
         rpc_pb_server_base_t *base_server,
         tcp_server_t * tcp_server,
@@ -70,6 +86,8 @@ int rpc_pb_server_t::init(
         base_server->registry_all_rpc_http_api(http_server, this->http_base_path);
     }
     tcp_server->set_conn_cb(fn_ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_rpc_pb), this);
+    this->m_packet_stream_pool.set_alloc_obj_func(fn_ptr_cast<obj_pool_t::alloc_func_t>(&rpc_pb_server_t::alloc_packet_stream), this);
+    this->m_packet_stream_pool.set_free_obj_func(free_packet_stream, NULL);
 
     return 0;
 }
@@ -81,14 +99,20 @@ int rpc_pb_server_t::start()
     return ret;
 }
 
+int rpc_pb_server_t::send_pb(int fd, google::protobuf::Message const &msg)
+{
+    PacketStream *ps = (PacketStream *)this->m_packet_stream_pool.alloc();
+    ps->init(fd);
+    int ret =  send_pb_obj(fd, msg, ps->buff, ps->max_size, 1000 /* 1s */);
+    this->m_packet_stream_pool.release(ps);
+    return ret;
+}
 
 static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 {
     tcp_server_t * tcp_server = (tcp_server_t *)conn->server;
     rpc_pb_server_base_t * base_server = server->base_server;
     http_server_t *http_server = server->http_server;
-
-    int max_size = tcp_server->conf.max_packet_size;
 
     int ret = 0;
 
@@ -103,14 +127,6 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
     ctx.req = &cmd_base;
     ctx.to_close = 0;
 
-    PacketStream stream;
-
-    bool reuse_http_flag  = http_server && (tcp_server == http_server->tcp_server);
-
-    stream.init(fd, max_size);
-
-    std::vector<char> out_buf;
-
     while(0 == tcp_server->to_stop)
     {
 
@@ -119,49 +135,54 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
             events: POLLIN | POLLERR | POLLHUP
         };
 
-        ret = poll( &pf, 1, 1000);
+        ret = poll( &pf, 1, 10000);
         if (ret == 0) {
             //timeout
             continue;
         }
 
         if (ret <0) {
+            /* 
             if (errno == EINTR) {
                 continue;
             }
+            */
             break;
         }
 
-        if (pf.revents & POLLERR || pf.revents &POLLHUP) {
+        if ((pf.revents & POLLERR) || (pf.revents &POLLHUP)) {
             break;
         }
 
         char * data = NULL;
         int packet_len = 0;
 
-        ret = stream.read_packet(&data, &packet_len, 100, 1); 
+        PacketStream *stream = (PacketStream *) server->m_packet_stream_pool.alloc();
+        stream->init(fd);
+        ret = stream->read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
+            server->m_packet_stream_pool.release(stream);
             break;
         }
 
         if (ret <0) {
             if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
-                if (reuse_http_flag) {
-                    conn->extend = &stream;
+                    conn->extend = stream;
                     http_server->conn_proc(conn);
-                    break;
-                } else {
-                    LOG(ERROR)<<"unsuppored http protocol, please use http port";
-                }
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
-                break;
             }
+            server->m_packet_stream_pool.release(stream);
+            break;
         }
+
+        server->m_packet_stream_pool.release(stream);
+
         if ((data == NULL) || (packet_len <=0)) {
             LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
             break;        
         }
+
         if (!cmd_base.ParseFromArray(data, packet_len)) 
         {
             // parse cmd base head failed;
@@ -189,7 +210,7 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                 append_to_str(cmd_id, &errmsg);
 
                 cmd_base.set_errmsg(errmsg);
-                ret = send_pb_obj(fd, cmd_base, &out_buf);
+                ret = server->send_pb(fd, cmd_base);
                 if (ret <= 0) {
                     LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
                 }
@@ -205,7 +226,7 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
                 cmd_base.set_ret(CmdBase::ERR_UNSUPPORED_CMD);
                 cmd_base.set_errmsg("unsuppored cmd:"+cmd_name);
-                ret = send_pb_obj(fd, cmd_base, &out_buf);
+                ret = server->send_pb(fd, cmd_base);
                 if (ret <= 0) {
                     LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
                 }
@@ -224,7 +245,7 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         cmd_base.set_type(CmdBase::RESPONSE_TYPE);
         cmd_base.set_ret(retcode);
 
-        ret = send_pb_obj(fd, cmd_base, &out_buf);
+        ret = server->send_pb(fd, cmd_base);
         if (ret <=0) {
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;

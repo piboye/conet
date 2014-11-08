@@ -120,7 +120,6 @@ HOOK_SYS_FUNC_DEF(
     {
 
         //block call
-
         struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
         int ret = poll( &pf,1, -1);
         if (ret == 0) {
@@ -591,6 +590,10 @@ HOOK_SYS_FUNC_DEF(
 
     if(0 == timeout)
     {
+        if (nfds <=0) {
+            usleep(0);
+            return 0;
+        }
         return _(poll)(fds, nfds, 0);
     }
 
@@ -609,6 +612,10 @@ HOOK_SYS_FUNC_DEF(
 
     if(NULL == timeout_ts || (timeout_ts->tv_sec == 0 && timeout_ts->tv_nsec == 0))
     {
+        if (nfds <=0) {
+            usleep(0);
+            return 0;
+        }
         return _(ppoll)(fds, nfds, timeout_ts, sigmask);
     }
 
@@ -628,6 +635,10 @@ HOOK_SYS_FUNC_DEF(
 
     if(timeout ==0)
     {
+        if (maxevents <=0) {
+            usleep(0);
+            return 0;
+        }
         return _(epoll_wait)(epfd, events, maxevents, timeout);
     }
 

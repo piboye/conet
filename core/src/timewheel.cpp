@@ -37,17 +37,18 @@
 #include "../../base/incl/tls.h"
 #include "../../base/incl/time_helper.h"
 
-static __thread timewheel_t * g_tw = NULL;
 
 namespace conet
 {
+
+static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
 
+static uint64_t g_khz = get_cpu_khz();
 inline
 uint64_t get_tick_ms2() 
 {
-    static uint64_t khz = get_cpu_khz();
-    return rdtscp() / khz;
+    return rdtscp() / g_khz;
 }
 
 //uint64_t get_tick_ms() __attribute__((strong));
@@ -57,7 +58,6 @@ uint64_t get_tick_ms()
         return g_tw->now_ms;
     }
     return get_tick_ms2();
-}
 }
 
 
@@ -106,6 +106,10 @@ uint64_t get_cur_ms(timewheel_t *tw)
     return get_tick_ms2();
 }
 
+int check_timewheel(void * arg)
+{
+    return check_timewheel((timewheel_t *) arg, 0);
+}
 
 void init_timewheel(timewheel_t *self, int slot_num)
 {
@@ -128,6 +132,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->update_timeofday_flag = 0;
     self->prev_tv.tv_sec = 0;
     self->prev_tv.tv_usec = 0;
+    init_task(&self->delay_task, check_timewheel, self);
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -137,10 +142,6 @@ void fini_timewheel(timewheel_t *self)
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
-int check_timewheel(void * arg)
-{
-    return check_timewheel((timewheel_t *) arg, 0);
-}
 
 static
 int timewheel_task(void *arg)
@@ -190,7 +191,8 @@ int timewheel_task(void *arg)
        tw->now_ms = get_tick_ms2(); 
        //tw->now_ms += cnt; 
 
-       check_timewheel(tw, tw->now_ms);
+       //check_timewheel(tw, tw->now_ms);
+       registry_delay_task(&tw->delay_task);
     }
     return 0;
 }
@@ -352,4 +354,5 @@ void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
 {
     timewheel_t *tw = get_timewheel();
     set_interval(tw, obj, timeout);
+}
 }

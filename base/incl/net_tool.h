@@ -37,16 +37,14 @@ enum
 int send_data(int fd, char const * buf, size_t len, int timeout=10);
 
 template <typename T>
-int send_pb_obj(int fd,  T const &data, std::vector<char> *buf, int timeout=1000)
+int send_pb_obj(int fd,  T const &data, char *buf, int max_size, int timeout=1000)
 {
     uint32_t len = data.ByteSize();
     
-    buf->resize(len+4);
-    char * p = buf->data();
-    *((uint32_t *)p) = htonl(len);
-    data.SerializeToArray(p+4, len);
+    *((uint32_t *)buf) = htonl(len);
+    data.SerializeToArray(buf+4, len);
 
-    return send_data(fd, p, buf->size(), timeout);
+    return send_data(fd, buf, len + 4, timeout);
 }
 
 
@@ -65,16 +63,29 @@ public:
     int prev_pos;
     int total_len;
 
-    int init(int fd, int max_size) 
+    bool is_http;
+
+    explicit
+    PacketStream(int max_size) 
     {
-        this->fd = fd;
+        fd = -1;
         this->max_size = max_size;
         buff = (char *)malloc(max_size);
-        //memset(buff, 0, max_size);
+        prev_pos = 0;
+        total_len = 0;
+        is_http = false;
+    }
+
+
+    int init(int fd)
+    {
+        this->fd = fd;
         prev_pos = 0;
         total_len = 0;
         return 0;
     }
+
+
 
     int read_packet(char **pack, int * pack_len, int timeout, int has_data=0); 
     int read_packet(char **pack, int * pack_len);

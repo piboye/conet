@@ -27,7 +27,8 @@ namespace conet
 struct obj_pool_t
     :public Lifo
 {
-    void * (*m_alloc_func)(void *);
+    typedef void * (*alloc_func_t)(void *);
+    alloc_func_t m_alloc_func; 
     void * m_alloc_arg;
 
     obj_pool_t() 

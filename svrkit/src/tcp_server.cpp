@@ -32,7 +32,7 @@
 
 DEFINE_int32(listen_backlog, 1000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
-DEFINE_int32(max_packet_size, 102400, "default max packet size");
+DEFINE_int32(max_packet_size, 1024, "default max packet size");
 
 namespace conet
 {

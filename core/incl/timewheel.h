@@ -27,6 +27,9 @@
 #include <sys/time.h>
 #include "../../base/incl/list.h"
 #include "../../base/incl/time_helper.h"
+#include "dispatch.h"
+namespace conet 
+{
 
 struct timewheel_t;
 
@@ -61,6 +64,7 @@ struct timewheel_t
     struct timeval prev_tv;
     list_head *slots;
     uint64_t now_ms;
+    task_t delay_task;
 };
 
 void init_timewheel(timewheel_t *self, int solt_num = 60*1000);
@@ -83,5 +87,6 @@ int check_timewheel(timewheel_t *self, uint64_t cur_ms = 0);
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/);
 void set_interval(timeout_handle_t * obj, int interval);
 
+}
 
 #endif

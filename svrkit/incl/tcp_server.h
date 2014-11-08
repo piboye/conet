@@ -68,12 +68,12 @@ struct tcp_server_t
     {
         int listen_backlog;
         int max_packet_size;
-        int max_conn_num;
+        uint32_t max_conn_num;
     } conf;
 
     struct data_t
     {
-        int cur_conn_num;
+        uint32_t cur_conn_num;
     } data;
 
 

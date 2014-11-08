@@ -113,9 +113,6 @@ int send_data(int fd, char const * buf, size_t len, int timeout)
 
 ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=0)
 {
-
-
-
     ssize_t ret = 0;
     if (has_data) {
         ret = recv(fd,(char*)buf , nbyte , MSG_DONTWAIT);
@@ -312,7 +309,6 @@ const char* get_local_ip(const char* pIfConf)
     int32_t sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if( sockfd < 0 )
     {
-        close(sockfd);
         return NULL;
     }
 
@@ -373,7 +369,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
         }
     }
 
-    if (isalpha(buff[0])) {
+    if (is_http && isalpha(buff[0])) {
         prev_pos = cur_len;
         return HTTP_PROTOCOL_DATA;
     }
@@ -408,7 +404,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
     return 1; 
 }
 
-int PacketStream::read_packet(char **pack, int * pack_len) 
+int PacketStream::read_packet(char **pack, int * pack_len)
 {
     uint32_t len = 0;
     int ret = 0;
@@ -427,7 +423,7 @@ int PacketStream::read_packet(char **pack, int * pack_len)
         cur_len += ret;
     }
 
-    if (isalpha(buff[0])) {
+    if (is_http && isalpha(buff[0])) {
         prev_pos = cur_len;
         return HTTP_PROTOCOL_DATA;
     }
