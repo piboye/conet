@@ -55,6 +55,17 @@ cc_binary(
             "#dl", "#pthread"],
 )
 
+cc_binary(
+    name = "echo_rpc_cli_co2",
+    srcs = ["echo_rpc_cli_co2.cpp"],
+    deps = [
+            ":echo_rpc_proto", 
+            "//svrkit:client_base", 
+            "//thirdparty/perftools:tcmalloc",
+            #"//thirdparty/perftools:profiler",
+            "#dl", "#pthread"],
+)
+
 proto_library(
         name='echo_rpc_proto',
         srcs=[
