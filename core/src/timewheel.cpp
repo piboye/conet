@@ -48,7 +48,9 @@ static uint64_t g_khz = get_cpu_khz();
 inline
 uint64_t get_tick_ms2() 
 {
-    return rdtscp() / g_khz;
+
+    return get_sys_ms();
+    //return rdtscp() / g_khz;
 }
 
 //uint64_t get_tick_ms() __attribute__((strong));
@@ -132,7 +134,10 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->update_timeofday_flag = 0;
     self->prev_tv.tv_sec = 0;
     self->prev_tv.tv_usec = 0;
-    init_task(&self->delay_task, check_timewheel, self);
+
+    //init_task(&self->delay_task, check_timewheel, self);
+    
+    //registry_task(&self->delay_task);
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -141,6 +146,14 @@ void fini_timewheel(timewheel_t *self)
 }
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
+
+int do_tw_task(timewheel_t *tw)
+{
+    tw->now_ms = get_tick_ms2();
+
+    check_timewheel(tw, tw->now_ms);
+    return 0;
+}
 
 
 static
@@ -191,8 +204,8 @@ int timewheel_task(void *arg)
        tw->now_ms = get_tick_ms2(); 
        //tw->now_ms += cnt; 
 
-       //check_timewheel(tw, tw->now_ms);
-       registry_delay_task(&tw->delay_task);
+       check_timewheel(tw, tw->now_ms);
+       //registry_delay_task(&tw->delay_task);
     }
     return 0;
 }

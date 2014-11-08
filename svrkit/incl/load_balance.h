@@ -42,6 +42,7 @@ class FdPool
 {
 public:
     std::queue<int> m_fds;
+    std::vector<int> m_calls;
 
     int get() 
     {
@@ -56,6 +57,17 @@ public:
 
     int put(int fd) 
     {
+        if ((int)m_calls.size() <=fd)
+        {
+            m_calls.resize(fd+1000);
+        }
+
+        m_calls[fd] = m_calls[fd] +1;
+        if (m_calls[fd] %1000 == 999) {
+            close(fd);
+            m_calls[fd] =0;
+            return 0;
+        }
         m_fds.push(fd);
         return 0;
     }
@@ -153,7 +165,7 @@ public:
         return init(src.c_str());
     }
 
-    int get(std::string *ip, int *port)
+    int get(std::string *ip=NULL, int *port=NULL)
     {
         int fd = 0;
         fd = m_fd_pool.get();
@@ -163,8 +175,8 @@ public:
                 fd = connect_to(host->ip.c_str(), host->port);
                 if (fd >=0)  {
                     set_nodelay(fd);
-                    *ip = host->ip;
-                    *port = host->port;
+                    if (ip) *ip = host->ip;
+                    if (port) *port = host->port;
                     break;
                 }
             }
@@ -176,7 +188,7 @@ public:
         return fd;
     }
 
-    int release(std::string const &ip, int port, int fd, int status)
+    int release(int fd, int status , std::string *ip=NULL, int *port=NULL)
     {
         if (status != 0) {
             close(fd);

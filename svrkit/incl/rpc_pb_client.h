@@ -89,12 +89,12 @@ int rpc_pb_call(LBT &lb,
         int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
     int fd = 0;
-    std::string ip;
-    int port;
-    fd = lb.get(&ip, &port);
+    //std::string ip;
+    //int port;
+    fd = lb.get();
     if (fd <0) return -3;
     int ret =  rpc_pb_call(fd, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
-    lb.release(ip.c_str(), port, fd, ret);
+    lb.release(fd, ret);
     return ret;
 }
 

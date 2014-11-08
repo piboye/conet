@@ -62,14 +62,17 @@ void co_return(void *val=NULL) {
         return ;
     }
 
+    coroutine_t * curr_co = env->curr_co;
+
     coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
     list_del_init(&last->wait_to);
-    coroutine_t * curr_co = env->curr_co;
+    list_del_init(&curr_co->wait_to);
+
     env->curr_co = last;
     last->state = RUNNING;
     last->yield_val = val;
-    //conet_setcontext(&last->ctx);
-    conet_swapcontext(&(curr_co->ctx), &(last->ctx));
+    conet_setcontext(&last->ctx);
+    //conet_swapcontext(&(curr_co->ctx), &(last->ctx));
 }
 
 void delay_del_coroutine(void *arg)

@@ -30,6 +30,8 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 using namespace conet;
 
+static
+volatile uint64_t cnt=0;
 class EchoServer
 {
 public:
