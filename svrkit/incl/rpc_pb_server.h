@@ -26,6 +26,7 @@
 #include "../../base/incl/obj_pool.h"
 #include "base/incl/net_tool.h"
 #include "google/protobuf/message.h"
+#include "cmd_base.h"
 
 namespace conet
 {
@@ -57,7 +58,7 @@ struct rpc_pb_server_t
     int stop(int wait_ms);
 
     PacketStream *alloc_packet_stream();
-    int send_pb(int fd, google::protobuf::Message const &msg);
+    int send_pb(int fd, cmd_base_t *);
 };
 
 }

@@ -20,13 +20,14 @@
 #define REF_STR_H
 #include <string>
 #include <string.h>
+#include <stdint.h>
 
 namespace conet
 {
 
 typedef struct ref_str_t
 {
-   size_t len;
+   uint32_t len;
    char * data;
 
 } ref_str_t;
@@ -36,7 +37,7 @@ ref_str_t ref_str(char const * src, size_t len)
 {
     ref_str_t d; 
     d.data = (char *)(src);
-    d.len = len;
+    d.len = (uint32_t) len;
     return d;
 }
 
@@ -50,17 +51,24 @@ ref_str_t ref_str(std::string const &v)
 }
 
 inline
-void init_ref_str(struct ref_str_t * s, char *start, size_t len)
+void init_ref_str(ref_str_t *d, std::string const &v)
 {
-    s->len = len;
-    s->data = start; 
+    d->data = (char *)v.data();
+    d->len = v.size();
 }
 
 inline
-void init_ref_str(struct ref_str_t * s, char *start, char * end)
+void init_ref_str(struct ref_str_t * s, char const *start, size_t len)
 {
-    s->len = end-start;
-    s->data = start; 
+    s->len = (uint32_t)len;
+    s->data = (char *)start; 
+}
+
+inline
+void init_ref_str(struct ref_str_t * s, char const *start, char const * end)
+{
+    s->len = (uint32_t)(end-start);
+    s->data = (char *)start; 
 }
 
 inline
@@ -84,10 +92,19 @@ void ref_str_to(struct ref_str_t *src, std::string *out)
 }
 
 inline 
+std::string ref_str_as_string(struct ref_str_t *src)
+{
+    std::string out;
+    out.assign(src->data, src->len);
+    return out;
+}
+
+inline 
 bool equal(ref_str_t const &l, ref_str_t const & r)
 {
     return (l.len == r.len) && (0 == (memcmp(l.data, r.data, l.len)));
 }
+
 
 }
 #endif /* end of include guard */

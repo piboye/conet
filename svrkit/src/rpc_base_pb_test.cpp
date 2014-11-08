@@ -21,6 +21,9 @@
 #include "../../base/incl/pbc.h"
 #include "gtest/gtest.h"
 
+#include "../incl/cmd_base.h"
+
+using namespace conet;
 
 TEST(pbc, decode)
 {
@@ -34,25 +37,49 @@ TEST(pbc, decode)
     std::string txt;
     msg.SerializeToString(&txt);
 
-    pb_field_t start1;
+    cmd_base_t cmd_base;
+    cmd_base.init();
+    cmd_base.parse(txt.c_str(), (uint32_t) txt.size());
 
-    pb_field_t *f = pb_begin(&start1, txt.c_str(), txt.size());
-    ASSERT_EQ(1, (int)f->val.i32);
+    ASSERT_EQ(1, (int)cmd_base.type);
 
-    f = pb_next(f);
+    ASSERT_STREQ("abc", ref_str_as_string(&cmd_base.cmd_name).c_str());
 
-    ASSERT_STREQ("abc", std::string(f->val.str.data, f->val.str.len).c_str());
+    ASSERT_EQ(1, cmd_base.cmd_id);
 
-    f = pb_next(f);
-    ASSERT_EQ(1, (int)f->val.i64);
+    ASSERT_EQ(2, cmd_base.seq_id);
 
-    f = pb_next(f);
-    ASSERT_EQ(2, (int)f->val.i64);
+    ASSERT_STREQ("abcdef", ref_str_as_string(&cmd_base.body).c_str());
 
-    f = pb_next(f);
-    ASSERT_STREQ("abcdef", std::string(f->val.str.data, f->val.str.len).c_str());
+}
 
-    f = pb_next(f);
+TEST(pbc, encode)
+{
 
-    ASSERT_EQ(NULL, f);
+    char buff[1024]={0};
+
+    cmd_base_t cmd_base;
+    cmd_base.init();
+    cmd_base.type = 1;
+    init_ref_str(&cmd_base.cmd_name, "abc", strlen("abc"));
+    cmd_base.cmd_id = 1;
+    cmd_base.seq_id = 2;
+    init_ref_str(&cmd_base.body, "abcdef", strlen("abcdef"));
+
+    uint32_t out_len = 0;
+    cmd_base.serialize_to(buff, (uint32_t )sizeof(buff), &out_len);
+
+    conet_rpc_pb::CmdBase msg;
+    msg.ParseFromArray(buff, out_len);
+
+    ASSERT_EQ(1, msg.type());
+
+    ASSERT_STREQ("abc", msg.cmd_name().c_str());
+
+    ASSERT_EQ(1, (int) msg.cmd_id());
+
+    ASSERT_EQ(2, (int) msg.seq_id());
+
+    ASSERT_STREQ("abcdef", msg.body().c_str());
+
 }

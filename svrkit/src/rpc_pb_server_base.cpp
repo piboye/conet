@@ -156,12 +156,12 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     pb_ctx.to_close = ctx->to_close;  
     pb_ctx.conn_info = ctx->conn_info;  
     pb_ctx.server = ctx->server;
-    conet_rpc_pb::CmdBase cmdbase; 
-    cmdbase.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE); 
-    cmdbase.set_cmd_name(self->method_name);
-    cmdbase.set_seq_id(time(NULL)); 
 
-    pb_ctx.req = &cmdbase; 
+    cmd_base_t & cmdbase = pb_ctx.cmd_base;
+    cmdbase.type = conet_rpc_pb::CmdBase::REQUEST_TYPE; 
+    init_ref_str(&cmdbase.cmd_name, self->method_name);
+    cmdbase.seq_id = (time(NULL)); 
+
     std::string errmsg; 
 
     AUTO_VAR(obj_mgr, =, self->obj_mgr);
@@ -235,14 +235,14 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 }
 
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
-        std::string *req, std::string *rsp, std::string *errmsg)
+        ref_str_t req, std::string *rsp, std::string *errmsg)
 {
     int ret = 0; 
 
     google::protobuf::Message * req1 = self->req_msg;
     if (req1) {
         req1 = self->req_pool.alloc();
-        if(!req1->ParseFromString(*req)) { 
+        if(!req1->ParseFromArray(req.data, req.len)) { 
             self->req_pool.release(req1);
             return (conet_rpc_pb::CmdBase::ERR_PARSE_REQ_BODY); 
         } 
@@ -359,6 +359,9 @@ int rpc_pb_server_base_t::registry_all_rpc_http_api(http_server_t *http_server, 
 {
     int ret = 0;
     ret = registry_http_rpc_default_api(http_server, base_path);
+    if (ret) {
+        return ret;
+    }
 
     list_head * list = &this->cmd_maps.m_list;
     StrMap::node_type *node = NULL;

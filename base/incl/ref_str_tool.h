@@ -17,5 +17,10 @@
  */
 namespace conet
 {
+    inline 
+    bool ref_str_empty(ref_str_t str) 
+    {
+        return str.len == 0;
+    }
  
 }

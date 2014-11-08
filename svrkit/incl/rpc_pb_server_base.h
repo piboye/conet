@@ -29,6 +29,8 @@
 #include "conn_info.h"
 #include "base/incl/fn_ptr_cast.h"
 
+#include "cmd_base.h"
+
 namespace conet
 {
 
@@ -36,7 +38,7 @@ struct rpc_pb_ctx_t
 {
     int to_close; // close connection when set 1
     conn_info_t * conn_info;
-    conet_rpc_pb::CmdBase *req;
+    cmd_base_t cmd_base;
     void * arg;
     void *server;
 };

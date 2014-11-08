@@ -18,9 +18,11 @@
 
 #ifndef __CONET_EVENT_NOTIFY_H__
 #define __CONET_EVENT_NOTIFY_H__
+#include <sys/syscall.h>
 #include <sys/eventfd.h>
-#include <stdio.h>      
-#include <stdlib.h>      
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <fcntl.h>      
 #include "coroutine.h"
 #include "network_hook.h"

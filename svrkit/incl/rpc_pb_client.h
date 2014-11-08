@@ -33,11 +33,11 @@ namespace conet
 //client 
 int rpc_pb_call_impl(int fd,
         std::string const &cmd_name,
-        std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
+        std::string * req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
 
 int rpc_pb_call_impl(int fd,
         uint64_t cmd_id,
-        std::string const &req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
+        std::string *req, std::string *resp, int *retcode, std::string *errmsg, int timeout);
 
 template <typename ReqT, typename RespT, typename CmdNameT>
 int rpc_pb_call(int fd, 
@@ -51,7 +51,7 @@ int rpc_pb_call(int fd,
     std::string resp;
     int ret = 0;
 
-    ret = rpc_pb_call_impl(fd , cmd_name, req, &resp, retcode, errmsg, timeout);
+    ret = rpc_pb_call_impl(fd , cmd_name, &req, &resp, retcode, errmsg, timeout);
 
     if (ret) {
         return ret;
