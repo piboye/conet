@@ -67,6 +67,7 @@ PacketStream *alloc_packet_stream()
 
 static __thread obj_pool_t *g_packet_stream_pool = NULL;
 
+static __thread uint64_t g_rpc_client_seq_id = 0;
 static 
 obj_pool_t * get_packet_stream_pool()
 {
@@ -90,7 +91,7 @@ int rpc_pb_call_impl_base(int fd,
 
     int ret = 0;
     req_base->type = conet_rpc_pb::CmdBase::REQUEST_TYPE;
-    req_base->seq_id = 1;
+    req_base->seq_id = ++g_rpc_client_seq_id;
 
     if (req_body) {
         init_ref_str(&req_base->body, *req_body);
