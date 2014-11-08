@@ -26,6 +26,7 @@
 #include "../../base/incl/tls.h"
 #include "../../base/incl/fn_ptr_cast.h"
 #include <poll.h>
+#include "../../core/incl/coroutine.h"
 
 namespace conet
 {
@@ -98,7 +99,7 @@ int rpc_pb_call_impl(int fd,
     int packet_len = 0;
 
     struct pollfd pf = { fd : fd, events: ( POLLIN | POLLERR | POLLHUP ) };
-    ret =  poll( &pf, 1, timeout );
+    ret =  co_poll( &pf, 1, timeout );
     if (ret == 0) {
         // timeout;
         return -2;
@@ -180,7 +181,7 @@ int rpc_pb_call_impl(int fd,
     int packet_len = 0;
 
     struct pollfd pf = { fd : fd, events: ( POLLIN | POLLERR | POLLHUP ) };
-    ret =  poll( &pf, 1, timeout );
+    ret =  co_poll( &pf, 1, timeout );
     if (ret == 0) {
         // timeout;
         return -2;

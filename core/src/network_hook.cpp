@@ -1,4 +1,3 @@
-
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
@@ -81,7 +80,7 @@ HOOK_SYS_FUNC_DEF(
         //block call
 
         struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP};
-        int ret = poll( &pf,1, -1);
+        int ret = conet::co_poll( &pf,1, -1);
         if (ret == 0) {
             errno = ETIMEDOUT;
             return -1;
@@ -121,7 +120,7 @@ HOOK_SYS_FUNC_DEF(
 
         //block call
         struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
-        int ret = poll( &pf,1, -1);
+        int ret = conet::co_poll( &pf,1, -1);
         if (ret == 0) {
             errno = ETIMEDOUT;
             return -1;
@@ -267,7 +266,7 @@ HOOK_SYS_FUNC_DEF(
         return ret;
     }
 
-    ret = poll( &pf, 1, timeout );
+    ret = conet::co_poll( &pf, 1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;
@@ -320,7 +319,7 @@ HOOK_SYS_FUNC_DEF(
 
     int timeout = lp->snd_timeout;
     struct pollfd pf = { fd : fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
-    ret = poll( &pf,1,timeout );
+    ret = conet::co_poll( &pf,1,timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;
@@ -372,7 +371,7 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
         fd : fd,
         events:( POLLOUT | POLLERR | POLLHUP )
     };
-    ret = poll( &pf,1,timeout );
+    ret = conet::co_poll( &pf,1,timeout );
     if (ret <= 0) {
         return -1;
     }
@@ -407,7 +406,7 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
     };
 
     int ret = 0;
-    ret = poll( &pf, 1, timeout );
+    ret = conet::co_poll( &pf, 1, timeout );
     if (ret <= 0) {
         return -1;
     }
@@ -441,7 +440,7 @@ HOOK_SYS_FUNC_DEF(
         int timeout = lp->snd_timeout;
 
         struct pollfd pf = {fd: fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
-        ret = poll(&pf, 1, timeout);
+        ret = conet::co_poll(&pf, 1, timeout);
         if (ret == 0) {
             errno = ETIMEDOUT;
             return -1;
@@ -480,7 +479,7 @@ HOOK_SYS_FUNC_DEF(
     int timeout = lp->rcv_timeout;
 
     struct pollfd pf = { fd:fd, events:( POLLIN | POLLERR | POLLHUP ) };
-    ssize_t ret = poll( &pf,1,timeout );
+    ssize_t ret = conet::co_poll( &pf,1,timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;
@@ -520,7 +519,7 @@ HOOK_SYS_FUNC_DEF(
         struct pollfd pf = { 0 };
         pf.fd = fd;
         pf.events = ( POLLOUT | POLLERR | POLLHUP );
-        int ret = poll( &pf,1,timeout );
+        int ret = conet::co_poll( &pf,1,timeout );
         if (ret == 0) {
             errno = ETIMEDOUT;
             return -1;
@@ -561,7 +560,7 @@ HOOK_SYS_FUNC_DEF(
     struct pollfd pf = { 0 };
     pf.fd = fd;
     pf.events = ( POLLIN | POLLERR | POLLHUP );
-    ssize_t ret = poll( &pf,1, timeout );
+    ssize_t ret = conet::co_poll( &pf,1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;
@@ -1033,10 +1032,10 @@ HOOK_SYS_FUNC_DEF(int,  select,
     }
 
     if (pfs.empty()) {
-        return poll(NULL, 0, to);
+        return conet::co_poll(NULL, 0, to);
     }
 
-    int ret = poll(&pfs[0], pfs.size(), to);
+    int ret = conet::co_poll(&pfs[0], pfs.size(), to);
     if (ret == 0) return 0;
     if (ret <0) return ret;
 

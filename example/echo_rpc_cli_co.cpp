@@ -32,7 +32,7 @@ DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
 DEFINE_string(data_file, "1.txt", "send data file");
 DEFINE_string(cmd_name, "", "echo or echo2");
-DEFINE_uint64(cmd_id, 1, " cmd id 1, 2");
+DEFINE_uint64(cmd_id, 3, " cmd id 1, 2, 3");
 
 std::vector<std::string *> g_data;
 int prepare_data(char const *file)

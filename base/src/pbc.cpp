@@ -365,4 +365,3 @@ int pb_add_fixed64(pb_buff_t *b, uint32_t tag, uint64_t value)
         return -1;
     return pb_add_ddword(b, value);
 }
-

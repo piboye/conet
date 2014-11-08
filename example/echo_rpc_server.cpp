@@ -69,3 +69,10 @@ int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
 
 REGISTRY_RPC_PB_FUNC(2, "echo2", &proc_echo_impl, NULL);
 
+int proc_test_impl(void *arg, rpc_pb_ctx_t *ctx,
+        void *req, void *resp, std::string *errmsg) 
+{
+   return 0;
+}
+
+REGISTRY_RPC_PB_FUNC(3, "test", &proc_test_impl, NULL);

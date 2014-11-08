@@ -106,6 +106,17 @@ cc_library(
     ]
 );
 
+cc_test(
+    name = "pbc_test",
+    srcs = [
+        "src/rpc_base_pb_test.cpp"
+    ],
+    deps = [
+        "//base:base",
+        ":rpc_base_pb_proto",
+    ],
+)
+
 #
 #cc_test(
 #    name = 'rpc_base_test',

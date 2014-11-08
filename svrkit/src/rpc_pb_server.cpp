@@ -135,7 +135,7 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
             events: POLLIN | POLLERR | POLLHUP
         };
 
-        ret = poll( &pf, 1, 10000);
+        ret = co_poll( &pf, 1, 10000);
         if (ret == 0) {
             //timeout
             continue;

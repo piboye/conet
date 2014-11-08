@@ -49,8 +49,7 @@ inline
 uint64_t get_tick_ms2() 
 {
 
-    return get_sys_ms();
-    //return rdtscp() / g_khz;
+    return rdtscp() / g_khz;
 }
 
 //uint64_t get_tick_ms() __attribute__((strong));
@@ -136,7 +135,6 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->prev_tv.tv_usec = 0;
 
     //init_task(&self->delay_task, check_timewheel, self);
-    
     //registry_task(&self->delay_task);
 }
 
@@ -191,8 +189,9 @@ int timewheel_task(void *arg)
 
     while (!tw->stop) {
        struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
-       ret = poll(&pf, 1, -1);
+       ret = co_poll(&pf, 1, -1);
        
+       cnt = 0;
        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
        if (ret != sizeof(cnt)) {
            LOG(ERROR)<<" timewheel read failed";
@@ -243,7 +242,7 @@ timewheel_t *get_timewheel()
         if (NULL == g_tw) {
             g_tw = tw;
             tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
-            coroutine_t *co = alloc_coroutine(timewheel_task, tw);
+            coroutine_t *co = alloc_coroutine(timewheel_task, tw, 128*4096);
             tw->co = co;
             conet::resume((coroutine_t *)tw->co);
         } else {
@@ -305,13 +304,11 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         cur_ms = get_cur_ms(tw);
     }
 
-    /*
     if (tw->task_num <=0) {
         tw->pos = cur_ms % tw->slot_num;;
         tw->prev_ms = cur_ms;
         return 0;
     }
-    */
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
 

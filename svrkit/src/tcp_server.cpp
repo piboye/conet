@@ -181,7 +181,7 @@ int tcp_server_t::main_proc()
         struct pollfd pf = { 0 };
         pf.fd = listen_fd;
         pf.events = (POLLIN|POLLERR|POLLHUP);
-        ret = poll(&pf, 1, 1000);
+        ret = co_poll(&pf, 1, 1000);
         if (ret == 0) continue;
         if (ret <0) {
             if (errno == EINTR) {
