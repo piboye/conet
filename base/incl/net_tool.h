@@ -17,13 +17,13 @@
  */
 #ifndef __NET_TOOL_H_INC__
 #define __NET_TOOL_H_INC__
-#include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <malloc.h>
 
 namespace conet
 {
@@ -70,7 +70,7 @@ public:
     {
         fd = -1;
         this->max_size = max_size;
-        buff = (char *)malloc(max_size);
+        buff = (char *)memalign(max_size, 64); // 64 byte is cpu cache_line size
         prev_pos = 0;
         total_len = 0;
         is_http = false;
