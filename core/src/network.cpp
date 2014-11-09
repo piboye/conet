@@ -19,7 +19,7 @@
 #include "../../base/incl/tls.h"
 #include "../../base/incl/gcc_builtin_help.h"
 
-DEFINE_int32(epoll_size, 1024*10, "epoll event size ");
+DEFINE_int32(epoll_size, 102400, "epoll event size ");
 
 
 HOOK_DECLARE(
@@ -219,23 +219,35 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
 static
 inline uint32_t epoll_event2poll( uint32_t events )
 {
+    static uint32_t mask = EPOLLIN|EPOLLOUT|EPOLLHUP|EPOLLERR;
+    //因为poll 的这个几个事件 和 epoll 在linux 上相同的值
+
+    return events & mask;
+
+
+    /*
     uint32_t e = 0; 
     if( events & EPOLLIN ) 	e |= POLLIN;
     if( events & EPOLLOUT ) e |= POLLOUT;
     if( events & EPOLLHUP ) e |= POLLHUP;
     if( events & EPOLLERR ) e |= POLLERR;
     return e;
+    */
 }
 
 static
 inline uint32_t poll_event2epoll(uint32_t  events )
 {
+    static uint32_t mask = EPOLLIN|EPOLLOUT|EPOLLHUP|EPOLLERR;
+    return events & mask;
+    /*
     uint32_t e = 0;
     if( events & POLLIN ) 	e |= EPOLLIN;
     if( events & POLLOUT )  e |= EPOLLOUT;
     if( events & POLLHUP ) 	e |= EPOLLHUP;
     if( events & POLLERR )	e |= EPOLLERR;
     return e;
+    */
 }
 
 
@@ -266,7 +278,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     if (likely(revents)) {
         //epoll 事件必须转换为 poll 的事件
         fds[pos].revents = epoll_event2poll(revents);
-        if (unlikely(poll_ctx->timeout >=0)) 
+        if (likely(poll_ctx->timeout >=0)) 
         {
             cancel_timeout(&poll_ctx->timeout_ctl);
         }
