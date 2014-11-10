@@ -43,6 +43,12 @@ class FdPool
 public:
     std::queue<int> m_fds;
     std::vector<int> m_calls;
+    Rand m_rand;
+
+    FdPool()
+    {
+        m_rand.reseed(rdtscp());
+    }
 
     int get() 
     {
@@ -62,10 +68,13 @@ public:
             m_calls.resize(fd+1000);
         }
 
-        m_calls[fd] = m_calls[fd] +1;
-        if (m_calls[fd] %1000 == 999) {
+        if (m_calls[fd] == 0) {
+            m_calls[fd] = 10000 + m_rand.rand_u32()%10000;
+        }
+
+        --m_calls[fd];
+        if (m_calls[fd] <=0) {
             close(fd);
-            m_calls[fd] =0;
             return 0;
         }
         m_fds.push(fd);

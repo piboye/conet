@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <unistd.h>
 #include <malloc.h>
 #include "fixed_mempool.h"
 
@@ -53,7 +52,7 @@ int fixed_mempool_t::init(uint64_t alloc_size,  uint64_t max_num, int align_size
 {
     this->max_num = max_num;
     if (g_page_size ==0) {
-        g_page_size = syscall(_SC_PAGESIZE); 
+        g_page_size = sysconf(_SC_PAGESIZE); 
         if (g_page_size <=0) {
             g_page_size = -1;
         }

@@ -42,7 +42,7 @@ void free_packet_stream(void *arg, void *ps)
 static
 PacketStream *alloc_packet_stream()
 {
-    int max_size = 1024*1024;
+    int max_size = 1*4096;
     PacketStream *ps = new PacketStream(max_size);
     ps->is_http = 0;
     return ps;

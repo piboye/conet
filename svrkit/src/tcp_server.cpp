@@ -30,9 +30,11 @@
 #include "base/incl/fn_ptr_cast.h"
 #include "core/incl/fd_ctx.h"
 
-DEFINE_int32(listen_backlog, 1000, "default listen backlog");
+DEFINE_int32(listen_backlog, 10000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
-DEFINE_int32(max_packet_size, 1024, "default max packet size");
+DEFINE_int32(max_packet_size, 1*4096, "default max packet size");
+DEFINE_bool(enable_defer_accept, false, "enable TCP_DEFER_ACCEPT");
+DEFINE_int32(accept_num, 100, "call accept num in one loop");
 
 namespace conet
 {
@@ -164,17 +166,23 @@ int tcp_server_t::main_proc()
 
     listen(listen_fd, this->conf.listen_backlog); 
 
-    int waits = 5; // 5 seconds;
-    setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+    if (FLAGS_enable_defer_accept) { 
+        int waits = 1; // 1 seconds;
+        setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+    }
 
     int ret = 0;
 
     std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
-    while (0==this->to_stop) {
-        while (this->data.cur_conn_num >= this->conf.max_conn_num) {
+    int accept_num = FLAGS_accept_num;
+    while (0==this->to_stop) 
+    {
+        while (this->data.cur_conn_num >= this->conf.max_conn_num) 
+        {
             usleep(10000); // block 10ms
-            if (this->to_stop) {
+            if (this->to_stop) 
+            {
                 break;
             }
         }
@@ -193,14 +201,13 @@ int tcp_server_t::main_proc()
         socklen_t len = sizeof(conn_info->addr);
 
         new_fds.clear();
-        for(int i=0; i<100; ++i)
+        for(int i=0; i<accept_num; ++i)
         {
             int fd = accept4(listen_fd, (struct sockaddr *)&conn_info->addr, &len, O_NONBLOCK);
-
             if (fd <0) break;
             new_fds.push_back(fd);
-
         } 
+
         for (size_t i=0; i<new_fds.size(); ++i)
         {
             int fd = new_fds[i];

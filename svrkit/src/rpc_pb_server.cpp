@@ -34,8 +34,6 @@
 
 using namespace conet_rpc_pb;
 
-
-
 namespace conet
 {
 

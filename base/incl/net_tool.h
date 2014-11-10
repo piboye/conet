@@ -34,7 +34,7 @@ enum
 };
 
 
-int send_data(int fd, char const * buf, size_t len, int timeout=10);
+int send_data(int fd, char const * buf, size_t len, int timeout=100);
 
 template <typename T>
 int send_pb_obj(int fd,  T const &data, char *buf, int max_size, int timeout=1000)

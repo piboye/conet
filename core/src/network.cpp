@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <assert.h>
 #include <sys/resource.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #include "coroutine.h"
 #include "coroutine_impl.h"
@@ -299,10 +301,19 @@ epoll_ctx_t *create_epoll(int event_size);
 void init_epoll_ctx(epoll_ctx_t *self, int size)
 {
     self->m_epoll_size = size;
-    self->m_epoll_events = new epoll_event[size];
-    memset(self->m_epoll_events, 0, sizeof(epoll_event) *size);
+
+    int page_size = sysconf(_SC_PAGESIZE);
+    int mem_size = sizeof(epoll_event) *size; 
+    mem_size = (mem_size +page_size -1)/page_size * page_size;
+
+    self->m_epoll_events = (epoll_event *)
+        mmap(NULL, mem_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
+
+    memset(self->m_epoll_events, 0, mem_size);
+
     self->m_epoll_fd = epoll_create(102400);
     self->wait_num = 0;
+    self->m_mem_size = mem_size;
     return;
 }
 
@@ -486,7 +497,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 
 void free_epoll(epoll_ctx_t *ep)
 {
-    delete [] ep->m_epoll_events;
+    munmap(ep->m_epoll_events, ep->m_mem_size);
     delete ep;
 }
 
