@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 
+#include "base/incl/auto_var.h"
 #include "rpc_pb_server_base.h"
 #include "rpc_pb_server_base_impl.h"
 #include "base/incl/auto_var.h"
@@ -92,7 +93,7 @@ rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(char const *method_name, siz
 
 rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(uint64_t cmd_id)
 {
-    IntMap::node_type * n = this->cmd_id_maps.find(cmd_id);
+    AUTO_VAR(n, =, this->cmd_id_maps.find(cmd_id));
     if ( NULL == n ) {
         return NULL;
     }

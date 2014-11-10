@@ -34,6 +34,19 @@
 namespace conet
 {
 
+class CmdIdMap 
+    : public HashTableBase<uint64_t, CmdIdMap>
+{
+public:
+
+static
+inline
+uint64_t hash_code(uint64_t key) 
+{ 
+  return key; 
+}
+};
+
 struct rpc_pb_ctx_t
 {
     int to_close; // close connection when set 1
@@ -145,7 +158,7 @@ struct rpc_pb_cmd_t
    // 命令的 Map 节点
    StrMap::node_type cmd_map_node;
 
-   IntMap::node_type cmd_id_map_node;
+   CmdIdMap::node_type cmd_id_map_node;
 
    // 请求和响应 的 protobuf 对象， 
    google::protobuf::Message * req_msg;
