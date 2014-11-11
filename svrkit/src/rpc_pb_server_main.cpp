@@ -42,6 +42,8 @@
 #include "base/incl/fn_ptr_cast.h"
 #include <linux/netdevice.h>
 
+#include "fd_queue.h"
+
 //DEFINE_string(http_server_address, "", "default use server address");
 
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
@@ -83,6 +85,8 @@ void sig_exit(int sig)
    g_exit_flag=1; 
 }
 
+conet::FdQueue *g_accept_fd_queue = NULL;
+
 struct TaskEnv;
 
 struct Task
@@ -108,6 +112,7 @@ struct Task
 
         int start()
         {
+            tcp_server.accept_fd_queue = g_accept_fd_queue;
             tcp_server.start();
             if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
                 LOG(ERROR)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], failed"; 
@@ -253,7 +258,12 @@ int pre_create_listen_fds()
             LOG(ERROR)<<"listen to ["<<g_rpc_ip_list[i].ip<<":"<<g_rpc_ip_list[i].port<<"failed!";
             return -1;
         }
+
+        listen(rpc_listen_fd,  1000);
+        set_none_block(rpc_listen_fd);
+
         g_rpc_listen_fds.push_back(rpc_listen_fd);
+
     }
     return 0;
 }
@@ -277,9 +287,115 @@ int create_task(TaskEnv *env)
     return 0;
 }
 
+
+static std::map<pid_t, cpu_id_type> g_childs;
+int wait_childs(TaskEnv *env)
+{
+    int status = 0;
+    pid_t pid = waitpid(-1, &status, WNOHANG);
+
+    if (pid < 0) return 0;
+
+    if (g_childs.find(pid) == g_childs.end()) {
+        return 0;
+    }
+
+    if (status != 0)
+    {
+        LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
+    }
+    else {
+        LOG(INFO)<<"work process:"<<pid<<" succes exit, status:"<<status;
+    }
+
+    if (g_exit_flag) {
+        return 0;
+    }
+
+
+    LOG(INFO)<<"restore work process:";
+
+    int cpu_id = g_childs[pid];
+    g_childs.erase(pid);
+    if (!g_exit_flag) {
+        pid = fork(); 
+        if (pid == 0) {
+            g_master_controller = 0;
+            create_task(env);
+            env->run();
+            return 0;;
+        } else if (pid > 0) {
+            g_childs[pid] = cpu_id;
+        } else {
+            LOG(ERROR)<<"for child failed";
+        }
+    }
+
+    return 0;
+}
+
+
+int accept_proc()
+{
+    int num = g_rpc_listen_fds.size();
+
+    static struct pollfd *pfs = new pollfd[num];
+
+    for (int i=0; i<num; ++i)
+    {
+        pfs[i].fd = g_rpc_listen_fds[i];
+        pfs[i].events = (POLLIN | POLLERR | POLLHUP);
+        pfs[i].revents = 0;
+    }
+
+    int ret =  poll(pfs, num, 1000);
+
+    if (ret <=0) return 0;
+
+    int full_flag = 0;
+    for (int i=0; i<num; ++i)
+    {
+        if (pfs[i].revents == 0) {
+            continue;
+        }
+
+        if (pfs[i].revents & POLLERR) {
+            return -1;
+        }
+
+        if (pfs[i].revents & POLLIN) 
+        {
+            int listen_fd = pfs[i].fd;
+
+            for (int j=0; j<100; ++i) 
+            {
+                if (g_accept_fd_queue->full()) {
+                    full_flag = 1;
+                    break;
+                }
+                int fd =  accept(listen_fd, NULL, NULL);
+                if (fd <0) break;
+                if (!g_accept_fd_queue->push_fd(fd))
+                {
+                    LOG(ERROR)<<"too many fd";
+                    close(fd);
+                }
+            }
+        }
+        if (full_flag) break;
+    }
+
+    if (full_flag) 
+    {
+        usleep(10000); // 10 ms
+    }
+   
+
+    return 0;
+}
+
 int proc_process_mode(int proc_num)
 {
-        static std::map<pid_t, cpu_id_type> g_childs;
 
         TaskEnv  *env = new TaskEnv();
 
@@ -310,44 +426,8 @@ int proc_process_mode(int proc_num)
         if (g_master_controller) {
             while(!g_exit_flag && g_master_controller)
             {
-                int status = 0;
-                pid_t pid = wait(&status);
-                if (g_childs.find(pid) == g_childs.end()) {
-                    continue;
-                }
-
-                if (status != 0)
-                {
-                    LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
-                }
-                else {
-                    LOG(INFO)<<"work process:"<<pid<<" succes exit, status:"<<status;
-                }
-
-                if (g_exit_flag) {
-                    continue;
-                }
-
-
+                wait_childs(env);
                 sleep(1);
-
-                LOG(INFO)<<"restore work process:";
-
-                int cpu_id = g_childs[pid];
-                g_childs.erase(pid);
-                if (!g_exit_flag) {
-                   pid = fork(); 
-                   if (pid == 0) {
-                        g_master_controller = 0;
-                        create_task(env);
-                        env->run();
-                        break;
-                   } else if (pid > 0) {
-                       g_childs[pid] = cpu_id;
-                   } else {
-                       LOG(ERROR)<<"for child failed";
-                   }
-                }
             }
 
             if (g_exit_flag && g_master_controller) {
@@ -378,6 +458,8 @@ int proc_thread_mode(int num)
         TaskEnv *envs = new TaskEnv[num];
         std::vector<int> rpc_listen_fds;
 
+        g_accept_fd_queue = conet::FdQueue::create(100000);
+
         for (int i=0; i< num; ++i)
         {
             TaskEnv * env = envs+i;
@@ -389,9 +471,21 @@ int proc_thread_mode(int num)
             pthread_create(&env->tid, NULL, conet::fn_ptr_cast<void *(*)(void*)>(&TaskEnv::run), env);
         }
 
+        
+        while(!g_exit_flag)
+        {
+            accept_proc();
+        }
+
+
         for (int i=0; i< num; ++i)
         {
             pthread_join(envs[i].tid, NULL);
+        }
+
+        if (g_accept_fd_queue) {
+            FdQueue::free(g_accept_fd_queue);
+            g_accept_fd_queue = NULL;
         }
 
         delete[] envs;
@@ -437,7 +531,8 @@ int main(int argc, char * argv[])
     }
 
     ret = pre_create_listen_fds();
-    if (0 == ret) {
+    if (0 == ret) 
+    {
         if (FLAGS_thread_mode == false && FLAGS_work_num > 0) {
             proc_process_mode(FLAGS_work_num);
         } else {

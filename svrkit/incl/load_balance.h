@@ -68,14 +68,14 @@ public:
             m_calls.resize(fd+1000);
         }
 
-        if (m_calls[fd] == 0) {
+        if (m_calls[fd] <= 0) {
             m_calls[fd] = 10000 + m_rand.rand_u32()%10000;
         }
 
         --m_calls[fd];
         if (m_calls[fd] <=0) {
-            close(fd);
-            return 0;
+            //close(fd);
+            //return 0;
         }
         m_fds.push(fd);
         return 0;

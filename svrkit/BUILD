@@ -2,6 +2,7 @@ cc_library(
     name = 'tcp_server',
     srcs = [
         "src/tcp_server.cpp",
+        "src/fd_queue.cpp",
     ],
     incs= [ 
         "incl/",

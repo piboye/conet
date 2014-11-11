@@ -25,6 +25,7 @@
 #include "base/incl/list.h"
 #include "base/incl/obj_pool.h"
 #include "conn_info.h"
+#include "fd_queue.h"
 
 namespace conet
 {
@@ -53,12 +54,6 @@ struct tcp_server_t
     conn_proc_cb_t conn_proc_cb;
     void *cb_arg;
 
-    void set_conn_cb(conn_proc_cb_t cb, void *arg)
-    {
-        conn_proc_cb = cb;
-        cb_arg = arg;
-    }
-
     obj_pool_t co_pool;
 
     ObjPool<conn_info_t> conn_info_pool;
@@ -77,8 +72,20 @@ struct tcp_server_t
     } data;
 
 
+    FdQueue *accept_fd_queue;
+
+
+    void set_conn_cb(conn_proc_cb_t cb, void *arg)
+    {
+        conn_proc_cb = cb;
+        cb_arg = arg;
+    }
+
 
     int main_proc();
+
+    int main_proc2();
+    int main_proc_with_fd_queue();
     
 
     int init(const char *ip, int port, int listen_fd=-1);

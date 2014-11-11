@@ -125,6 +125,8 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
     server->listen_fd = listen_fd;
     server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
     server->co_pool.set_free_obj_func(free_server_work_co, server);
+    server->accept_fd_queue = NULL;
+
     return 0;
 }
 
@@ -145,6 +147,64 @@ int tcp_server_t::main_proc()
 
     this->state = tcp_server_t::SERVER_RUNNING;
 
+    if (this->accept_fd_queue == NULL) {  
+        return this->main_proc2();
+    } else {
+        return this->main_proc_with_fd_queue();
+    }
+}
+
+int tcp_server_t::main_proc_with_fd_queue()
+{
+    std::vector<int> new_fds;
+    conn_info_t * conn_info = this->conn_info_pool.alloc();
+
+    FdQueue *fd_queue = this->accept_fd_queue;
+
+    while (0==this->to_stop) 
+    {
+        while (this->data.cur_conn_num >= this->conf.max_conn_num) 
+        {
+            usleep(10000); // block 10ms
+            if (this->to_stop) 
+            {
+                break;
+            }
+        }
+
+        if (fd_queue->empty()) {
+            usleep(1000); // 1ms;
+        }
+
+        int fd = fd_queue->pop_fd();
+        if (fd >=0) {
+            set_nodelay(fd);
+            set_none_block(fd);
+            ++this->data.cur_conn_num;
+
+            conn_info->server = this;
+
+            conn_info->fd = fd;
+
+            proc_pool(this, conn_info);
+
+            conn_info = this->conn_info_pool.alloc();
+        }
+    }
+
+    if (conn_info) {
+        delete conn_info;
+    }
+
+    this->state = SERVER_STOPED;
+    return 0;
+}
+
+int tcp_server_t::main_proc2()
+{
+    
+    // 不使用 fd pool 
+
     int listen_fd = this->listen_fd; 
     if (listen_fd <0) 
     {
@@ -158,7 +218,7 @@ int tcp_server_t::main_proc()
                 "[errmsg:"<<strerror(errno)<<"]";
             return -1;
         }
-        
+
         this->listen_fd = listen_fd;
     } 
 

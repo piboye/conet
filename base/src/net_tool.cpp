@@ -207,10 +207,10 @@ int set_none_block(int fd, bool enable)
     flags = fcntl(fd, F_GETFL, 0);
     if ( enable)  {
         flags |= O_NONBLOCK;
-        flags |= O_NDELAY;
+        //flags |= O_NDELAY;
     } else {
         flags &= ~O_NONBLOCK;
-        flags &= ~O_NDELAY;
+        //flags &= ~O_NDELAY;
     }
     ret = fcntl(fd, F_SETFL, flags);
 
