@@ -48,17 +48,23 @@ int proc_send(void *arg)
     uint64_t cmd_id = 3;
     std::string errmsg;
     int send_num = FLAGS_send_num;
+    int fd = task->lb->get();
     for (int i=0; i<send_num; ++i) 
     {
         int retcode=0;
-        ret = conet::rpc_pb_call(*task->lb, cmd_id, (google::protobuf::Message *)NULL, (google::protobuf::Message *)NULL, &retcode, &errmsg);
+        ret = conet::rpc_pb_call(fd, cmd_id, (google::protobuf::Message *)NULL, (google::protobuf::Message *)NULL, &retcode, &errmsg);
         if (ret) {
+            close(fd);
+            fd = task->lb->get();
             LOG(ERROR)<<"ret:"<<ret;
             continue;
         }
 
-        if (retcode)
+        if (retcode) {
+            close(fd);
+            fd = task->lb->get();
             LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg:"<<errmsg;
+        }
     }
     ++g_finish_task_num;
     return 0;
@@ -78,6 +84,7 @@ int main(int argc, char * argv[])
         tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
         tasks[i].lb = &lb;
         resume(tasks[i].co);
+        conet::dispatch();
     }
 
     while (g_finish_task_num < FLAGS_task_num) {
