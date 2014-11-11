@@ -31,6 +31,7 @@ cc_library(
         'src/pb_obj_pool.cpp',
         'src/cpu_affinity.cpp',
         'src/fixed_mempool.cpp',
+        'src/unix_socket_send_fd.cpp',
     ],
 
     incs= [ 

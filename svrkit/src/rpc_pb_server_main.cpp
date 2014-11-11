@@ -41,6 +41,7 @@
 #include "base/incl/gcc_builtin_help.h"
 #include "base/incl/fn_ptr_cast.h"
 #include <linux/netdevice.h>
+#include "base/incl/unix_socket_send_fd.h"
 
 #include "fd_queue.h"
 
@@ -108,20 +109,10 @@ struct Task
         }
 
 
+        int start();
+
         int init(TaskEnv *env);
 
-        int start()
-        {
-            tcp_server.accept_fd_queue = g_accept_fd_queue;
-            tcp_server.start();
-            if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
-                LOG(ERROR)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], failed"; 
-                return 0;
-            }
-            fprintf(stderr, "listen to [%s:%d]\n, success\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
-            LOG(INFO)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], success"; 
-            return 0;
-        }
 
         int stop(int timeout)
         {
@@ -142,11 +133,14 @@ struct TaskEnv
   int exit_finsished;
   int cpu_id;
 
+  conet::UnixSocketSendFd fd_pool;
+
   TaskEnv()
   {
       exit_finsished = 0;
       cpu_id = -1;
       base_server.get_global_server_cmd();
+      fd_pool.init();
   }
 
   std::vector<Task *> tasks;
@@ -214,6 +208,9 @@ struct TaskEnv
 
 };
 
+
+static std::vector<TaskEnv*> g_task_env;
+
 int Task::init(TaskEnv *env)
 {
     this->env = env;
@@ -223,6 +220,19 @@ int Task::init(TaskEnv *env)
     ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
 
     return ret;
+}
+
+int Task::start()
+{
+    tcp_server.accept_fd_queue = &env->fd_pool;
+    tcp_server.start();
+    if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
+        LOG(ERROR)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], failed"; 
+        return 0;
+    }
+    fprintf(stderr, "listen to [%s:%d]\n, success\n", rpc_ip_port.ip.c_str(), rpc_ip_port.port);
+    LOG(INFO)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], success"; 
+    return 0;
 }
 
 static int g_master_controller = 1;
@@ -261,15 +271,18 @@ int pre_create_listen_fds()
 
         listen(rpc_listen_fd,  1000);
         set_none_block(rpc_listen_fd);
-
         g_rpc_listen_fds.push_back(rpc_listen_fd);
-
     }
     return 0;
 }
 
 int create_task(TaskEnv *env)
 {
+    Task  *task = new Task();
+    task->init(env);
+    env->add(task);
+    return 0;
+
     for (size_t i = 0; i< g_rpc_ip_list.size(); ++i)
     {
         int rpc_listen_fd =  get_listen_fd(g_rpc_ip_list[i].ip.c_str(), g_rpc_ip_list[i].port, g_rpc_listen_fds[i]);
@@ -278,7 +291,6 @@ int create_task(TaskEnv *env)
             return -1;
         }
 
-        Task  *task = new Task();
         task->rpc_ip_port = g_rpc_ip_list[i];
         task->rpc_listen_fd= rpc_listen_fd;
         task->init(env);
@@ -288,8 +300,9 @@ int create_task(TaskEnv *env)
 }
 
 
-static std::map<pid_t, cpu_id_type> g_childs;
-int wait_childs(TaskEnv *env)
+static std::map<pid_t, TaskEnv *> g_childs;
+
+int wait_childs()
 {
     int status = 0;
     pid_t pid = waitpid(-1, &status, WNOHANG);
@@ -315,8 +328,9 @@ int wait_childs(TaskEnv *env)
 
     LOG(INFO)<<"restore work process:";
 
-    int cpu_id = g_childs[pid];
+    TaskEnv *env = g_childs[pid];
     g_childs.erase(pid);
+
     if (!g_exit_flag) {
         pid = fork(); 
         if (pid == 0) {
@@ -325,7 +339,7 @@ int wait_childs(TaskEnv *env)
             env->run();
             return 0;;
         } else if (pid > 0) {
-            g_childs[pid] = cpu_id;
+            g_childs[pid] = env;
         } else {
             LOG(ERROR)<<"for child failed";
         }
@@ -341,6 +355,8 @@ int accept_proc()
 
     static struct pollfd *pfs = new pollfd[num];
 
+    static uint64_t put_pos = 0;
+
     for (int i=0; i<num; ++i)
     {
         pfs[i].fd = g_rpc_listen_fds[i];
@@ -353,6 +369,7 @@ int accept_proc()
     if (ret <=0) return 0;
 
     int full_flag = 0;
+    int task_env_num = g_task_env.size();
     for (int i=0; i<num; ++i)
     {
         if (pfs[i].revents == 0) {
@@ -367,18 +384,25 @@ int accept_proc()
         {
             int listen_fd = pfs[i].fd;
 
-            for (int j=0; j<100; ++i) 
+            for (int j=0; j<100; ++j) 
             {
-                if (g_accept_fd_queue->full()) {
-                    full_flag = 1;
-                    break;
-                }
                 int fd =  accept(listen_fd, NULL, NULL);
                 if (fd <0) break;
-                if (!g_accept_fd_queue->push_fd(fd))
+
+                for (int k =0; k<10; ++k)
                 {
-                    LOG(ERROR)<<"too many fd";
-                    close(fd);
+                    int ps = (++put_pos)%task_env_num;
+                    TaskEnv * env = g_task_env[ps];
+                    ret = env->fd_pool.send_fd(fd);
+                    if (0 == ret) {
+                       break;
+                    }
+                    LOG(ERROR)<<"put unix fd failed, ret:"<<ret;
+                }
+
+                close(fd);
+                if (ret) {
+                    full_flag = 1;
                 }
             }
         }
@@ -389,7 +413,6 @@ int accept_proc()
     {
         usleep(10000); // 10 ms
     }
-   
 
     return 0;
 }
@@ -397,19 +420,15 @@ int accept_proc()
 int proc_process_mode(int proc_num)
 {
 
-        TaskEnv  *env = new TaskEnv();
-
-        if (!g_cpu_set.empty()) {
-            env->cpu_id = g_cpu_set[0];
-        }
-
         int num = proc_num;
 
         for (int i=0; i< num; ++i)
         {
+            TaskEnv  *env = new TaskEnv();
             if (!g_cpu_set.empty()) {
                 env->cpu_id = g_cpu_set[i%g_cpu_set.size()];
             }
+            g_task_env.push_back(env);
             pid_t pid = fork();
             if (pid == 0) {
                 g_master_controller = 0;
@@ -417,7 +436,8 @@ int proc_process_mode(int proc_num)
                 env->run();
                 break;
             } else if (pid > 0) {
-                g_childs[pid] = env->cpu_id;
+                env->pid = pid;
+                g_childs[pid] = env;
             } else {
                 LOG(ERROR)<<"for child failed";
             }
@@ -426,28 +446,32 @@ int proc_process_mode(int proc_num)
         if (g_master_controller) {
             while(!g_exit_flag && g_master_controller)
             {
-                wait_childs(env);
-                sleep(1);
+                accept_proc();
+                wait_childs();
             }
 
             if (g_exit_flag && g_master_controller) {
                 AUTO_VAR(it, = , g_childs.begin());
                 for (; it != g_childs.end(); ++it) {
                     if (it->second > 0) { 
-                        kill(it->second, SIGINT);
+                        kill(it->second->pid, SIGINT);
                     }
                 }
                 for (it = g_childs.begin(); it != g_childs.end(); ++it)
                 {
                     int status =0;
                     if (it->second > 0) { 
-                        waitpid(it->second, &status, 0);
+                        waitpid(it->second->pid, &status, 0);
                     }
                 }
             }
         }
-        delete env;
 
+        
+        for (int i=0; i<num; ++i)
+        {
+            delete g_task_env[i];
+        }
         return 0;
 }
 

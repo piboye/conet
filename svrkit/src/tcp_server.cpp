@@ -159,8 +159,14 @@ int tcp_server_t::main_proc_with_fd_queue()
     std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
 
-    FdQueue *fd_queue = this->accept_fd_queue;
+    UnixSocketSendFd *fd_queue = this->accept_fd_queue;
 
+    int unix_fd = fd_queue->get_recv_handle();
+    set_none_block(unix_fd, true);
+    int ret =0;
+
+    int accept_num = FLAGS_accept_num;
+    std::vector<int> fds;
     while (0==this->to_stop) 
     {
         while (this->data.cur_conn_num >= this->conf.max_conn_num) 
@@ -172,23 +178,42 @@ int tcp_server_t::main_proc_with_fd_queue()
             }
         }
 
-        if (fd_queue->empty()) {
-            usleep(1000); // 1ms;
+        struct pollfd pf = { 0 };
+        pf.fd = unix_fd;
+        pf.events = (POLLIN|POLLERR|POLLHUP);
+        ret = co_poll(&pf, 1, 1000);
+        if (ret == 0) continue;
+        if (ret <0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
         }
 
-        int fd = fd_queue->pop_fd();
-        if (fd >=0) {
-            set_nodelay(fd);
-            set_none_block(fd);
-            ++this->data.cur_conn_num;
+        for (size_t i=0; i<accept_num; ++i)
+        {
+            int fd = -1;
+            fds.clear();
+            ret = fd_queue->recv_fd(&fds);
+            if (ret == 0 && fds.size() >0) {
+                for (size_t j = 0, len = fds.size(); j<len; ++j)
+                {
+                    int fd = fds[j];
+                    set_nodelay(fd);
+                    set_none_block(fd);
+                    ++this->data.cur_conn_num;
 
-            conn_info->server = this;
+                    conn_info->server = this;
 
-            conn_info->fd = fd;
+                    conn_info->fd = fd;
 
-            proc_pool(this, conn_info);
+                    proc_pool(this, conn_info);
 
-            conn_info = this->conn_info_pool.alloc();
+                    conn_info = this->conn_info_pool.alloc();
+                }
+            } else {
+                break;
+            }
         }
     }
 

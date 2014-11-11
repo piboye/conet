@@ -25,7 +25,7 @@
 #include "base/incl/list.h"
 #include "base/incl/obj_pool.h"
 #include "conn_info.h"
-#include "fd_queue.h"
+#include "base/incl/unix_socket_send_fd.h"
 
 namespace conet
 {
@@ -72,7 +72,7 @@ struct tcp_server_t
     } data;
 
 
-    FdQueue *accept_fd_queue;
+    UnixSocketSendFd *accept_fd_queue;
 
 
     void set_conn_cb(conn_proc_cb_t cb, void *arg)

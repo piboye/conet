@@ -98,6 +98,7 @@ int rpc_pb_call_impl(int fd,
         // timeout;
         return -2;
     }
+
     if (ret <0) {
         return -1;
     }
