@@ -45,10 +45,13 @@ public:
     class TcpChannel;
 
     list_head m_req_queue; 
-    wait_queue_t m_req_wait;
+
+
+    cond_wait_queue_t m_req_wait;
 
     IntMap m_in_queue;
     uint64_t m_seq_id;
+    int m_req_num;
     std::vector<TcpChannel *> m_channels;
 
 public:
@@ -66,6 +69,7 @@ public:
             google::protobuf::Message * rsp, 
             int *retcode, std::string *errmsg, int timeout);
 
+    static int is_send_data(void *arg);
 };
 
 }

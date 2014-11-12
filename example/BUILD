@@ -33,16 +33,16 @@ cc_binary(
            ],
 )
 
-#cc_binary(
-#    name = "echo_rpc_cli_duplex",
-#    srcs = ["echo_rpc_cli_duplex.cpp"],
-#    deps = [
-#            ":echo_rpc_proto", 
-#            "//svrkit:client_base", 
-#            #"//thirdparty/perftools:tcmalloc_debug",
-#            #"//thirdparty/perftools:profiler",
-#            "#dl", "#pthread"],
-#)
+cc_binary(
+    name = "echo_rpc_cli_duplex",
+    srcs = ["echo_rpc_cli_duplex.cpp"],
+    deps = [
+            ":echo_rpc_proto", 
+            "//svrkit:client_base", 
+            #"//thirdparty/perftools:tcmalloc_debug",
+            #"//thirdparty/perftools:profiler",
+            "#dl", "#pthread"],
+)
 
 cc_binary(
     name = "echo_rpc_cli_co",

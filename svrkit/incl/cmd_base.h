@@ -23,6 +23,7 @@
 #include <string.h>
 #include "../../base/incl/net_tool.h"
 #include "google/protobuf/message.h"
+#include "glog/logging.h"
 
 namespace conet
 {
@@ -177,6 +178,55 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
     ret = send_data(fd, ps->buff, out_len+4, timeout);
 
     return ret;
+}
+
+inline
+int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
+{
+    uint32_t out_len = 0;
+    int ret = 0;
+    uint32_t max_len = 1000; // cmd base 预留
+
+    uint32_t msg_len = 0;
+    if (msg ) {
+        msg_len = msg->ByteSize();
+        max_len += msg_len;
+    }
+
+    out->resize(max_len);
+
+    char *ptr = &(*out)[0];
+
+    pb_buff_t pb_buff;
+
+    pb_init_buff(&pb_buff, (void *)(ptr+4), max_len -4);
+    
+    cmd_base->serialize_common(pb_buff);
+    if (msg) 
+    {
+        ret = pb_add_string_head(&pb_buff, 5, msg_len);
+        if (ret) {
+            return -1;
+        }
+
+        if (pb_buff.left - msg_len<=0) 
+        {
+            return -2;
+        }
+
+        msg->SerializeWithCachedSizesToArray((uint8_t *)pb_buff.ptr);
+
+        pb_buff.ptr += msg_len;
+        pb_buff.left -= msg_len;
+    }
+
+    out_len = pb_get_encoded_length(&pb_buff);
+
+     
+    *((uint32_t *)(ptr)) = htonl(out_len);
+
+    out->resize(out_len + 4);
+    return 0;
 }
 
 }

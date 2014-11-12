@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "rpc_pb_client_duplex.h"
 #include "thirdparty/glog/logging.h"
+#include "cmd_base.h"
 
 namespace conet
 {
@@ -46,6 +47,8 @@ namespace conet
         public:
             RpcPbClientDuplex * m_client;
             int m_fd;
+            int m_rfd;
+            int m_wfd;
             std::string m_ip;
             int m_port;
             int m_stop_flag;
@@ -84,7 +87,7 @@ namespace conet
             {
                 m_stop_flag = 1;
                 if (m_mgr_co) {
-                    wakeup_all(&m_client->m_req_wait);
+                    m_client->m_req_wait.wakeup_all();
                     conet::wait(m_mgr_co);
                     conet::free_coroutine(m_mgr_co);
                 }
@@ -94,7 +97,8 @@ namespace conet
             int mgr_proc()
             {
                 
-                while(!m_stop_flag) {
+                while(!m_stop_flag) 
+                {
                     m_fd = conet::connect_to(m_ip.c_str(), m_port);
                     if (m_fd<0) {
                         //usleep(1000);
@@ -129,53 +133,53 @@ namespace conet
                 return 0;
             }
 
-
-            int send_req(int fd, ReqCtx *req_ctx)
-            {
-                if (fd <0) {
-                    LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
-                    return -3;
-                }
-                int ret = 0;
-
-                conet_rpc_pb::CmdBase req_base;
-                req_base.set_cmd_name(req_ctx->m_cmd_name);
-                req_base.set_seq_id(req_ctx->m_seq_id);
-                req_base.set_type(conet_rpc_pb::CmdBase::REQUEST_TYPE);
-                req_base.set_body(req_ctx->m_req->SerializeAsString());
-
-                std::vector<char> out_buf;
-
-                ret = conet::send_pb_obj(m_fd, req_base, &out_buf, req_ctx->m_timeout);
-
-                if (ret <=0) {
-                    LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
-                    return -4;
-                }
-                return 0;
-            }
-
-
             int send_proc()
             {
                 int ret = 0;
+                std::vector<std::vector<char> *> send_datas;
+                cmd_base_t cmd_base;
+                cmd_base.init();
+                cmd_base.type = conet_rpc_pb::CmdBase::REQUEST_TYPE;
+
+                m_wfd = dup(m_fd);
+
+                int fd = m_wfd;
                 while((!m_stop_flag) && (!m_read_stop))
                 {
                     if (list_empty(&m_client->m_req_queue)) {
-                        conet::wait_on(&m_client->m_req_wait);
+                        m_client->m_req_wait.wait_on();
                         continue;
                     }
+
+                    
                     ReqCtx *req_ctx = NULL, *n=NULL;
                     list_for_each_entry_safe(req_ctx, n, &m_client->m_req_queue, m_link) 
                     {
                         list_del_init(&req_ctx->m_link);
-                        ret = send_req(m_fd, req_ctx);
-                        if (ret) {
-                            m_send_stop = 1;
-                            break;
-                        }
+                        std::vector<char> *send_data = new std::vector<char>();
+
+                        init_ref_str(&cmd_base.cmd_name, req_ctx->m_cmd_name);
+                        cmd_base.seq_id = req_ctx->m_seq_id;
+                        serialize_cmd_base(send_data, &cmd_base, req_ctx->m_req);
+                                
+                        send_datas.push_back(send_data);
+                    }
+                    m_client->m_req_num = 0;
+
+                    ret = write_all(fd, send_datas);
+
+                    for (size_t i=0; i< send_datas.size(); ++i)
+                    {
+                        delete send_datas[i];
+                    }
+                    send_datas.clear();
+
+                    if (ret) {
+                        m_send_stop = 1;
+                        break;
                     }
                 }
+                close(m_wfd);
                 return 0;
             }
 
@@ -186,48 +190,63 @@ namespace conet
                 int packet_len = 0;
                 conet_rpc_pb::CmdBase resp_base;
 
-                ret = stream.read_packet(&data, &packet_len, 10000);
+                ret = stream.read_packet(&data, &packet_len, 10000, 1);
 
                 if (ret <=0) {
                     return 0;
                 }
 
-                if (!resp_base.ParseFromArray(data, packet_len)) {
-                    LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
-                    return -6;
-                }
-                uint64_t seq_id = resp_base.seq_id();
+                while (1)
+                {
+                    if (data == NULL || packet_len <=0) {
+                        LOG(ERROR)<<"[rpc_pb_client] nodata";
+                        return 0;
+                    }
 
-                conet::IntMap::Node * node = m_client->m_in_queue.find(seq_id);
-                if (node == NULL) {
-                    LOG(ERROR)<<"rpc_pb_client get rsp node failed, seq_id:"<<seq_id;
-                    return -7;
-                }
+                    if (!resp_base.ParseFromArray(data, packet_len)) {
+                        LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
+                        return -6;
+                    }
+                    uint64_t seq_id = resp_base.seq_id();
 
-                ReqCtx *req_ctx = container_of(node, ReqCtx, m_map_node);
+                    conet::IntMap::Node * node = m_client->m_in_queue.find(seq_id);
+                    if (node == NULL) {
+                        LOG(ERROR)<<"rpc_pb_client get rsp node failed, seq_id:"
+                            <<seq_id<<" rsp:"<<resp_base.ShortDebugString();
+                        return -7;
+                    }
 
-                int retcode = resp_base.ret();
-                if (retcode) {
-                    if (resp_base.has_errmsg()) {
-                        if (req_ctx->m_errmsg) {
-                            *req_ctx->m_errmsg = resp_base.errmsg();
+                    ReqCtx *req_ctx = container_of(node, ReqCtx, m_map_node);
+
+                    int retcode = resp_base.ret();
+                    if (retcode) {
+                        if (resp_base.has_errmsg()) {
+                            if (req_ctx->m_errmsg) {
+                                *req_ctx->m_errmsg = resp_base.errmsg();
+                            }
                         }
                     }
-                }
 
-                if (req_ctx->m_rsp) {
-                    req_ctx->m_rsp->ParseFromString(resp_base.body());
-                }
+                    if (req_ctx->m_rsp) {
+                        req_ctx->m_rsp->ParseFromString(resp_base.body());
+                    }
 
-                conet::resume(req_ctx->m_co, 0);
+                    conet::resume(req_ctx->m_co, 0);
+                    ret = stream.next_packet(&data, &packet_len);
+                    if ( ret != 0 ) {
+                        break;
+                    }
+                }
                 return 0;
 
             }
 
             int read_proc()
             {
-                PacketStream stream;
-                stream.init(m_fd, 1024*1024);
+                PacketStream stream(1024*1024);
+                m_rfd = dup(m_fd);
+                int fd = m_rfd;
+                stream.init(fd);
 
                 int ret = 0;
                 while((!m_stop_flag) && (!m_send_stop))
@@ -238,6 +257,7 @@ namespace conet
                         break;
                     }
                 }
+                close(m_rfd);
                 return 0;
             }
     };
@@ -256,8 +276,23 @@ namespace conet
         INIT_LIST_HEAD(&m_req_queue);
         m_in_queue.init(1000);
         m_seq_id = conet::rdtscp(); 
-        init_wait_queue(&m_req_wait);  
+        m_req_wait.cond_func = &RpcPbClientDuplex::is_send_data;
+        m_req_wait.func_arg = this;
+        m_req_wait.delay_ms = 1;
+        m_req_num = 0;
+
     }
+
+    int RpcPbClientDuplex::is_send_data(void *arg)
+    {
+        RpcPbClientDuplex * self = (RpcPbClientDuplex *)(arg);
+        if (self->m_req_num >= 10) {
+            return 1;
+        }
+
+        return 0;
+    }
+
 
     int RpcPbClientDuplex::stop() 
     {
@@ -326,11 +361,13 @@ namespace conet
         set_timeout(&req_ctx.m_th, timeout);
 
         req_ctx.m_co = conet::current_coroutine();
+        ++this->m_req_num;
 
-        conet::wakeup_head(&m_req_wait);
+        m_req_wait.wakeup_all();
 
         int ret = (int)(uint64_t)conet::yield(NULL, NULL);
 
+        cancel_timeout(&req_ctx.m_th);
         list_del(&req_ctx.m_link); 
         m_in_queue.remove(&req_ctx.m_map_node); 
 
@@ -339,7 +376,6 @@ namespace conet
            return -1;
         }
 
-        cancel_timeout(&req_ctx.m_th);
 
         return 0;
     }

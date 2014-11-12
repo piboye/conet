@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "rpc_pb_server.h"
+#include "async_rpc_pb_server.h"
 #include "rpc_pb_server_base.h"
 
 #include "thirdparty/glog/logging.h"
@@ -95,7 +96,7 @@ struct Task
 
         conet::tcp_server_t tcp_server;    
         conet::http_server_t http_server;    
-        conet::rpc_pb_server_t rpc_server;    
+        conet::async_rpc_pb_server_t rpc_server;    
 
         ip_port_t rpc_ip_port;
 
@@ -479,14 +480,14 @@ int proc_process_mode(int proc_num)
 
 int proc_thread_mode(int num)
 {
-        TaskEnv *envs = new TaskEnv[num];
         std::vector<int> rpc_listen_fds;
 
         g_accept_fd_queue = conet::FdQueue::create(100000);
 
         for (int i=0; i< num; ++i)
         {
-            TaskEnv * env = envs+i;
+            TaskEnv  *env = new TaskEnv();
+            g_task_env.push_back(env);
             if (!g_cpu_set.empty()) {
                 env->cpu_id = g_cpu_set[i%g_cpu_set.size()];
             }
@@ -504,7 +505,7 @@ int proc_thread_mode(int num)
 
         for (int i=0; i< num; ++i)
         {
-            pthread_join(envs[i].tid, NULL);
+            pthread_join(g_task_env[i]->tid, NULL);
         }
 
         if (g_accept_fd_queue) {
@@ -512,7 +513,10 @@ int proc_thread_mode(int num)
             g_accept_fd_queue = NULL;
         }
 
-        delete[] envs;
+        for (int i=0; i<num; ++i)
+        {
+            delete g_task_env[i];
+        }
         return 0;
 }
 

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <malloc.h>
+#include <vector>
 
 namespace conet
 {
@@ -70,7 +71,7 @@ public:
     {
         fd = -1;
         this->max_size = max_size;
-        buff = (char *)memalign(max_size, 64); // 64 byte is cpu cache_line size
+        buff = (char *)memalign(64, max_size); // 64 byte is cpu cache_line size
         prev_pos = 0;
         total_len = 0;
         is_http = false;
@@ -90,12 +91,17 @@ public:
     int read_packet(char **pack, int * pack_len, int timeout, int has_data=0); 
     int read_packet(char **pack, int * pack_len);
 
+    // 获取当前缓存的下一个包
+    int next_packet(char **pack, int * pack_len);
+
     ~PacketStream()
     {
         if (buff) free(buff);
     }
 
 };
+
+int write_all(int fd, std::vector<std::vector<char>*> const &out_datas);
 
 int can_reuse_port();
 

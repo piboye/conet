@@ -64,8 +64,10 @@ struct async_rpc_pb_server_t
 
     PacketStream *alloc_packet_stream();
 
-    static int proc_rpc_pb_async(conn_info_t *conn);
+    int proc_rpc_pb_async(conn_info_t *conn);
+
     static int proc_worker(void *);
+
 };
 
 }

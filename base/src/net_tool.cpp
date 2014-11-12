@@ -34,6 +34,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 
 #include "time_helper.h"
 #include "glog/logging.h"
@@ -337,6 +338,31 @@ const char* get_local_ip(const char* pIfConf)
     return NULL;
 }
 
+// 获取下一个包
+int PacketStream::next_packet(char **pack, int * pack_len)
+{
+    uint32_t len = 0;
+    uint32_t cur_len = 0;
+
+    if (4+prev_pos > total_len) {
+       return -1;
+    }
+    cur_len = total_len - prev_pos;
+
+    len = ntohl(*(uint32_t *)(buff+prev_pos));
+
+    if (cur_len < len+4) {
+        return -2;
+    }
+
+
+    *pack = buff+prev_pos+4;
+    *pack_len = (int) len;
+
+    prev_pos += (len+4);
+    return 0;
+}
+
 int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_has_data) 
 {
     uint32_t len = 0;
@@ -377,7 +403,10 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
 
     len = ntohl(*(uint32_t *)(buff));
 
-    if ((int32_t) len <=0) return -1;
+    if ((int32_t) len <=0) {
+         LOG(ERROR)<<"error len:"<<len<<" recv len:"<<cur_len;
+         return -1;
+    }
     if ((int32_t) len + 4 >  max_size) return -4;
 
     while (cur_len - 4 < (int)len) {
@@ -450,6 +479,50 @@ int PacketStream::read_packet(char **pack, int * pack_len)
     *pack = buff + 4;
 
     return 1; 
+}
+
+int write_all(int fd, std::vector<std::vector<char>*> const &out_datas)
+{
+        size_t total_len = 0;
+        size_t cnt = out_datas.size();
+        iovec *iov = new iovec[cnt];
+        size_t *need_outs = new size_t[cnt];
+
+        for(size_t i=0; i< cnt; ++i)
+        {
+            iov[i].iov_base = (void *)&((*out_datas[i])[0]);
+            iov[i].iov_len = out_datas[i]->size();
+            total_len += iov[i].iov_len;
+            need_outs[i] = total_len;
+        }
+
+        size_t wret = 0; 
+        size_t wlen = 0; 
+        size_t start_pos = 0;
+        do {
+            size_t w_cnt = std::min<size_t>(cnt-start_pos, 10);
+            wret = writev(fd, iov + start_pos, w_cnt);
+            if (wret <=0) {
+                break;
+            }
+            wlen += wret;
+            if (wlen >= total_len) break;
+            size_t pos = std::upper_bound(need_outs+start_pos, need_outs+cnt, wlen) - need_outs; 
+            start_pos = pos;
+            size_t nlen = wlen + iov[pos].iov_len;
+            if (nlen > need_outs[pos])
+            {
+                size_t l = nlen-need_outs[pos];
+                iov[pos].iov_base = (char *)iov[pos].iov_base + l; 
+                iov[pos].iov_len -= l; 
+            }
+        } while(wlen < total_len);
+
+        delete iov;
+        delete need_outs;
+
+        if (wlen == total_len) return 0;
+        return -1;
 }
 
 }

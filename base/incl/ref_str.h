@@ -58,6 +58,13 @@ void init_ref_str(ref_str_t *d, std::string const &v)
 }
 
 inline
+void init_ref_str(struct ref_str_t * s, char const *start)
+{
+    s->len = (uint32_t)strlen(start);
+    s->data = (char *)start; 
+}
+
+inline
 void init_ref_str(struct ref_str_t * s, char const *start, size_t len)
 {
     s->len = (uint32_t)len;

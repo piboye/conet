@@ -74,7 +74,7 @@ struct cond_wait_queue_t
 
     cond_wait_queue_t();
 
-    int wain_on(int times=-1);
+    int wait_on(int times=-1);
 
     int wakeup_all();
 

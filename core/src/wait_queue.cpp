@@ -57,7 +57,11 @@ int wait_on(wait_queue_t *q, int ms)
 
      yield(NULL, NULL);
 
+
      --q->wait_num; 
+     if (ms >=0) {
+        cancel_timeout(&w.tm);
+     }
 
      if (w.expired_flag) {
          //timeout
@@ -169,9 +173,9 @@ void cond_wait_queue_t::timeout_proc(void *arg)
     return;
 }
 
-int cond_wait_queue_t::wain_on(int times)
+int cond_wait_queue_t::wait_on(int times)
 {
-    return wait_on(&this->wait_queue, times);
+    return conet::wait_on(&this->wait_queue, times);
 }
 
 int cond_wait_queue_t::wakeup_all()

@@ -268,8 +268,7 @@ void cancel_timeout(timeout_handle_t *obj) {
 
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval)
 {
-    assert(list_empty(&obj->link_to));
-    assert (timeout >=0);
+    list_del_init(&obj->link_to);
     if (timeout <0) timeout = 0;
     uint64_t cur_ms = get_cur_ms(tw);
     uint64_t t = cur_ms + timeout;
@@ -337,7 +336,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
             if (time_after_eq(cur_ms, t1->timeout)) {
                 cancel_timeout(t1);
                 if (t1->interval) {
-                    set_timeout_impl(t1->tw, t1, t1->interval, t1->interval);
+                    set_timeout_impl(tw, t1, t1->interval, t1->interval);
                 }
                 t1->fn(t1->arg);
                 ++cnt;
@@ -351,7 +350,6 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
     tw->prev_ms = cur_ms;
     return cnt;
 }
-
 
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
 {
