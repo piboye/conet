@@ -10,103 +10,267 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboye
  *   Organization:  
  *
  * =====================================================================================
  */
 #include <stdlib.h>
+#include <queue>
+#include <vector>
+#include <list>
+
+#include "async_rpc_pb_server.h"
+
+#include "rpc_pb_server_base.h"
+#include "rpc_pb_server_base_impl.h"
+#include "tcp_server.h"
+#include "http_server.h"
+#include "base/incl/fn_ptr_cast.h"
+
+
+#include "base/incl/net_tool.h"
+#include "base/incl/auto_var.h"
+#include "glog/logging.h"
+#include "core/incl/wait_queue.h"
+#include "base/incl/obj_pool.h"
+#include "cmd_base.h"
+
+namespace conet
+{
+
+struct rpc_pb_conn_asyc_ctx_t;
 
 struct rpc_pb_cmd_ctx_t
 {
-    CmdBase *cmd_base;
+    rpc_pb_conn_asyc_ctx_t * conn_ctx;
+    cmd_base_t *cmd_base;
     rpc_pb_cmd_t *cmd; 
 };
 
+static 
+void free_server_work_co(void *arg, void * val)
+{
+    conet::coroutine_t * co = (conet::coroutine_t *) (val);
+    resume(co, NULL);
+}
+
+
+static 
+void * alloc_server_work_co(void *arg)
+{
+    async_rpc_pb_server_t * server  = (async_rpc_pb_server_t *)(arg);
+    conet::coroutine_t * co = alloc_coroutine((&async_rpc_pb_server_t::proc_worker), server);
+    set_auto_delete(co);
+    return co;
+}
+
+static 
+void free_packet_stream(void *arg, void *ps)
+{
+    PacketStream *ps2 = (PacketStream *)(ps);
+    delete ps2;
+}
+
+PacketStream *async_rpc_pb_server_t::alloc_packet_stream()
+{
+    int max_size = this->tcp_server->conf.max_packet_size;    
+    PacketStream *ps = new PacketStream(max_size);
+    ps->is_http = this->http_server && (this->tcp_server == this->http_server->tcp_server);
+    return ps;
+}
+
+int async_rpc_pb_server_t::init(
+        rpc_pb_server_base_t *base_server,
+        tcp_server_t * tcp_server,
+        http_server_t * http_server
+    )
+{
+    this->base_server = base_server;
+    this->tcp_server = tcp_server;
+    this->http_server = http_server;
+    if (http_server)  
+    {
+        base_server->registry_all_rpc_http_api(http_server, this->http_base_path);
+    }
+    tcp_server->set_conn_cb(fn_ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_rpc_pb_async), this);
+
+    this->m_packet_stream_pool.set_alloc_obj_func(fn_ptr_cast<obj_pool_t::alloc_func_t>(&async_rpc_pb_server_t::alloc_packet_stream), this);
+    this->m_packet_stream_pool.set_free_obj_func(free_packet_stream, NULL);
+
+    this->worker_pool.set_alloc_obj_func(alloc_server_work_co, this);
+    this->worker_pool.set_free_obj_func(free_server_work_co, this);
+
+    return 0;
+}
+
 struct rpc_pb_conn_asyc_ctx_t
 {
-    conet::ObjPool<CmdBase> *cmd_base_pool; 
     conn_info_t *conn;
     int fd;
-    server_t * server_base;
-    rpc_pb_server_t * server;
+    tcp_server_t * tcp_server;
+    async_rpc_pb_server_t * server;
     int cur_req_num;
 
-    std::queue<rpc_pb_cmd_ctx_t*> cmd_queue;
-    conet::wait_queue_t req_wait;
+    std::vector<std::vector<char>*> tx_queue;
 
-    std::vector<std::string*> tx_queue;
-    conet::wait_queue_t rsp_wait;
+    uint32_t  tx_bytes;
+
+    ObjPool<std::vector<char> >  free_buffers;
+
+    ObjPool<rpc_pb_cmd_ctx_t>  cmd_ctx_pool;
+
+    conet::cond_wait_queue_t rsp_wait;
+
     int to_stop;
 
     int w_stop;
     int r_stop;
+
+    //判断是否需要立刻唤醒发送者
+    static int is_send_data(void *arg)
+    {
+        rpc_pb_conn_asyc_ctx_t * self = (rpc_pb_conn_asyc_ctx_t *)(arg);
+        if (self->tx_queue.size() >= 10) {
+            return 1;
+        }
+
+        if (self->tx_bytes >= 1024)
+        {
+            return 2;
+        }
+
+        return 0;
+    }
+
+    rpc_pb_conn_asyc_ctx_t()
+    {
+        tx_bytes = 0;
+        this->rsp_wait.cond_func = &rpc_pb_conn_asyc_ctx_t::is_send_data;
+        this->rsp_wait.func_arg = this;
+        this->rsp_wait.delay_ms = 1 ; // 有数据的话， 1ms 后肯定会发送
+    }
+
+    ~rpc_pb_conn_asyc_ctx_t()
+    {
+        for (size_t i=0; i<tx_queue.size(); ++i)
+        {
+            delete tx_queue[i];
+        }
+    }
 };
 
-static int proc_rpc_pb_work_co(rpc_pb_conn_asyc_ctx_t *ctx)
+static 
+int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
-    conet::ObjPool<CmdBase> *cmd_base_pool=ctx->cmd_base_pool; 
-    conn_info_t *conn = ctx->conn;
-    server_t * server_base= ctx->server_base; 
-    rpc_pb_server_t * server = ctx->server;
+    uint32_t out_len = 0;
+    int ret = 0;
+    uint32_t max_len = 20; // cmd base 预留
+
+    uint32_t msg_len = 0;
+    if (msg ) {
+        msg_len = msg->ByteSize();
+        max_len += msg_len;
+    }
+
+    out->resize(max_len);
+
+    char *ptr = &(*out)[0];
+
+    pb_buff_t pb_buff;
+
+    pb_init_buff(&pb_buff, (void *)(ptr+4), max_len -4);
+    
+    cmd_base->serialize_common(pb_buff);
+    if (msg) 
+    {
+        ret = pb_add_string_head(&pb_buff, 5, msg_len);
+        if (ret) {
+            return -1;
+        }
+
+        if (pb_buff.left - msg_len<=0) 
+        {
+            return -2;
+        }
+
+        msg->SerializeWithCachedSizesToArray((uint8_t *)pb_buff.ptr);
+
+        pb_buff.ptr += msg_len;
+        pb_buff.left -= msg_len;
+    }
+
+    out_len = pb_get_encoded_length(&pb_buff);
+
+     
+    *((uint32_t *)(&(*out)[0])) = htonl(out_len);
+
+    out->resize(out_len + 4);
+
+    return 0;
+}
+
+int async_rpc_pb_server_t::proc_worker(void *arg)
+{
+    async_rpc_pb_server_t *server = (async_rpc_pb_server_t *)(arg);
+    tcp_server_t *tcp_server = server->tcp_server;
 
     rpc_pb_ctx_t rpc_ctx;
 
     rpc_ctx.server = server;
-    rpc_ctx.conn_info = conn;
 
-    while (0 == server_base->to_stop && 0 == ctx->r_stop)
+    std::string errmsg;
+    rpc_pb_cmd_ctx_t *cmd_ctx = (rpc_pb_cmd_ctx_t *) yield();
+    do 
     {
-        if (ctx->cmd_queue.empty()) 
-        {
-            conet::wait_on(&ctx->req_wait);
-            continue;
-        }
+        rpc_ctx.conn_info = cmd_ctx->conn_ctx->conn;
 
-        do {
-            rpc_pb_cmd_ctx_t *cmd_ctx = ctx->cmd_queue.front();
-            ctx->cmd_queue.pop();
-            rpc_pb_cmd_t * cmd = cmd_ctx->cmd;  
-            
-            CmdBase *cmd_base = cmd_ctx->cmd_base;
+        rpc_pb_cmd_t * cmd = cmd_ctx->cmd;  
 
-            int retcode = 0 ;
-            std::string * req = cmd_base->mutable_body();
-            std::string *rsp = cmd_base->mutable_body();
-            std::string *errmsg = cmd_base->mutable_errmsg();
+        cmd_base_t *cmd_base = cmd_ctx->cmd_base;
 
-            rpc_ctx.req = cmd_base;
+        int retcode = 0 ;
 
-            rpc_ctx.to_close = 0;
+        rpc_ctx.req = cmd_base;
 
-            retcode = rpc_pb_call_cb(cmd, &rpc_ctx, req, rsp, errmsg);
+        rpc_ctx.to_close = 0;
 
-            cmd_base->set_type(CmdBase::RESPONSE_TYPE);
-            cmd_base->set_ret(retcode);
-             
-            uint32_t len = cmd_base->ByteSize();
+        google::protobuf::Message *rsp = NULL;
+
+        retcode = rpc_pb_call_cb(cmd, &rpc_ctx, cmd_base->body, rsp, &errmsg);
+
+        cmd_base->init();
+        cmd_base->type = CmdBase::RESPONSE_TYPE;
+        cmd_base->ret = retcode;
         
-            std::string *buf = new std::string();
-            buf->resize(len+4);
-            char * p = (char *)buf->data();
-            *((uint32_t *)p) = htonl(len);
-            cmd_base->SerializeToArray(p+4, len);
+        //TODO: errmsg 需要处理
 
+        // 给发送队列
+        std::vector<char> * out = cmd_ctx->conn_ctx->free_buffers.alloc();
 
-            cmd_base_pool->release(cmd_base);
-            ctx->tx_queue.push_back(buf);
-            wakeup_head(&ctx->rsp_wait);
-            delete cmd_ctx;
+        serialize_cmd_base(out, cmd_base, rsp);
+        cmd_ctx->conn_ctx->tx_queue.push_back(out);
+        cmd_ctx->conn_ctx->tx_bytes += out->size();
 
-        } while(!ctx->cmd_queue.empty()); 
-    }
-    ctx->to_stop = 1;
-    wakeup_all(&ctx->rsp_wait);
+        //唤醒发送者
+        cmd_ctx->conn_ctx->rsp_wait.wakeup_all();
+
+        // 释放
+        cmd_ctx->conn_ctx->cmd_ctx_pool.release(cmd_ctx);
+
+        //睡眠
+        if (0 == tcp_server->to_stop) break;
+        server->worker_pool.release(co);
+        cmd_ctx = (rpc_pb_cmd_ctx_t *) yield();
+    } while (cmd_ctx && 0 == tcp_server->to_stop);
+
     return 0;
 }
 
+
+
 static 
-int write_all(int fd, std::vector<std::string *> const &out_datas)
+int write_all(int fd, std::vector<std::vector<char>*> const &out_datas)
 {
         size_t total_len = 0;
         size_t cnt = out_datas.size();
@@ -115,7 +279,7 @@ int write_all(int fd, std::vector<std::string *> const &out_datas)
 
         for(size_t i=0; i< cnt; ++i)
         {
-            iov[i].iov_base = (void *)out_datas[i]->c_str();
+            iov[i].iov_base = (void *)&out_datas[i][0];
             iov[i].iov_len = out_datas[i]->size();
             total_len += iov[i].iov_len;
             need_outs[i] = total_len;
@@ -150,21 +314,24 @@ int write_all(int fd, std::vector<std::string *> const &out_datas)
         return -1;
 }
 
-static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *ctx)
+static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *self)
 {
-    int fd = ctx->fd;
-    server_t * server_base= ctx->server_base; 
+    int fd = self->fd;
+    tcp_server_t * tcp_server= self->tcp_server; 
 
-    std::vector<std::string*> out_datas;
+    std::vector<std::vector<char> *> out_datas;
 
     int ret = 0;
-    while (0 == server_base->to_stop && 0 == ctx->to_stop)
+    while (0 == server_base->to_stop && 0 == self->to_stop)
     {
-        out_datas.swap(ctx->tx_queue);
+        out_datas.swap(self->tx_queue);
         if (out_datas.empty()) {
-            wait_on(&ctx->rsp_wait);
+            &self->rsp_wait.waint_on(1000);
             continue;
         }
+
+        self->tx_bytes = 0;
+
         ret = write_all(fd, out_datas);
         if (ret) {
             break;
@@ -172,7 +339,7 @@ static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *ctx)
 
         for(size_t i=0, cnt = out_datas.size(); i< cnt; ++i)
         {
-            delete out_datas[i];
+            self->free_buffers.release(out_datas[i]);
         }
         out_datas.clear();
     }
@@ -182,111 +349,152 @@ static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *ctx)
 
 static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
 {
-    int fd = ctx->fd;
-    conn_info_t *conn = ctx->conn;
-    server_t * server_base= ctx->server_base; 
-    rpc_pb_server_t * server = ctx->server;
-
-    int max_size = server_base->conf.max_packet_size;
-
-    PacketStream stream;
-    stream.init(fd, max_size);
-
-    conet::ObjPool<CmdBase> *cmd_base_pool=ctx->cmd_base_pool; 
-
+    tcp_server_t * tcp_server = (tcp_server_t *)conn->server;
+    rpc_pb_server_base_t * base_server = server->base_server;
+    http_server_t *http_server = server->http_server;
 
     int ret = 0;
-    while (0 == server_base->to_stop)
+
+    int fd = conn->fd;
+
+    ctx.server = server;
+    ctx.conn_info = conn;
+    ctx.to_close = 0;
+
+    while(0 == tcp_server->to_stop)
     {
+
         struct pollfd pf = {
             fd: fd,
             events: POLLIN | POLLERR | POLLHUP
         };
 
-        ret = poll(&pf, 1, 1000);
+        ret = co_poll( &pf, 1, 10000);
         if (ret == 0) {
             //timeout
             continue;
         }
 
         if (ret <0) {
+            /* 
             if (errno == EINTR) {
                 continue;
             }
+            */
             break;
         }
 
-        if (pf.revents & POLLERR || pf.revents &POLLHUP) {
+        if ((pf.revents & POLLERR) || (pf.revents &POLLHUP)) {
             break;
         }
 
+        std::string errmsg;
         char * data = NULL;
         int packet_len = 0;
 
-        ret = stream.read_packet(&data, &packet_len, 100, 1); 
+        PacketStream *stream = (PacketStream *) server->m_packet_stream_pool.alloc();
+        stream->init(fd);
+        ret = stream->read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
+            server->m_packet_stream_pool.release(stream);
             break;
         }
 
         if (ret <0) {
             if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
-                conn->extend = &stream;
-                http_server_proc2(conn, server_base, server->http_server);
-                break;
+                    conn->extend = stream;
+                    http_server->conn_proc(conn);
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
-                break;
             }
+            server->m_packet_stream_pool.release(stream);
+            break;
         }
+
+        server->m_packet_stream_pool.release(stream);
+
         if ((data == NULL) || (packet_len <=0)) {
             LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
             break;        
         }
-        CmdBase *cmd_base = cmd_base_pool->alloc();
-        if (!cmd_base->ParseFromArray(data, packet_len)) 
+
+        cmd_base_t * cmd_base = new cmd_base_t();
+        cmd_base->init();
+        int ret = cmd_base->parse(data, packet_len);
+
+        if (ret)
         {
-            delete cmd_base;
             // parse cmd base head failed;
             LOG(ERROR)<<"parse cmd base failed, fd:"<<fd<<", ret:"<<ret;
             break;
         }
         
 
-        if (cmd_base->type() != CmdBase::REQUEST_TYPE) {
-            LOG(ERROR)<<"request type["<<cmd_base->type()<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
-            delete cmd_base;
+        if (cmd_base->type != CmdBase::REQUEST_TYPE) {
+            LOG(ERROR)<<"request type["<<cmd_base->type<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
             break;
         }
 
-        std::string const & cmd_name = cmd_base->cmd_name();
-        rpc_pb_cmd_t * cmd = get_rpc_pb_cmd(server, cmd_name);
-        if (NULL == cmd) {
-            // not unsuppend cmd;
-            LOG(ERROR)<< "unsuppend cmd:"<<cmd_name;
+        rpc_pb_cmd_t * cmd = NULL; 
+        uint64_t cmd_id = cmd_base->cmd_id;
+        if (cmd_id > 0) {
+            cmd = base_server->get_rpc_pb_cmd(cmd_id);
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
 
-            cmd_base->set_ret(CmdBase::ERR_UNSUPPORED_CMD);
-            cmd_base->set_errmsg("unsuppored cmd");
-            /*
-            ret = send_pb_obj(fd, cmd_base, &out_buf);
-            if (ret <= 0) {
-                LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                cmd_base->ret = CmdBase::ERR_UNSUPPORED_CMD;
+
+                errmsg = "unsuppored cmd_id:";
+                append_to_str(cmd_id, &errmsg);
+
+                init_ref_str(&cmd_base->errmsg, errmsg);
+                ret = server->send_pb(fd, cmd_base);
+                if (ret <= 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
             }
-            */
-            break;
+            
+        } else if (cmd_base->cmd_name.len >0) {
+            ref_str_t cmd_name = cmd_base->cmd_name;
+            cmd = base_server->get_rpc_pb_cmd(cmd_name.data, cmd_name.len);
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                std::string cmd_name_s;
+                ref_str_to(&cmd_name, &cmd_name_s);
+                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name_s;
+
+                cmd_base->ret = CmdBase::ERR_UNSUPPORED_CMD;
+                errmsg ="unsuppored cmd:"+cmd_name_s;
+                init_ref_str(&cmd_base->errmsg, errmsg);
+                ret = server->send_pb(fd, cmd_base);
+                if (ret <= 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
+            }
         }
 
-        rpc_pb_cmd_ctx_t *cmd_ctx =new rpc_pb_cmd_ctx_t();
+
+
+        rpc_pb_cmd_ctx_t *cmd_ctx = ctx->cmd_ctx_pool.alloc();
         cmd_ctx->cmd = cmd;
         cmd_ctx->cmd_base = cmd_base;
+        cmd_ctx->conn_ctx = self;
+
         ctx->cmd_queue.push(cmd_ctx);
-        wakeup_head_n(&ctx->req_wait, ctx->cmd_queue.size());
+
+        coroutine_t * worker = server->worker_pool.alloc();
+
+        resume(worker, cmd_ctx);
+
     }
     ctx->r_stop = 1;
-    wakeup_all(&ctx->req_wait);
     return 0;
 }
 
-static int proc_rpc_pb_async(conn_info_t *conn)
+static int async_rpc_pb_server::proc_rpc_pb_async(conn_info_t *conn)
 {
     server_t * server_base= conn->server; 
     rpc_pb_server_t * server = (rpc_pb_server_t *) server_base->extend;
@@ -312,26 +520,45 @@ static int proc_rpc_pb_async(conn_info_t *conn)
     conet::coroutine_t * w_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_rpc_pb_write_co, &a_ctx);
     conet::resume(w_co);
 
-    size_t work_num = 10;
-    conet::coroutine_t **work_co = new conet::coroutine_t *[work_num]; 
-
-    for(size_t i=0; i<work_num; ++i) 
-    {
-        work_co[i] = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_rpc_pb_work_co, &a_ctx);
-        conet::resume(work_co[i]);
-    }
-
     conet::wait(r_co);
     conet::free_coroutine(r_co);
 
     conet::wait(w_co);
     conet::free_coroutine(w_co);
 
-    for(size_t i=0; i<work_num; ++i)  
-    {
-        conet::wait(work_co[i]);
-        conet::free_coroutine(work_co[i]);
+    return 0;
+}
+
+int async_rpc_pb_server_t::start()
+{
+    int ret =  0;
+    ret = tcp_server->start();
+    return ret;
+}
+
+int async_rpc_pb_server_t::stop(int wait)
+{
+    int ret = 0;
+    LOG(INFO)<<"stop rpc main server";
+    ret = tcp_server->stop(wait);
+    if (ret) {
+        LOG(INFO)<<"stop rpc main server success";
+    } else {
+        LOG(INFO)<<"stop rpc main server failed, [ret:"<<ret<<"]";
+    }
+    
+    LOG(INFO)<<"stop rpc http server";
+    if (http_server) {
+        ret = http_server->stop(wait);
+        if (ret) {
+            LOG(ERROR)<<"stop rpc http server failed, [ret:"<<ret<<"]";
+        } else {
+            LOG(INFO)<<"stop rpc http server success";
+        }
     }
 
-    return 0;
+    LOG(INFO)<<"stop rpc finished";
+    return ret;
+}
+
 }

@@ -70,7 +70,7 @@ int conn_proc_co(conn_info_t *info)
 
         server->co_pool.release(co);
         info = (conn_info_t *) conet::yield(NULL);
-    } while(!server->to_stop);
+    } while(info && !server->to_stop);
 
     if (info) {
         if (info->fd >=0) {
@@ -190,7 +190,7 @@ int tcp_server_t::main_proc_with_fd_queue()
             break;
         }
 
-        for (size_t i=0; i<accept_num; ++i)
+        for (int i=0; i<accept_num; ++i)
         {
             int fd = -1;
             fds.clear();
@@ -198,7 +198,7 @@ int tcp_server_t::main_proc_with_fd_queue()
             if (ret == 0 && fds.size() >0) {
                 for (size_t j = 0, len = fds.size(); j<len; ++j)
                 {
-                    int fd = fds[j];
+                    fd = fds[j];
                     set_nodelay(fd);
                     set_none_block(fd);
                     ++this->data.cur_conn_num;

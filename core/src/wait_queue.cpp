@@ -153,5 +153,47 @@ int wakeup_all(wait_queue_t * q)
     return n;
 }
 
+cond_wait_queue_t::cond_wait_queue_t()
+{
+    init_wait_queue(&this->wait_queue);
+    delay_ms = 0;
+    func_arg = NULL;
+    cond_func = NULL;
+    init_timeout_handle(&tm, &cond_wait_queue_t::timeout_proc, this, -1);
+}
+
+void cond_wait_queue_t::timeout_proc(void *arg)
+{
+    cond_wait_queue_t *self = (cond_wait_queue_t *)arg;
+    conet::wakeup_all(&self->wait_queue);
+    return;
+}
+
+int cond_wait_queue_t::wain_on(int times)
+{
+    return wait_on(&this->wait_queue, times);
+}
+
+int cond_wait_queue_t::wakeup_all()
+{
+    
+    int ret = 0;
+
+    if (cond_func) {
+        ret = cond_func(func_arg);
+        if (ret >0) {
+            cancel_timeout(&tm);
+            return conet::wakeup_all(&this->wait_queue);
+        } else {
+            if (list_empty(&tm.link_to)) {
+                set_timeout(&tm, delay_ms); 
+            }
+        }
+    } else {
+        return conet::wakeup_all(&this->wait_queue);
+    }
+    return 0;
+}
+
 }
 

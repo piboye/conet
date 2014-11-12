@@ -74,6 +74,7 @@ resource_library(
 cc_library(
     name = 'rpc_pb_server',
     srcs = [
+        #"src/async_rpc_pb_server.cpp",
         "src/rpc_pb_server.cpp",
         "src/rpc_pb_server_base.cpp",
     ],
