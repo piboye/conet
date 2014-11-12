@@ -60,6 +60,28 @@ int wakeup_tail_n(wait_queue_t *, int times=1);
 
 int wakeup_tail(wait_queue_t *);
 
+
+struct cond_wait_queue_t
+{
+    wait_queue_t wait_queue;
+
+    int (*cond_func)(void *arg);
+
+    void *func_arg;
+    int delay_ms;
+
+    timeout_handle_t tm; //超时控制
+
+    cond_wait_queue_t();
+
+    int wain_on(int times=-1);
+
+    int wakeup_all();
+
+    static 
+    void timeout_proc(void *arg);
+};
+
 }
 
 #endif /* end of include guard */
