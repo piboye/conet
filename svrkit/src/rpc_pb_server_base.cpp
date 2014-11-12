@@ -236,7 +236,7 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 }
 
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, 
-        ref_str_t req, google::protobuf::Message *rsp, std::string *errmsg)
+        ref_str_t req, google::protobuf::Message **rsp, std::string *errmsg)
 {
     int ret = 0; 
 
@@ -265,7 +265,7 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx,
     }
 
     if (rsp1) { 
-        rsp =rsp1;
+        *rsp =rsp1;
     }
 
     if (req1) 

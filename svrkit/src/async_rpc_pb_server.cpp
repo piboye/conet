@@ -201,7 +201,7 @@ int async_rpc_pb_server_t::proc_worker(void *arg)
 
         google::protobuf::Message *rsp = NULL;
 
-        retcode = rpc_pb_call_cb(cmd, &rpc_ctx, cmd_base->body, rsp, &errmsg);
+        retcode = rpc_pb_call_cb(cmd, &rpc_ctx, cmd_base->body, &rsp, &errmsg);
 
         uint64_t seq_id = cmd_base->seq_id;
         //LOG(ERROR)<<"work:cmd echo, seq_id"<<seq_id;

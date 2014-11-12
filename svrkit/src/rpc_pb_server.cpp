@@ -245,13 +245,16 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
         int retcode = 0;
         google::protobuf::Message *rsp = NULL;
-        retcode = rpc_pb_call_cb(cmd, &ctx, cmd_base.body, rsp, &errmsg);
+        retcode = rpc_pb_call_cb(cmd, &ctx, cmd_base.body, &rsp, &errmsg);
 
         cmd_base.init();
         cmd_base.type = CmdBase::RESPONSE_TYPE;
         cmd_base.ret = retcode;
 
         ret = server->send_pb(fd, &cmd_base, rsp);
+        if (rsp) {
+            cmd->rsp_pool.release(rsp);
+        }
         if (ret <=0) {
             // send data failed;
             LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;

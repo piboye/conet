@@ -75,7 +75,7 @@ int proc_send(void *arg)
         EchoResp resp;
         req.set_msg(*g_data[i]);
         int retcode=0;
-        ret = task->client->rpc_call("echo",  &req, &resp, &retcode, NULL, 100);
+        ret = task->client->rpc_call("echo",  &req, &resp, &retcode, NULL, 1000);
         if (ret || retcode) {
             LOG(ERROR)<<"ret:"<<ret;
             continue;
