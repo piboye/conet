@@ -48,6 +48,7 @@ struct async_rpc_pb_server_t
 
     //业务处理协程池
     obj_pool_t worker_pool;
+    uint64_t m_req_num;
     
 
     async_rpc_pb_server_t();
@@ -67,6 +68,8 @@ struct async_rpc_pb_server_t
     int proc_rpc_pb_async(conn_info_t *conn);
 
     static int proc_worker(void *);
+
+    coroutine_t * stat_co;
 
 };
 

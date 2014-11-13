@@ -27,6 +27,7 @@ namespace conet
     {
     public:
         char const *m_cmd_name;
+        uint64_t m_cmd_id;
 
         google::protobuf::Message const * m_req;
         google::protobuf::Message * m_rsp; 
@@ -101,7 +102,7 @@ namespace conet
                 {
                     m_fd = conet::connect_to(m_ip.c_str(), m_port);
                     if (m_fd<0) {
-                        //usleep(1000);
+                        usleep(10000);
                         continue;
                     }
                     CO_MAIN_FUN * r_f = NULL;
@@ -114,6 +115,9 @@ namespace conet
 
                     m_read_co = alloc_coroutine(r_f, this);
                     m_send_co = alloc_coroutine(s_f, this);
+
+                    m_read_stop = 0;
+                    m_send_stop = 0;
 
                     resume(m_read_co);
 
@@ -158,7 +162,11 @@ namespace conet
                         list_del_init(&req_ctx->m_link);
                         std::vector<char> *send_data = new std::vector<char>();
 
-                        init_ref_str(&cmd_base.cmd_name, req_ctx->m_cmd_name);
+                        if (req_ctx->m_cmd_id > 0) {
+                            cmd_base.cmd_id = req_ctx->m_cmd_id;
+                        } else {
+                            init_ref_str(&cmd_base.cmd_name, req_ctx->m_cmd_name);
+                        }
                         cmd_base.seq_id = req_ctx->m_seq_id;
                         serialize_cmd_base(send_data, &cmd_base, req_ctx->m_req);
                                 
@@ -175,10 +183,10 @@ namespace conet
                     send_datas.clear();
 
                     if (ret) {
-                        m_send_stop = 1;
                         break;
                     }
                 }
+                m_send_stop = 1;
                 close(m_wfd);
                 return 0;
             }
@@ -251,12 +259,31 @@ namespace conet
                 int ret = 0;
                 while((!m_stop_flag) && (!m_send_stop))
                 {
+                    struct pollfd pf = { fd: fd, events: POLLIN | POLLERR | POLLHUP};
+
+                    ret = co_poll(&pf, 1, 10000);
+                    if (ret == 0) {
+                        //timeout
+                        continue;
+                    }
+
+                    if (ret <0) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        break;
+                    }
+
+                    if ((pf.revents & POLLERR) || (pf.revents &POLLHUP)) {
+                        break;
+                    }
+
                     ret = read_rsp(stream);
                     if (ret) {
-                        m_read_stop = 1;
                         break;
                     }
                 }
+                m_read_stop = 1;
                 close(m_rfd);
                 return 0;
             }
@@ -335,14 +362,35 @@ namespace conet
     }
 
     int RpcPbClientDuplex::rpc_call(
+            uint64_t cmd_id,
+            google::protobuf::Message const * req, 
+            google::protobuf::Message * rsp, 
+            int *retcode, std::string *errmsg, int timeout)
+    {
+        ReqCtx req_ctx;
+        req_ctx.m_cmd_name = NULL;
+        req_ctx.m_cmd_id = cmd_id;
+        return rpc_call_base(req_ctx, req, rsp, retcode, errmsg, timeout);
+    }
+
+    int RpcPbClientDuplex::rpc_call(
             char const *cmd_name,
             google::protobuf::Message const * req, 
             google::protobuf::Message * rsp, 
             int *retcode, std::string *errmsg, int timeout)
     {
         ReqCtx req_ctx;
-
         req_ctx.m_cmd_name = cmd_name;
+        req_ctx.m_cmd_id = 0;
+        return rpc_call_base(req_ctx, req, rsp, retcode, errmsg, timeout);
+    }
+
+    int RpcPbClientDuplex::rpc_call_base(
+            ReqCtx &req_ctx,
+            google::protobuf::Message const * req, 
+            google::protobuf::Message * rsp, 
+            int *retcode, std::string *errmsg, int timeout)
+    {
 
         req_ctx.m_req = req;
         req_ctx.m_rsp = rsp;

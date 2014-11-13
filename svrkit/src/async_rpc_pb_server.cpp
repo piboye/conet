@@ -139,6 +139,9 @@ struct rpc_pb_conn_asyc_ctx_t
     int w_stop;
     int r_stop;
 
+    //工作协程 引用数
+    int work_ref_num;
+
     //判断是否需要立刻唤醒发送者
     static int is_send_data(void *arg)
     {
@@ -161,6 +164,10 @@ struct rpc_pb_conn_asyc_ctx_t
         this->rsp_wait.cond_func = &rpc_pb_conn_asyc_ctx_t::is_send_data;
         this->rsp_wait.func_arg = this;
         this->rsp_wait.delay_ms = 1 ; // 有数据的话， 1ms 后肯定会发送
+        w_stop = 0;
+        r_stop = 0;
+        to_stop = 0;
+        work_ref_num = 0;
     }
 
     ~rpc_pb_conn_asyc_ctx_t()
@@ -175,7 +182,6 @@ struct rpc_pb_conn_asyc_ctx_t
 int async_rpc_pb_server_t::proc_worker(void *arg)
 {
     async_rpc_pb_server_t *server = (async_rpc_pb_server_t *)(arg);
-    rpc_pb_server_base_t *base_server = server->base_server;
     tcp_server_t *tcp_server = server->tcp_server;
 
     rpc_pb_ctx_t rpc_ctx;
@@ -187,6 +193,8 @@ int async_rpc_pb_server_t::proc_worker(void *arg)
     rpc_pb_cmd_ctx_t *cmd_ctx = (rpc_pb_cmd_ctx_t *) yield();
     do 
     {
+        ++cmd_ctx->conn_ctx->work_ref_num;
+
         rpc_ctx.conn_info = cmd_ctx->conn_ctx->conn;
 
         rpc_pb_cmd_t * cmd = cmd_ctx->cmd;  
@@ -227,12 +235,16 @@ int async_rpc_pb_server_t::proc_worker(void *arg)
         }
         delete cmd_ctx->cmd_base;
         cmd_ctx->cmd_base = NULL;
+
+        ++server->m_req_num;
+
         //唤醒发送者
         cmd_ctx->conn_ctx->rsp_wait.wakeup_all();
 
         // 释放
         cmd_ctx->conn_ctx->cmd_ctx_pool.release(cmd_ctx);
 
+        --cmd_ctx->conn_ctx->work_ref_num;
         //睡眠
         if (0 == tcp_server->to_stop) break;
         server->worker_pool.release(co_self);
@@ -256,7 +268,6 @@ static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *self)
         out_datas.swap(self->tx_queue);
         if (out_datas.empty()) {
             self->rsp_wait.wait_on(1000);
-
             continue;
         }
 
@@ -265,6 +276,10 @@ static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *self)
         self->tx_bytes = 0;
 
         ret = write_all(fd, out_datas);
+
+        if (ret <0) {
+            break;
+        }
 
         for(size_t i=0, cnt = out_datas.size(); i< cnt; ++i)
         {
@@ -275,7 +290,7 @@ static int proc_rpc_pb_write_co(rpc_pb_conn_asyc_ctx_t *self)
             break;
         }
     }
-    self->r_stop = 1;
+    self->w_stop = 1;
     close(fd);
     return 0;
 }
@@ -294,7 +309,7 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
     PacketStream  *stream= new PacketStream(10240);
     stream->init(fd);
 
-    while(0 == tcp_server->to_stop)
+    while(0 == tcp_server->to_stop && 0 == ctx->w_stop)
     {
 
         struct pollfd pf = {
@@ -332,7 +347,6 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
             LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             break;
         }
-        LOG(INFO)<<"read 4 byte pack success, fd:"<<fd<<", ret:"<<ret;
 
         while (1) { 
             if ((data == NULL) || (packet_len <=0)) {
@@ -422,7 +436,11 @@ static int proc_rpc_pb_read_co(rpc_pb_conn_asyc_ctx_t *ctx)
 
 async_rpc_pb_server_t::async_rpc_pb_server_t()
 {
-
+    tcp_server = NULL;
+    http_server = NULL;
+    base_server = NULL;
+    stat_co = NULL;
+    m_req_num = 0;
 }
 
 int async_rpc_pb_server_t::proc_rpc_pb_async(conn_info_t *conn)
@@ -434,9 +452,6 @@ int async_rpc_pb_server_t::proc_rpc_pb_async(conn_info_t *conn)
     a_ctx.server = this;
     a_ctx.tcp_server = this->tcp_server;
     a_ctx.cur_req_num = 0;
-    a_ctx.to_stop = 0;
-    a_ctx.w_stop = 0;
-    a_ctx.r_stop = 0;
 
     conet::coroutine_t * r_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_rpc_pb_read_co, &a_ctx);
     conet::resume(r_co);
@@ -447,8 +462,34 @@ int async_rpc_pb_server_t::proc_rpc_pb_async(conn_info_t *conn)
     conet::wait(r_co);
     conet::free_coroutine(r_co);
 
+
+    close(conn->fd);
+
+    while (a_ctx.work_ref_num > 0) 
+    {
+        // 10ms 检查一下
+        usleep(10000);
+    }
+    a_ctx.to_stop = 1;
+
     conet::wait(w_co);
     conet::free_coroutine(w_co);
+
+    return 0;
+}
+
+int proc_stat(void *arg)
+{
+    async_rpc_pb_server_t * self = (async_rpc_pb_server_t *)(arg);
+    uint64_t prev_req_num = self->m_req_num;
+    uint64_t proc_num =0;
+    while(!self->tcp_server->to_stop) 
+    {
+        sleep(1);
+        proc_num = self->m_req_num - prev_req_num;
+        prev_req_num = self->m_req_num;
+        LOG(ERROR)<<"poc req num: "<<proc_num;
+    }
 
     return 0;
 }
@@ -457,6 +498,10 @@ int async_rpc_pb_server_t::start()
 {
     int ret =  0;
     ret = tcp_server->start();
+
+    stat_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_stat, this, 4*4096);
+    resume(stat_co);
+
     return ret;
 }
 

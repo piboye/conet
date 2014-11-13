@@ -62,9 +62,21 @@ public:
     int stop();
 
     uint64_t get_seq_id();
+
+    int rpc_call(
+            uint64_t cmd_id,
+            google::protobuf::Message const * req, 
+            google::protobuf::Message * rsp, 
+            int *retcode, std::string *errmsg, int timeout);
     
     int rpc_call(
             char const *cmd_name,
+            google::protobuf::Message const * req, 
+            google::protobuf::Message * rsp, 
+            int *retcode, std::string *errmsg, int timeout);
+
+    int rpc_call_base(
+            ReqCtx &req_ctx,
             google::protobuf::Message const * req, 
             google::protobuf::Message * rsp, 
             int *retcode, std::string *errmsg, int timeout);

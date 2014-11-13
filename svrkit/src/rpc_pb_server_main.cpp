@@ -226,7 +226,7 @@ int Task::init(TaskEnv *env)
 int Task::start()
 {
     tcp_server.accept_fd_queue = &env->fd_pool;
-    tcp_server.start();
+    rpc_server.start();
     if (tcp_server.state == tcp_server_t::SERVER_STOPED) {
         LOG(ERROR)<<"listen to ["<<rpc_ip_port.ip.c_str()<<":"<<rpc_ip_port.port<<"], failed"; 
         return 0;

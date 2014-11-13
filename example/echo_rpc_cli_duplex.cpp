@@ -70,12 +70,12 @@ int proc_send(void *arg)
 
     int ret = 0;
 
+    EchoReq req;
+    EchoResp resp;
     for (int i=0, len = g_data.size(); i<len; ++i) {
-        EchoReq req;
-        EchoResp resp;
         req.set_msg(*g_data[i]);
         int retcode=0;
-        ret = task->client->rpc_call("echo",  &req, &resp, &retcode, NULL, 1000);
+        ret = task->client->rpc_call(2, &req, &resp, &retcode, NULL, 1000);
         if (ret || retcode) {
             LOG(ERROR)<<"ret:"<<ret;
             continue;
