@@ -157,7 +157,12 @@ namespace conet
 
                     
                     ReqCtx *req_ctx = NULL, *n=NULL;
-                    list_for_each_entry_safe(req_ctx, n, &m_client->m_req_queue, m_link) 
+                    LIST_HEAD(queue);
+                    list_add(&queue, &m_client->m_req_queue);
+                    list_del_init(&m_client->m_req_queue);
+                    m_client->m_req_num = 0;
+
+                    list_for_each_entry_safe(req_ctx, n, &queue, m_link) 
                     {
                         list_del_init(&req_ctx->m_link);
                         std::vector<char> *send_data = new std::vector<char>();
@@ -172,7 +177,6 @@ namespace conet
                                 
                         send_datas.push_back(send_data);
                     }
-                    m_client->m_req_num = 0;
 
                     ret = write_all(fd, send_datas);
 
@@ -200,8 +204,11 @@ namespace conet
 
                 ret = stream.read_packet(&data, &packet_len, 10000, 1);
 
-                if (ret <=0) {
+                if (ret == 0) {
                     return 0;
+                }
+                if (ret <0 ) {
+                    return -1 ;
                 }
 
                 while (1)
@@ -305,7 +312,7 @@ namespace conet
         m_seq_id = conet::rdtscp(); 
         m_req_wait.cond_func = &RpcPbClientDuplex::is_send_data;
         m_req_wait.func_arg = this;
-        m_req_wait.delay_ms = 1;
+        m_req_wait.delay_ms = 0;
         m_req_num = 0;
 
     }
@@ -313,7 +320,7 @@ namespace conet
     int RpcPbClientDuplex::is_send_data(void *arg)
     {
         RpcPbClientDuplex * self = (RpcPbClientDuplex *)(arg);
-        if (self->m_req_num >= 10) {
+        if (self->m_req_num >= 100) {
             return 1;
         }
 

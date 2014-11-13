@@ -146,11 +146,11 @@ struct rpc_pb_conn_asyc_ctx_t
     static int is_send_data(void *arg)
     {
         rpc_pb_conn_asyc_ctx_t * self = (rpc_pb_conn_asyc_ctx_t *)(arg);
-        if (self->tx_queue.size() >= 10) {
+        if (self->tx_queue.size() >= 100) {
             return 1;
         }
 
-        if (self->tx_bytes >= 1024)
+        if (self->tx_bytes >= 1400)
         {
             return 2;
         }
@@ -163,7 +163,7 @@ struct rpc_pb_conn_asyc_ctx_t
         tx_bytes = 0;
         this->rsp_wait.cond_func = &rpc_pb_conn_asyc_ctx_t::is_send_data;
         this->rsp_wait.func_arg = this;
-        this->rsp_wait.delay_ms = 1 ; // 有数据的话， 1ms 后肯定会发送
+        this->rsp_wait.delay_ms = 0 ; // 有数据的话， 1ms 后肯定会发送
         w_stop = 0;
         r_stop = 0;
         to_stop = 0;

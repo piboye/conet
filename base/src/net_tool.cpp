@@ -500,7 +500,7 @@ int write_all(int fd, std::vector<std::vector<char>*> const &out_datas)
         size_t wlen = 0; 
         size_t start_pos = 0;
         do {
-            size_t w_cnt = std::min<size_t>(cnt-start_pos, 10);
+            size_t w_cnt = std::min<size_t>(cnt-start_pos, 100);
             wret = writev(fd, iov + start_pos, w_cnt);
             if (wret <=0) {
                 break;
