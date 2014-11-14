@@ -269,7 +269,7 @@ void cancel_timeout(timeout_handle_t *obj) {
 
         list_del_init(&obj->link_to);
         timewheel_t * tw = obj->tw;
-        if (tw)  {
+        if (tw && obj->timeout >0)  {
             --tw->task_num;
         }
     }
