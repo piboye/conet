@@ -50,6 +50,10 @@
     } while(0) \
 
 
+/*
+ *  hook pthread spec 很难管理内存释放
+ *
+ 
 HOOK_FUNC_DEF(
     void*, pthread_getspecific, (pthread_key_t key)
 )
@@ -73,6 +77,8 @@ HOOK_FUNC_DEF(
 
     return conet::set_pthread_spec(key, value);
 }
+
+*/
 
 
 using namespace conet;

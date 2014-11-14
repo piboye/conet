@@ -244,11 +244,23 @@ void free_coroutine(coroutine_t *co)
         co->gc_mgr = NULL;
     }
 
-    if (co->static_vars ) delete co->static_vars;
+    if (co->static_vars ) 
+    {
+        // 静态变量， 从 gc_mgr 分配的, 不需要回收
+        delete co->static_vars;
+    }
 
-    if (co->spec) delete co->spec;
+    if (co->spec) 
+    {
+        // 从 gc_mgr 分配, 没办法回收
+        delete co->spec;
+    }
 
-    if (co->pthread_spec) delete co->pthread_spec;
+    if (co->pthread_spec) 
+    {
+        // 没办法回收
+        delete co->pthread_spec;
+    }
 
 
     #ifdef USE_VALGRIND
