@@ -25,61 +25,53 @@
 namespace conet
 {
 
-struct coroutine_t;
-
-struct wait_queue_t;
-
-struct wait_item_t
-{
-    wait_queue_t * wq;
-    coroutine_t *co;
-    list_head link;
-    timeout_handle_t tm;
-    int delete_self;
-    int expired_flag;
-};
-
-struct
-wait_queue_t
+// 等待队列
+struct WaitQueue
 {
     int wait_num;
     list_head queue;
+
+
+    WaitQueue();
+
+    ~WaitQueue();
+
+    //  -1 超时, 0 是成功
+    int wait_on(int ms = -1);
+
+    int wakeup_all();
+
+    int wakeup_head_n(int num=1);
+
+    int wakeup_head();
+
+    int wakeup_tail_n(int num=1);
+
+    int wakeup_tail();
 };
 
-int wait_on(wait_queue_t *q, int ms = -1);
-
-void init_wait_queue(wait_queue_t *q);
-
-int wakeup_all(wait_queue_t *);
-
-int wakeup_head_n(wait_queue_t *, int times=1);
-
-int wakeup_head(wait_queue_t *);
-
-int wakeup_tail_n(wait_queue_t *, int times=1);
-
-int wakeup_tail(wait_queue_t *);
-
-
-struct cond_wait_queue_t
+// 条件等待队列
+//
+struct CondWaitQueue
 {
-    wait_queue_t wait_queue;
+    WaitQueue wait_queue;
 
-    int (*cond_func)(void *arg);
-
+    int (*cond_check_func)(void *arg);
     void *func_arg;
+
     int delay_ms;
+
+    int init(int (*func)(void *arg), void *arg, int delay_ms);
 
     timeout_handle_t tm; //超时控制
 
-    cond_wait_queue_t();
+//method
+    CondWaitQueue();
 
     int wait_on(int times=-1);
 
     int wakeup_all();
 
-    static 
-    void timeout_proc(void *arg);
 };
 
 }

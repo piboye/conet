@@ -47,7 +47,7 @@ public:
     list_head m_req_queue; 
 
 
-    cond_wait_queue_t m_req_wait;
+    CondWaitQueue m_req_wait;
 
     IntMap m_in_queue;
     uint64_t m_seq_id;

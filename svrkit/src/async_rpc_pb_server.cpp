@@ -132,7 +132,7 @@ struct rpc_pb_conn_asyc_ctx_t
 
     ObjPool<rpc_pb_cmd_ctx_t>  cmd_ctx_pool;
 
-    conet::cond_wait_queue_t rsp_wait;
+    conet::CondWaitQueue rsp_wait;
 
     int to_stop;
 
@@ -161,9 +161,8 @@ struct rpc_pb_conn_asyc_ctx_t
     rpc_pb_conn_asyc_ctx_t()
     {
         tx_bytes = 0;
-        this->rsp_wait.cond_func = &rpc_pb_conn_asyc_ctx_t::is_send_data;
-        this->rsp_wait.func_arg = this;
-        this->rsp_wait.delay_ms = 0 ; // 有数据的话， 1ms 后肯定会发送
+        this->rsp_wait.init(&rpc_pb_conn_asyc_ctx_t::is_send_data, this, 0);
+
         w_stop = 0;
         r_stop = 0;
         to_stop = 0;
