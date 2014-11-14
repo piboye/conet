@@ -410,7 +410,7 @@ namespace conet
         m_in_queue.add(&req_ctx.m_map_node);
         
         list_add_tail(&req_ctx.m_link, &this->m_req_queue);
-        init_timeout_handle(&req_ctx.m_th, (void (*)(void *))&proc_req_timeout, &req_ctx, timeout);
+        init_timeout_handle(&req_ctx.m_th, (void (*)(void *))&proc_req_timeout, &req_ctx);
         set_timeout(&req_ctx.m_th, timeout);
 
         req_ctx.m_co = conet::current_coroutine();

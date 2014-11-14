@@ -86,11 +86,10 @@ HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
 }
 */
 
-void init_timeout_handle(timeout_handle_t * self,
-               void (*fn)(void *), void *arg, int timeout)
+void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
 {
     INIT_LIST_HEAD(&self->link_to);
-    self->timeout = timeout;
+    self->timeout = 0;
     self->fn = fn;
     self->arg = arg;
     self->tw = NULL;
@@ -110,6 +109,23 @@ uint64_t get_cur_ms(timewheel_t *tw)
 int check_timewheel(void * arg)
 {
     return check_timewheel((timewheel_t *) arg, 0);
+}
+
+static
+int do_now_task(void *arg)
+{
+    timewheel_t *tw = (timewheel_t *)(arg);
+    timeout_handle_t *it=NULL, *next=NULL;
+    list_for_each_entry_safe(it, next, &tw->now_list, link_to)
+    {
+       if(0 == it->interval) 
+       {
+          list_del_init(&it->link_to);
+       }
+
+       it->fn(it->arg);
+    }
+    return 0;
 }
 
 void init_timewheel(timewheel_t *self, int slot_num)
@@ -134,8 +150,9 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->prev_tv.tv_sec = 0;
     self->prev_tv.tv_usec = 0;
 
-    //init_task(&self->delay_task, check_timewheel, self);
-    //registry_task(&self->delay_task);
+    INIT_LIST_HEAD(&self->now_list);
+    init_task(&self->delay_task, &do_now_task, self);
+    registry_task(&self->delay_task);
 }
 
 void fini_timewheel(timewheel_t *self)
@@ -145,13 +162,6 @@ void fini_timewheel(timewheel_t *self)
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
-int do_tw_task(timewheel_t *tw)
-{
-    tw->now_ms = get_tick_ms2();
-
-    check_timewheel(tw, tw->now_ms);
-    return 0;
-}
 
 
 static
@@ -269,7 +279,12 @@ void cancel_timeout(timeout_handle_t *obj) {
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval)
 {
     list_del_init(&obj->link_to);
-    if (timeout <0) timeout = 0;
+    if (timeout <=0)
+    {
+       list_add_tail(&obj->link_to, &tw->now_list);
+       return true;
+    }
+
     uint64_t cur_ms = get_cur_ms(tw);
     uint64_t t = cur_ms + timeout;
     if (t < tw->prev_ms)  t = tw->prev_ms;

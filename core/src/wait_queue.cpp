@@ -74,7 +74,7 @@ int WaitQueue::wait_on(int ms)
      INIT_LIST_HEAD(&w.link);
 
      if (ms >= 0) {
-        init_timeout_handle(&w.tm, wait_queue_item_timeout, &w, ms);
+        init_timeout_handle(&w.tm, wait_queue_item_timeout, &w);
         set_timeout(&w.tm, ms);
      }
 
@@ -183,7 +183,7 @@ CondWaitQueue::CondWaitQueue()
     delay_ms = 0;
     func_arg = NULL;
     cond_check_func = NULL;
-    init_timeout_handle(&tm, &timeout_proc, this, -1);
+    init_timeout_handle(&tm, &timeout_proc, this);
 }
 
 int CondWaitQueue::init(int (*func)(void *arg), void *arg, int delay_ms)
