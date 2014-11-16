@@ -46,8 +46,6 @@
 
 #include "fd_queue.h"
 
-//DEFINE_string(http_server_address, "", "default use server address");
-
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
