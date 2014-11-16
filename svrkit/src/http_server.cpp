@@ -25,7 +25,7 @@
 #include "base/incl/auto_var.h"
 #include "base/incl/http_parser.h"
 #include "base/incl/net_tool.h"
-#include "base/incl/fn_ptr_cast.h"
+#include "base/incl/ptr_cast.h"
 
 namespace conet
 {
@@ -238,7 +238,7 @@ int http_server_t::init(tcp_server_t *tcp_server)
 {
     this->tcp_server = tcp_server;
     tcp_server->extend = this;
-    tcp_server->set_conn_cb(fn_ptr_cast<tcp_server_t::conn_proc_cb_t>(&http_server_t::conn_proc), this);
+    tcp_server->set_conn_cb(ptr_cast<tcp_server_t::conn_proc_cb_t>(&http_server_t::conn_proc), this);
     return 0;
 }
 

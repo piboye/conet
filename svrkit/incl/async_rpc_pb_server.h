@@ -32,19 +32,12 @@ namespace conet
 {
 
 struct tcp_server_t;
-struct http_server_t;
 struct rpc_pb_server_base_t;
 
 struct async_rpc_pb_server_t
 {
     tcp_server_t * tcp_server;
-    http_server_t *http_server;
-
     rpc_pb_server_base_t * base_server;
-
-    std::string http_base_path;
-
-    obj_pool_t m_packet_stream_pool;
 
     //业务处理协程池
     obj_pool_t worker_pool;
@@ -55,19 +48,17 @@ struct async_rpc_pb_server_t
 
     int init(
         rpc_pb_server_base_t *base_server,
-        tcp_server_t * tcp_server,
-        http_server_t * http_server
+        tcp_server_t * tcp_server
         );
 
     int start();
 
     int stop(int wait_ms);
 
-    PacketStream *alloc_packet_stream();
 
-    int proc_rpc_pb_async(conn_info_t *conn);
+    int main_proc(conn_info_t *conn);
 
-    static int proc_worker(void *);
+    int proc_worker();
 
     coroutine_t * stat_co;
 

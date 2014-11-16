@@ -100,9 +100,9 @@ cc_binary(
 ) 
 
 cc_binary(
-    name = 'fn_ptr_cast_test',
+    name = 'ptr_cast_test',
     srcs = [
-        'src/fn_ptr_cast_test.cpp',
+        'src/ptr_cast_test.cpp',
     ],
 
     incs= [ 

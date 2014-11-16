@@ -16,7 +16,7 @@
  * =====================================================================================
  */
 #include <stdlib.h>
-#include "fn_ptr_cast.h"
+#include "ptr_cast.h"
 #include <stdio.h>
 
 class A
@@ -35,7 +35,7 @@ int main(int argc, char const* argv[])
 {
     f_t f;
 
-    f = conet::fn_ptr_cast<f_t>(&A::f);
+    f = conet::ptr_cast<f_t>(&A::f);
     A a;
 
     int b = f(&a, 100);

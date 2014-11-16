@@ -27,7 +27,7 @@
 #include "base/incl/int_map.h"
 #include "base/incl/pb_obj_pool.h"
 #include "conn_info.h"
-#include "base/incl/fn_ptr_cast.h"
+#include "base/incl/ptr_cast.h"
 
 #include "cmd_base.h"
 
@@ -210,7 +210,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 
     cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
-    cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func); 
+    cmd->proc = conet::ptr_cast<rpc_pb_callback>(func); 
     cmd->arg = (void *)arg; 
     ret = conet::global_registry_cmd(cmd); 
     if (ret)  {
@@ -227,7 +227,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
-    cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func);  
+    cmd->proc = conet::ptr_cast<rpc_pb_callback>(func);  
 
     cmd->arg = (void *)arg; 
     ret = conet::global_registry_cmd(cmd); 
@@ -246,7 +246,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
     rpc_pb_cmd_t * cmd = new rpc_pb_cmd_t(); 
     cmd->init(cmd_id, method_name, new_rpc_req_rsp_obj_help<typeof(R1)>(), new_rpc_req_rsp_obj_help<typeof(R2)>());
 
-    cmd->proc = conet::fn_ptr_cast<rpc_pb_callback>(func);  
+    cmd->proc = conet::ptr_cast<rpc_pb_callback>(func);  
 
     cmd->arg = (void *)NULL; 
     cmd->obj_mgr = obj_mgr;
