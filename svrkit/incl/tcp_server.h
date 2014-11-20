@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -26,13 +26,14 @@
 #include "base/incl/obj_pool.h"
 #include "conn_info.h"
 #include "base/incl/unix_socket_send_fd.h"
+#include "server_base.h"
 
 namespace conet
 {
 
 struct coroutine_t;
 
-struct tcp_server_t
+struct tcp_server_t: public ServerBase
 {
     enum {
         SERVER_START=0,
@@ -90,9 +91,16 @@ struct tcp_server_t
 
     int init(const char *ip, int port, int listen_fd=-1);
 
+    virtual
     int start();
 
+    virtual
     int stop(int wait_ms=0);
+
+    ~tcp_server_t()
+    {
+
+    }
 };
 
 

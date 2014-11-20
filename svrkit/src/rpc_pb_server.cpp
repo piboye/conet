@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboye
  *   Organization:  
  *
  * =====================================================================================
@@ -22,7 +22,7 @@
 #include "rpc_pb_server_base_impl.h"
 #include "tcp_server.h"
 #include "http_server.h"
-#include "base/incl/fn_ptr_cast.h"
+#include "base/incl/ptr_cast.h"
 
 
 #include "base/incl/net_tool.h"
@@ -84,8 +84,8 @@ int rpc_pb_server_t::init(
     if (http_server)  {
         base_server->registry_all_rpc_http_api(http_server, this->http_base_path);
     }
-    tcp_server->set_conn_cb(fn_ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_rpc_pb), this);
-    this->m_packet_stream_pool.set_alloc_obj_func(fn_ptr_cast<obj_pool_t::alloc_func_t>(&rpc_pb_server_t::alloc_packet_stream), this);
+    tcp_server->set_conn_cb(ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_rpc_pb), this);
+    this->m_packet_stream_pool.set_alloc_obj_func(ptr_cast<obj_pool_t::alloc_func_t>(&rpc_pb_server_t::alloc_packet_stream), this);
     this->m_packet_stream_pool.set_free_obj_func(free_packet_stream, NULL);
 
     return 0;

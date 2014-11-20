@@ -41,6 +41,7 @@ struct rpc_pb_server_t
     http_server_t *http_server;
 
     rpc_pb_server_base_t * base_server;
+
     std::string http_base_path;
     obj_pool_t m_packet_stream_pool;
     

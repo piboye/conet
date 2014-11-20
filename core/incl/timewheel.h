@@ -43,8 +43,7 @@ struct timeout_handle_t
     int interval;
 };
 
-void init_timeout_handle(timeout_handle_t * self,
-                         void (*fn)(void *), void *arg, int timeout=-1);
+void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg);
 
 #define DEFINE_TIMEOUT_HANDLE(name, func, arg1) \
         timeout_handle_t name; \
@@ -64,6 +63,9 @@ struct timewheel_t
     struct timeval prev_tv;
     list_head *slots;
     uint64_t now_ms;
+
+    list_head now_list;
+
     task_t delay_task;
 };
 
@@ -77,9 +79,8 @@ void cancel_timeout(timeout_handle_t *self);
 void stop_timewheel(timewheel_t *self);
 
 
-bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval);
-
 bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout);
+bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval);
 
 int check_timewheel(timewheel_t *self, uint64_t cur_ms = 0);
 

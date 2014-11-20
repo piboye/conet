@@ -310,9 +310,7 @@ namespace conet
         INIT_LIST_HEAD(&m_req_queue);
         m_in_queue.init(1000);
         m_seq_id = conet::rdtscp(); 
-        m_req_wait.cond_func = &RpcPbClientDuplex::is_send_data;
-        m_req_wait.func_arg = this;
-        m_req_wait.delay_ms = 0;
+        m_req_wait.init(&RpcPbClientDuplex::is_send_data, this, 0);
         m_req_num = 0;
 
     }
@@ -412,7 +410,7 @@ namespace conet
         m_in_queue.add(&req_ctx.m_map_node);
         
         list_add_tail(&req_ctx.m_link, &this->m_req_queue);
-        init_timeout_handle(&req_ctx.m_th, (void (*)(void *))&proc_req_timeout, &req_ctx, timeout);
+        init_timeout_handle(&req_ctx.m_th, (void (*)(void *))&proc_req_timeout, &req_ctx);
         set_timeout(&req_ctx.m_th, timeout);
 
         req_ctx.m_co = conet::current_coroutine();

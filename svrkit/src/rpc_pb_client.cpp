@@ -24,7 +24,7 @@
 #include "glog/logging.h"
 #include "../../base/incl/obj_pool.h"
 #include "../../base/incl/tls.h"
-#include "../../base/incl/fn_ptr_cast.h"
+#include "../../base/incl/ptr_cast.h"
 #include <poll.h>
 #include "../../core/incl/coroutine.h"
 #include "cmd_base.h"
@@ -56,7 +56,7 @@ obj_pool_t * get_rpc_pb_client_packet_stream_pool()
 {
     if (unlikely(NULL == g_packet_stream_pool)) {
         obj_pool_t *pool = new obj_pool_t();
-        pool->set_alloc_obj_func(fn_ptr_cast<obj_pool_t::alloc_func_t>(&alloc_packet_stream), NULL);
+        pool->set_alloc_obj_func(ptr_cast<obj_pool_t::alloc_func_t>(&alloc_packet_stream), NULL);
         pool->set_free_obj_func(&free_packet_stream, NULL);
         if (NULL == g_packet_stream_pool) {
             g_packet_stream_pool = pool;

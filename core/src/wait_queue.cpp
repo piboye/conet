@@ -19,46 +19,74 @@
 #include "wait_queue.h"
 #include "coroutine.h"
 
-namespace conet
+namespace 
 {
 
-void init_wait_queue(wait_queue_t *q)
+struct WaitItem
 {
-    q->wait_num = 0;
-    INIT_LIST_HEAD(&q->queue);
-}
+    conet::WaitQueue * wq;
+    conet::coroutine_t *co;
+    list_head link;
+    conet::timeout_handle_t tm;
+    int expired_flag;
+
+};
 
 void wait_queue_item_timeout(void *arg)
 {
-    wait_item_t *self = (wait_item_t *)(arg);
+    WaitItem *self = (WaitItem *)(arg);
     self->expired_flag = 1;
     resume(self->co, NULL);
 }
 
-int wait_on(wait_queue_t *q, int ms)
+}
+
+namespace conet
 {
-     wait_item_t w;
+
+
+WaitQueue::WaitQueue()
+{
+    this->wait_num = 0;
+    INIT_LIST_HEAD(&this->queue);
+}
+
+WaitQueue::~WaitQueue()
+{
+    WaitItem *it=NULL, *next = NULL;
+
+    list_for_each_entry_safe(it, next, &queue, link)
+    {
+        list_del(&it->link);
+        conet::resume(it->co);
+    }
+}
+
+int WaitQueue::wait_on(int ms)
+{
+     WaitItem w;
      coroutine_t * co = CO_SELF(); 
 
-     w.wq = q;
-
+     // 初始化 wait_item
+     w.wq = this;
      w.co = co; 
-     w.delete_self = 0;
      w.expired_flag = 0;
      INIT_LIST_HEAD(&w.link);
 
      if (ms >= 0) {
-        init_timeout_handle(&w.tm, wait_queue_item_timeout, &w, ms);
+        init_timeout_handle(&w.tm, wait_queue_item_timeout, &w);
         set_timeout(&w.tm, ms);
      }
 
-     list_add_tail(&w.link, &q->queue);
-     ++q->wait_num;
+     list_add_tail(&w.link, &this->queue);
+
+     ++this->wait_num;
 
      yield(NULL, NULL);
 
 
-     --q->wait_num; 
+     --this->wait_num; 
+
      if (ms >=0) {
         cancel_timeout(&w.tm);
      }
@@ -71,131 +99,125 @@ int wait_on(wait_queue_t *q, int ms)
      return 0;
 }
 
-int wakeup_head_n(wait_queue_t * q, int times)
+int WaitQueue::wakeup_head_n(int num)
 {
     int n = 0;
 
-    wait_item_t *it=NULL, *next=NULL;
-    list_for_each_entry_safe(it, next, &q->queue, link)
+    WaitItem *it=NULL, *next=NULL;
+    list_for_each_entry_safe(it, next, &this->queue, link)
     {
         list_del(&it->link);
         coroutine_t *co = it->co;
-        if (it->delete_self) {
-            free(it);
-        }
         conet::resume(co);
         ++n;
-        if (n >= times) break;
+        if (n >= num) break;
     }
     return n;
 }
 
-int wakeup_head(wait_queue_t * q)
+int WaitQueue::wakeup_head()
 {
-    if (!list_empty(&q->queue)) {
-        wait_item_t *item = container_of(q->queue.next, wait_item_t, link); 
+    if (!list_empty(&this->queue)) {
+        WaitItem *item = container_of(this->queue.next, WaitItem, link); 
         list_del(&item->link);
         coroutine_t *co = item->co;
-        if (item->delete_self) {
-            free(item);
-        }
         conet::resume(co);
         return 1;
     }
     return 0;
 }
 
-int wakeup_tail(wait_queue_t * q)
+int WaitQueue::wakeup_tail()
 {
-    if (!list_empty(&q->queue)) {
-        wait_item_t *item = container_of(q->queue.prev, wait_item_t, link); 
+    if (!list_empty(&this->queue)) {
+        WaitItem *item = container_of(this->queue.prev, WaitItem, link); 
         list_del(&item->link);
         coroutine_t *co = item->co;
-        if (item->delete_self) {
-            free(item);
-        }
         conet::resume(co);
         return 1;
     }
     return 0;
 }
 
-int wakeup_tail_n(wait_queue_t * q, int times)
+int WaitQueue::wakeup_tail_n(int num)
 {
     int n = 0;
 
-    wait_item_t *it=NULL, *next=NULL;
-    list_for_each_entry_safe_reverse(it, next, &q->queue, link)
+    WaitItem *it=NULL, *next=NULL;
+    list_for_each_entry_safe_reverse(it, next, &this->queue, link)
     {
         list_del(&it->link);
         coroutine_t *co = it->co;
-        if (it->delete_self) {
-            free(it);
-        }
         conet::resume(co);
         ++n;
-        if (n >= times) break;
+        if (n >= num) break;
     }
     return n;
 }
 
-int wakeup_all(wait_queue_t * q)
+int WaitQueue::wakeup_all()
 {
     int n = 0;
 
-    wait_item_t *it=NULL, *next=NULL;
-    list_for_each_entry_safe(it, next, &q->queue, link)
+    WaitItem *it=NULL, *next=NULL;
+    list_for_each_entry_safe(it, next, &this->queue, link)
     {
         list_del(&it->link);
         coroutine_t *co = it->co;
-        if (it->delete_self) {
-            free(it);
-        }
         conet::resume(co);
         ++n;
     }
     return n;
 }
 
-cond_wait_queue_t::cond_wait_queue_t()
+static
+void timeout_proc(void *arg)
 {
-    init_wait_queue(&this->wait_queue);
-    delay_ms = 0;
-    func_arg = NULL;
-    cond_func = NULL;
-    init_timeout_handle(&tm, &cond_wait_queue_t::timeout_proc, this, -1);
-}
-
-void cond_wait_queue_t::timeout_proc(void *arg)
-{
-    cond_wait_queue_t *self = (cond_wait_queue_t *)arg;
-    conet::wakeup_all(&self->wait_queue);
+    CondWaitQueue *self = (CondWaitQueue *)arg;
+    self->wait_queue.wakeup_all();
     return;
 }
 
-int cond_wait_queue_t::wait_on(int times)
+CondWaitQueue::CondWaitQueue()
 {
-    return conet::wait_on(&this->wait_queue, times);
+    delay_ms = 0;
+    func_arg = NULL;
+    cond_check_func = NULL;
+    init_timeout_handle(&tm, &timeout_proc, this);
 }
 
-int cond_wait_queue_t::wakeup_all()
+int CondWaitQueue::init(int (*func)(void *arg), void *arg, int delay_ms)
+{
+    cond_check_func = func;
+    func_arg = arg;
+    this->delay_ms = delay_ms;
+    return 0;
+}
+
+int CondWaitQueue::wait_on(int times)
+{
+    return this->wait_queue.wait_on(times);
+}
+
+int CondWaitQueue::wakeup_all()
 {
     
     int ret = 0;
 
-    if (cond_func) {
-        ret = cond_func(func_arg);
+    if (cond_check_func) {
+        ret = cond_check_func(func_arg);
         if (ret >0) {
             cancel_timeout(&tm);
-            return conet::wakeup_all(&this->wait_queue);
+            return this->wait_queue.wakeup_all();
         } else {
             if (list_empty(&tm.link_to)) {
                 set_timeout(&tm, delay_ms); 
             }
         }
     } else {
-        return conet::wakeup_all(&this->wait_queue);
+        return this->wait_queue.wakeup_all();
     }
+
     return 0;
 }
 

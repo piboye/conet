@@ -40,13 +40,11 @@
 #include "base/incl/cpu_affinity.h"
 #include "base/incl/auto_var.h"
 #include "base/incl/gcc_builtin_help.h"
-#include "base/incl/fn_ptr_cast.h"
+#include "base/incl/ptr_cast.h"
 #include <linux/netdevice.h>
 #include "base/incl/unix_socket_send_fd.h"
 
 #include "fd_queue.h"
-
-//DEFINE_string(http_server_address, "", "default use server address");
 
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
 
@@ -172,7 +170,7 @@ struct TaskEnv
       {
           if (unlikely(g_exit_flag && exit_co == NULL)) 
           {
-              exit_co = conet::alloc_coroutine(conet::fn_ptr_cast<conet::co_main_func_t>(&TaskEnv::proc_server_exit), this);
+              exit_co = conet::alloc_coroutine(conet::ptr_cast<conet::co_main_func_t>(&TaskEnv::proc_server_exit), this);
               conet::resume(exit_co);
           }
           conet::dispatch();
@@ -218,7 +216,8 @@ int Task::init(TaskEnv *env)
     int ret = 0;
     ret = tcp_server.init(rpc_ip_port.ip.c_str(), rpc_ip_port.port, rpc_listen_fd);
     ret = http_server.init(&tcp_server);
-    ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
+    //ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
+    ret = rpc_server.init(&env->base_server, &tcp_server);
 
     return ret;
 }
@@ -493,7 +492,7 @@ int proc_thread_mode(int num)
             }
 
             create_task(env);
-            pthread_create(&env->tid, NULL, conet::fn_ptr_cast<void *(*)(void*)>(&TaskEnv::run), env);
+            pthread_create(&env->tid, NULL, conet::ptr_cast<void *(*)(void*)>(&TaskEnv::run), env);
         }
 
         

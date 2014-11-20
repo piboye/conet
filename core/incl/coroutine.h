@@ -95,6 +95,7 @@ void * set_static_var(void * key, void *val);
         set_static_var(&co_static_var_ct_ ## name, name); \
     } \
  
+// 协程的spec 变量， 最好用 CO_NEW 来创建, 这样可以自动回收
 void * get_spec(uint64_t key);
 int set_spec(uint64_t key, void * val);
 uint64_t create_spec_key();

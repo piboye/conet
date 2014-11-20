@@ -27,7 +27,7 @@
 #include "glog/logging.h"
 
 #include "base/incl/net_tool.h"
-#include "base/incl/fn_ptr_cast.h"
+#include "base/incl/ptr_cast.h"
 #include "core/incl/fd_ctx.h"
 
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");
@@ -134,7 +134,7 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
 
 int tcp_server_t::start()
 {
-    this->main_co = alloc_coroutine(conet::fn_ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), this);
+    this->main_co = alloc_coroutine(conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), this);
     conet::resume(this->main_co);
     return 0;
 }

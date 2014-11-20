@@ -124,8 +124,8 @@ void co_main_helper2(void *p, void *p2)
         //auto delete coroute object;
         //free_coroutine(co);
         timeout_handle_t del_self;
-        init_timeout_handle(&del_self, delay_del_coroutine, co, 1);
-        set_timeout(&del_self, 1);
+        init_timeout_handle(&del_self, delay_del_coroutine, co);
+        set_timeout(&del_self, 0);
         co_return();
         return;
     }
@@ -244,11 +244,23 @@ void free_coroutine(coroutine_t *co)
         co->gc_mgr = NULL;
     }
 
-    if (co->static_vars ) delete co->static_vars;
+    if (co->static_vars ) 
+    {
+        // 静态变量， 从 gc_mgr 分配的, 不需要回收
+        delete co->static_vars;
+    }
 
-    if (co->spec) delete co->spec;
+    if (co->spec) 
+    {
+        // 从 gc_mgr 分配, 没办法回收
+        delete co->spec;
+    }
 
-    if (co->pthread_spec) delete co->pthread_spec;
+    if (co->pthread_spec) 
+    {
+        // 没办法回收
+        delete co->pthread_spec;
+    }
 
 
     #ifdef USE_VALGRIND
@@ -429,7 +441,7 @@ int wait(coroutine_t *co, uint32_t ms)
     }
 
     timeout_handle_t wait_th;
-    init_timeout_handle(&wait_th, wait_timeout_handle, CO_SELF(), ms);
+    init_timeout_handle(&wait_th, wait_timeout_handle, CO_SELF());
     set_timeout(&wait_th, ms);
 
     int ret = (int64_t) (yield(&co->exit_notify_queue, NULL));
@@ -485,7 +497,7 @@ public:
         m_inter = m_inter;
         m_exit_flag = 0;
 
-        init_timeout_handle(&m_tm,  &TimeoutHandle::timeout_cb, this, m_ms);
+        init_timeout_handle(&m_tm,  &TimeoutHandle::timeout_cb, this);
         m_co = alloc_coroutine(&TimeoutHandle::proc, this, stack_size);
         set_auto_delete(m_co);
         if (inter) {

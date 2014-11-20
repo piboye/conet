@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  fn_ptr_cast.h
+ *       Filename:  ptr_cast.h
  *
  *    Description:  
  *
@@ -16,15 +16,15 @@
  * =====================================================================================
  */
 
-#ifndef __FN_PTR_CAST_H__
-#define __FN_PTR_CAST_H__
+#ifndef __PTR_CAST_H__
+#define __PTR_CAST_H__
 
 #include <string.h>
 
 namespace conet 
 {
 template<typename dst_fn_t, typename src_fn_t>    
-dst_fn_t fn_ptr_cast(src_fn_t fn)
+dst_fn_t ptr_cast(src_fn_t fn)
 {
     dst_fn_t ret_fn=NULL;
     memcpy(&(ret_fn), &(fn), sizeof(void *));
