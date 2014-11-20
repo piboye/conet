@@ -177,6 +177,8 @@ struct pthread_mgr_t
 static __thread pthread_mgr_t *g_pthread_mgr = NULL;
 CONET_DEF_TLS_VAR_HELP(g_pthread_mgr,
         ({
+
+            conet::DisablePthreadHook disable;
             pthread_mgr_t * m = new pthread_mgr_t();
             m;
         }),
@@ -487,7 +489,12 @@ static conet::AddrMap * get_cond_map()
 {
     conet::AddrMap * g_map = g_cond_map; // x86_64 8 byte read is atomic
     if (g_map == NULL) {
-        conet::AddrMap *map = new conet::AddrMap();
+
+        {
+            conet::DisablePthreadHook disable;
+            conet::AddrMap *map = new conet::AddrMap();
+        }
+
         map->init(1000);
         map->set_destructor_func(&pcond_mgr_t::fini, NULL);
         if (__sync_bool_compare_and_swap(&g_cond_map, NULL, map)) {
@@ -531,7 +538,13 @@ static pcond_mgr_t * find_cond_map(void *key)
         } 
     }
 
-    pcond_mgr_t * mgr = new pcond_mgr_t(key);
+    
+    pcond_mgr_t * mgr = NULL;
+    {
+        conet::DisablePthreadHook disable;
+        mgr = new pcond_mgr_t(key);
+    }
+
     pcond_mgr_t * old_mgr = NULL;
     SCOPE_WRLOCK(&g_cond_map_lock)
     {

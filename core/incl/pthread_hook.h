@@ -49,6 +49,40 @@ void disable_pthread_hook()
         co->is_enable_pthread_hook = 0;
 }
 
+inline void disable_pthread_hook_save(int *stat) 
+{
+    coroutine_t *co = get_curr_co_can_null();
+    if (co) { 
+        stat = co->is_enable_pthread_hook;
+        co->is_enable_pthread_hook = 0;
+    } else {
+        stat = 0;
+    }
+}
+inline void restore_pthread_hook_stat(int stat)
+{
+    coroutine_t *co = get_curr_co_can_null();
+    if (co) { 
+        co->is_enable_pthread_hook = stat;
+    }
+}
+
+class DisablePthreadHook
+{
+public:
+    int m_stat;
+    DisablePthreadHook()
+    {
+        m_stat = 0;
+        disable_pthread_hook_save(&m_stat);
+    }
+
+    ~DisablePthreadHook()
+    {
+        restore_pthread_hook_stat(m_stat);
+    }
+};
+
 }
 
 #endif /* end of include guard */
