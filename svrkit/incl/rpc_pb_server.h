@@ -35,7 +35,7 @@ struct tcp_server_t;
 struct http_server_t;
 struct rpc_pb_server_base_t;
 
-struct rpc_pb_server_t
+struct rpc_pb_server_t: public ServerBase
 {
     tcp_server_t * tcp_server;
     http_server_t *http_server;
@@ -60,6 +60,8 @@ struct rpc_pb_server_t
 
     PacketStream *alloc_packet_stream();
     int send_pb(int fd, cmd_base_t *, google::protobuf::Message *rsp=NULL);
+
+    virtual ~rpc_pb_server_t();
 };
 
 }

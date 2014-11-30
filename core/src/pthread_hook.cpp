@@ -496,9 +496,9 @@ static conet::AddrMap * get_cond_map()
     conet::AddrMap * g_map = g_cond_map; // x86_64 8 byte read is atomic
     if (g_map == NULL) {
 
+        conet::AddrMap *map = new conet::AddrMap();
         {
             conet::DisablePthreadHook disable;
-            conet::AddrMap *map = new conet::AddrMap();
         }
 
         map->init(1000);

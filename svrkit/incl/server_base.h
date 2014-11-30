@@ -22,7 +22,9 @@ namespace conet
 {
     struct ServerBase
     {
+
         std::string m_server_name;
+
         virtual int start()=0;
 
         virtual int stop(int wait_ms)=0;

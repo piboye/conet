@@ -394,6 +394,7 @@ int async_rpc_pb_server_t::proc_worker()
         cmd_ctx->conn_ctx->cmd_ctx_pool.release(cmd_ctx);
 
         --cmd_ctx->conn_ctx->work_ref_num;
+
         //睡眠
         if (0 == tcp_server->to_stop) break;
         this->worker_pool.release(co_self);
@@ -401,6 +402,11 @@ int async_rpc_pb_server_t::proc_worker()
     } while (cmd_ctx && 0 == tcp_server->to_stop);
 
     return 0;
+}
+
+async_rpc_pb_server_t::~async_rpc_pb_server_t()
+{
+
 }
 
 async_rpc_pb_server_t::async_rpc_pb_server_t()
@@ -468,7 +474,8 @@ int async_rpc_pb_server_t::start()
     int ret =  0;
     ret = tcp_server->start();
 
-    stat_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_stat, this, 4*4096);
+    this->stat_co = conet::alloc_coroutine((CO_MAIN_FUN *)&proc_stat, this, 4*4096);
+    set_auto_delete(this->stat_co);
     resume(stat_co);
 
     return ret;
@@ -484,6 +491,7 @@ int async_rpc_pb_server_t::stop(int wait)
     } else {
         LOG(INFO)<<"stop rpc main server failed, [ret:"<<ret<<"]";
     }
+
 
 
     LOG(INFO)<<"stop rpc finished";
