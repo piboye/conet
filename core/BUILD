@@ -17,6 +17,8 @@ cc_library(
         "src/dispatch.cpp",
         "src/co_pool.cpp",
         "src/stacktrace.cpp",
+        "src/jump_x86_64_sysv_elf_gas.s",
+        "src/make_x86_64_sysv_elf_gas.s",
     ],
 
     incs= [ 
