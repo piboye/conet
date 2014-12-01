@@ -142,11 +142,9 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         }
 
         if (ret <0) {
-            /* 
             if (errno == EINTR) {
                 continue;
             }
-            */
             break;
         }
 
@@ -166,10 +164,11 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
             break;
         }
 
-        if (ret <0) {
+        if (ret <0) 
+        {
             if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
-                    conn->extend = stream;
-                    http_server->conn_proc(conn);
+                conn->extend = stream;
+                http_server->conn_proc(conn);
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             }
@@ -293,5 +292,10 @@ int rpc_pb_server_t::stop(int wait)
 
     LOG(INFO)<<"stop rpc finished";
     return ret;
+}
+
+rpc_pb_server_t::~rpc_pb_server_t()
+{
+
 }
 }

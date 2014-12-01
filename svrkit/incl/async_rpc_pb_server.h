@@ -34,7 +34,7 @@ namespace conet
 struct tcp_server_t;
 struct rpc_pb_server_base_t;
 
-struct async_rpc_pb_server_t
+struct async_rpc_pb_server_t : public ServerBase
 {
     tcp_server_t * tcp_server;
     rpc_pb_server_base_t * base_server;
@@ -54,6 +54,7 @@ struct async_rpc_pb_server_t
     int start();
 
     int stop(int wait_ms);
+    ~async_rpc_pb_server_t();
 
 
     int main_proc(conn_info_t *conn);
