@@ -29,7 +29,7 @@
 #include "../../base/incl/list.h"
 
 #ifdef USE_VALGRIND
-#include <valgrind/valgrind.h>
+#include "/data/home/piboyeliu/soft/valgrind-3.10.0/include/valgrind.h"
 #endif
 
 DECLARE_int32(stack_size);
