@@ -27,6 +27,7 @@
 #include "../../base/incl/fixed_mempool.h"
 #include "../../base/incl/tls.h"
 #include "../../base/incl/list.h"
+#include "fcontext.h"
 
 #ifdef USE_VALGRIND
 #include "/data/home/piboyeliu/soft/valgrind-3.10.0/include/valgrind.h"
@@ -72,6 +73,7 @@ enum {
 struct coroutine_t
 {
     ucontext_t ctx;
+    fcontext_t *fctx;
     
     void * stack;
     int stack_size;

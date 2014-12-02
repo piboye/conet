@@ -71,8 +71,9 @@ void co_return(void *val=NULL) {
     env->curr_co = last;
     last->state = RUNNING;
     last->yield_val = val;
-    conet_setcontext(&last->ctx);
+    //conet_setcontext(&last->ctx);
     //conet_swapcontext(&(curr_co->ctx), &(last->ctx));
+    jump_fcontext(&(curr_co->fctx), last->fctx, val);
 }
 
 void delay_del_coroutine(void *arg)
@@ -82,7 +83,7 @@ void delay_del_coroutine(void *arg)
 }
 
 static
-void co_main_helper2(void *, void *);
+void co_main_helper2(void *);
 
 static
 void co_main_helper(int co_low, int co_high )
@@ -90,13 +91,13 @@ void co_main_helper(int co_low, int co_high )
     uint64_t p = (uint32_t)co_high;
     p <<= 32;
     p |= (uint32_t)co_low;
-    co_main_helper2((void *)(p), NULL);
+    co_main_helper2((void *)(p));
 }
 
 int64_t g_page_size  = sysconf(_SC_PAGESIZE);
 
 static
-void co_main_helper2(void *p, void *p2)
+void co_main_helper2(void *p)
 {
     coroutine_t *co = (coroutine_t *)p;
 
@@ -296,18 +297,24 @@ void *resume(coroutine_t * co, void * val)
     assert(cur);
     co->yield_val = val;
     if (CREATE == co->state) {
+        /*
         uint64_t p = (uint64_t) co;
-        //getcontext(&co->ctx);
         makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
-                    (uint32_t)(p & 0xffffffff), (uint32_t)((p >> 32) & 0xffffffff) );
+              (uint32_t)(p & 0xffffffff), 
+              (uint32_t)((p >> 32) & 0xffffffff) );
+        
+        */
+        co->fctx = make_fcontext(co->stack+co->stack_size, co->stack_size, co_main_helper2);
+        val = co;
     }
-    co->ctx.uc_link = &cur->ctx;
+    //co->ctx.uc_link = &cur->ctx;
     co->state = RUNNING;
     list_del_init(&co->wait_to);
     env->curr_co = co;
     list_add_tail(&cur->wait_to, &env->run_queue);
 
-    conet_swapcontext(&(cur->ctx), &(co->ctx) );
+    jump_fcontext(&(cur->fctx), co->fctx, val);
+    //conet_swapcontext(&(cur->ctx), &(co->ctx));
     return cur->yield_val;
 }
 
@@ -336,7 +343,8 @@ void * yield(list_head *wait_to, void * val)
     cur->state = SUSPEND;
     last->state = RUNNING;
     last->yield_val = val;
-    conet_swapcontext(&cur->ctx, &last->ctx);
+    //conet_swapcontext(&cur->ctx, &last->ctx);
+    jump_fcontext(&(cur->fctx), last->fctx, val);
     return cur->yield_val;
 }
 
