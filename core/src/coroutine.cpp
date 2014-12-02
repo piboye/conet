@@ -85,6 +85,7 @@ void delay_del_coroutine(void *arg)
 static
 void co_main_helper2(void *);
 
+/*
 static
 void co_main_helper(int co_low, int co_high )
 {
@@ -93,6 +94,7 @@ void co_main_helper(int co_low, int co_high )
     p |= (uint32_t)co_low;
     co_main_helper2((void *)(p));
 }
+*/
 
 int64_t g_page_size  = sysconf(_SC_PAGESIZE);
 
@@ -304,7 +306,7 @@ void *resume(coroutine_t * co, void * val)
               (uint32_t)((p >> 32) & 0xffffffff) );
         
         */
-        co->fctx = make_fcontext(co->stack+co->stack_size, co->stack_size, co_main_helper2);
+        co->fctx = make_fcontext((char *)co->stack + co->stack_size, co->stack_size, co_main_helper2);
         val = co;
     }
     //co->ctx.uc_link = &cur->ctx;

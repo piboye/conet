@@ -41,7 +41,7 @@ struct fcontext_t
 };
 
 extern "C" 
-void *jump_fcontext(fcontext_t **ofc, fcontext_t *nfc,
+void *jump_fcontext(fcontext_t **cur_ctx, fcontext_t *dest_ctx,
         void *vp, bool preserve_fpu = true);
 
 extern "C"
