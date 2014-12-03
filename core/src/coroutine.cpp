@@ -44,18 +44,14 @@ conet::fixed_mempool_t * get_co_struct_pool()
 }
 
 
-void * get_yield_value(coroutine_t *co)
-{
-    return co->yield_val;
-}
-
 bool is_stop(coroutine_t *co)
 {
     return co->state == STOP;
 }
 
 static
-void co_return(void *val=NULL) {
+void co_return() 
+{
     coroutine_env_t *env = get_coroutine_env();
     if (list_empty(&env->run_queue)) {
         LOG(FATAL)<<"co thread env run queue empty";
@@ -70,10 +66,7 @@ void co_return(void *val=NULL) {
 
     env->curr_co = last;
     last->state = RUNNING;
-    last->yield_val = val;
-    //conet_setcontext(&last->ctx);
-    //conet_swapcontext(&(curr_co->ctx), &(last->ctx));
-    jump_fcontext(&(curr_co->fctx), last->fctx, val);
+    jump_fcontext(&(curr_co->fctx), last->fctx, NULL);
 }
 
 void delay_del_coroutine(void *arg)
@@ -81,20 +74,6 @@ void delay_del_coroutine(void *arg)
     coroutine_t * co = (coroutine_t *)(arg);
     free_coroutine(co);
 }
-
-static
-void co_main_helper2(void *);
-
-/*
-static
-void co_main_helper(int co_low, int co_high )
-{
-    uint64_t p = (uint32_t)co_high;
-    p <<= 32;
-    p |= (uint32_t)co_low;
-    co_main_helper2((void *)(p));
-}
-*/
 
 int64_t g_page_size  = sysconf(_SC_PAGESIZE);
 
@@ -202,9 +181,6 @@ int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_siz
     }
 
     self->stack_size = stack_size;
-    self->ctx.uc_stack.ss_sp = self->stack;
-    self->ctx.uc_stack.ss_size = stack_size;
-    self->ctx.uc_link = NULL;
 
     self->pfn = fn;
     self->pfn_arg = arg;
@@ -270,7 +246,7 @@ void free_coroutine(coroutine_t *co)
             VALGRIND_STACK_DEREGISTER(co->m_vid);
     #endif
 
-    if (co->stack_size == FLAGS_stack_size) 
+    if (co->stack_size == (uint64_t)FLAGS_stack_size) 
     {
         get_default_stack_pool()->free(co->stack);
     } 
@@ -296,28 +272,23 @@ void *resume(coroutine_t * co, void * val)
 {
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
-    assert(cur);
-    co->yield_val = val;
-    if (CREATE == co->state) {
-        /*
-        uint64_t p = (uint64_t) co;
-        makecontext(&co->ctx, (coroutine_fun_t) co_main_helper, 2, \
-              (uint32_t)(p & 0xffffffff), 
-              (uint32_t)((p >> 32) & 0xffffffff) );
-        
-        */
+    env->curr_co = co;
+
+    if (unlikely(CREATE == co->state)) 
+    {
         co->fctx = make_fcontext((char *)co->stack + co->stack_size, co->stack_size, co_main_helper2);
         val = co;
     }
-    //co->ctx.uc_link = &cur->ctx;
+
     co->state = RUNNING;
-    list_del_init(&co->wait_to);
-    env->curr_co = co;
+    if (unlikely(!list_empty(&co->wait_to))) 
+    {
+        list_del_init(&co->wait_to);
+    }
+
     list_add_tail(&cur->wait_to, &env->run_queue);
 
-    jump_fcontext(&(cur->fctx), co->fctx, val);
-    //conet_swapcontext(&(cur->ctx), &(co->ctx));
-    return cur->yield_val;
+    return  jump_fcontext(&(cur->fctx), co->fctx, val);
 }
 
 void * yield(list_head *wait_to, void * val)
@@ -325,29 +296,19 @@ void * yield(list_head *wait_to, void * val)
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
 
-    if (list_empty(&env->run_queue)) {
-        LOG(FATAL)<<"co thread env run queue empty";
-        return NULL;
-    }
-
-    //assert(cur->ctx.uc_link);
-    coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
-
-    list_del_init(&last->wait_to);
-    list_del_init(&cur->wait_to);
+    coroutine_t *last = container_of(list_pop_tail(&env->run_queue), coroutine_t, wait_to);
 
     env->curr_co = last;
 
-    if (wait_to) {
+    if (unlikely(wait_to)) 
+    {
+        list_del_init(&cur->wait_to);
         list_add_tail(&cur->wait_to, wait_to);
     } 
 
     cur->state = SUSPEND;
     last->state = RUNNING;
-    last->yield_val = val;
-    //conet_swapcontext(&cur->ctx, &last->ctx);
-    jump_fcontext(&(cur->fctx), last->fctx, val);
-    return cur->yield_val;
+    return  jump_fcontext(&(cur->fctx), last->fctx, val);
 }
 
 coroutine_t * current_coroutine()

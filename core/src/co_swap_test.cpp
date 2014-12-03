@@ -37,7 +37,8 @@ int main(int argc, char * argv[])
     
   google::ParseCommandLineFlags(&argc, &argv, false); 
   coroutine_t  *co = conet::alloc_coroutine(&t,  NULL);
-  for(uint64_t i = (uint64_t)FLAGS_num; i > 0; --i)
+  int num = FLAGS_num;
+  for(uint64_t i = (uint64_t)num; i > 0; --i)
   {
       resume(co, (void *)(i));
   }

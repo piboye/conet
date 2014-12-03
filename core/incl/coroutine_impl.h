@@ -59,7 +59,9 @@ struct coroutine_env_t
     coroutine_t * main;
     list_head tasks;
     uint64_t spec_key_seed;
-};
+}  
+__attribute__((aligned(64)))
+;
 
 
 enum {
@@ -72,25 +74,10 @@ enum {
 
 struct coroutine_t
 {
-    ucontext_t ctx;
     fcontext_t *fctx;
     
     void * stack;
-    int stack_size;
-
-    int state;
-
-    struct {
-        unsigned int is_main:1;
-        unsigned int is_enable_sys_hook:1;
-        unsigned int is_end_delete:1;
-        unsigned int is_enable_pthread_hook:1;
-        unsigned int is_enable_disk_io_hook:1;
-        unsigned int is_page_stack:1;
-    };
-
-    int ret_val;
-    void *yield_val;
+    uint64_t stack_size;
 
     CO_MAIN_FUN *pfn;
     void *pfn_arg;
@@ -105,15 +92,27 @@ struct coroutine_t
 
     uint64_t id;
 
-#ifdef USE_VALGRIND
-    int m_vid;
-#endif
 
     std::map<void *, void*> *static_vars;
     std::map<uint64_t, void *> * spec;
     std::map<pthread_key_t, void *> * pthread_spec;
 
-};
+    int state;
+    int ret_val;
+    struct {
+        unsigned int is_main:1;
+        unsigned int is_enable_sys_hook:1;
+        unsigned int is_end_delete:1;
+        unsigned int is_enable_pthread_hook:1;
+        unsigned int is_enable_disk_io_hook:1;
+        unsigned int is_page_stack:1;
+    };
+#ifdef USE_VALGRIND
+    int m_vid;
+#endif
+}
+__attribute__((aligned(64)))
+;
 
 coroutine_env_t *alloc_coroutine_env();
 void free_coroutine_env(void *arg);

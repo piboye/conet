@@ -44,8 +44,8 @@ int conn_proc_co(conn_info_t *info)
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
     conet::coroutine_t *co = CO_SELF();
-    info = (conn_info_t *) conet::get_yield_value(co);
     tcp_server_t *server = (tcp_server_t *)info->server;
+    info = (conn_info_t *)yield();
 
     tcp_server_t::conn_proc_cb_t conn_proc = server->conn_proc_cb;
     void * cb_arg = server->cb_arg;
@@ -99,6 +99,7 @@ void * alloc_server_work_co(void *arg)
 {
     conet::coroutine_t * co = alloc_coroutine((int (*)(void *))conn_proc_co, NULL);
     set_auto_delete(co);
+    resume(co, NULL);
     return co;
 }
 
