@@ -21,8 +21,7 @@
 #include <sys/syscall.h>
 #include "tls.h"
 #include "list.h"
-
-#define LOG(...)
+#include "thirdparty/glog/logging.h"
 
 #define gettid() syscall(__NR_gettid)
 #define TLS_OUT_OF_INDEXES          0xffffffff
@@ -51,12 +50,18 @@ void pthread_atexit_done(void *arg)
     pthread_atexit_t *id_ptr=NULL;
 
     list_head *it=NULL, *next=NULL;
-    list_for_each_safe(it, next, list)
+
+    list_head l;
+    INIT_LIST_HEAD(&l);
+    list_add(&l, list);
+    list_del_init(list);
+
+    list_for_each_safe(it, next, &l)
     {
+        list_del(it);
         id_ptr = container_of(it, pthread_atexit_t, link_to);
         if (id_ptr->free_fn)
             id_ptr->free_fn(id_ptr->arg);
-        list_del(it);
         delete id_ptr;
     }
     delete list;
@@ -72,6 +77,8 @@ static
 void pthread_atexit_init(void)
 {
     pthread_key_create(&g_pthread_atexit_key, pthread_atexit_done);
+
+    //主线程 退出释放资源
     atexit(&main_thread_atexit_done);
 }
 
@@ -81,7 +88,7 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
     pthread_once(&g_pthread_atexit_control_once, pthread_atexit_init);
     if (g_pthread_atexit_key == (pthread_key_t) TLS_OUT_OF_INDEXES)
     {
-        LOG("_pthread_atexit_key(%d) invalid\n", g_pthread_atexit_key);
+        LOG(ERROR)<<"_pthread_atexit_key("<<g_pthread_atexit_key<<") invalid";
         return (-1);
     }
 

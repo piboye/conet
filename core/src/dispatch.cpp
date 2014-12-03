@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (),
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -40,14 +40,16 @@ struct dispatch_mgr_t
 void free_dispach_mgr(dispatch_mgr_t * mgr)
 {
     task_t *t=NULL, *n = NULL;
-    list_for_each_entry_safe(t, n, &mgr->tasks, link_to) {
+    list_for_each_entry_safe(t, n, &mgr->tasks, link_to) 
+    {
         list_del_init(&t->link_to);
         if (t->auto_del) {
             delete t;
         }
     }
 
-    list_for_each_entry_safe(t, n, &mgr->delay_tasks, link_to) {
+    list_for_each_entry_safe(t, n, &mgr->delay_tasks, link_to) 
+    {
         list_del_init(&t->link_to);
         if (t->auto_del) {
             delete t;

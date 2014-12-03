@@ -157,6 +157,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
 
 void fini_timewheel(timewheel_t *self)
 {
+    unregistry_task(&self->delay_task);
     delete [] self->slots;
 }
 
