@@ -1,3 +1,5 @@
+# this copy from libc
+
 .att_syntax
 .equ R8, 40
 .equ R9, 48
