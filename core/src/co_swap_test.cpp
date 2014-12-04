@@ -30,19 +30,26 @@ int t(void *arg)
     return 0;
 }
 
-DEFINE_int32(num, 1000000, "swap num");
-
-int main(int argc, char * argv[])
+int t2(void * arg)
 {
-    
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  uint64_t num = (uint64_t)(arg);
   coroutine_t  *co = conet::alloc_coroutine(&t,  NULL);
-  int num = FLAGS_num;
   for(uint64_t i = (uint64_t)num; i > 0; --i)
   {
       resume(co, (void *)(i));
   }
   resume(co, NULL);
+  return 0;
+}
+
+DEFINE_int32(num, 1000000, "swap num");
+
+int main(int argc, char * argv[])
+{
+  google::ParseCommandLineFlags(&argc, &argv, false); 
+  coroutine_t  *co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
+  resume(co, NULL);
+  conet::wait(co);
   return 0;
 }
 

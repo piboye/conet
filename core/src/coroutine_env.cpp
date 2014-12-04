@@ -40,7 +40,6 @@ void init_coroutine_env(coroutine_env_t *self)
     self->main->desc = "main";
     INIT_LIST_HEAD(&self->main->wait_to);
 
-    //getcontext(&self->main->ctx);
     self->curr_co = self->main;
     INIT_LIST_HEAD(&self->run_queue);
     list_add_tail(&self->main->wait_to, &self->run_queue);

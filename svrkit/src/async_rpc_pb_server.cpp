@@ -440,13 +440,15 @@ int async_rpc_pb_server_t::main_proc(conn_info_t *conn)
 
     close(conn->fd);
 
+    a_ctx.to_stop = 1;
+
     while (a_ctx.work_ref_num > 0) 
     {
         // 10ms 检查一下
         usleep(10000);
     }
-    a_ctx.to_stop = 1;
 
+    //a_ctx.rsp_wait.wakeup
     conet::wait(w_co);
     conet::free_coroutine(w_co);
 
@@ -463,7 +465,7 @@ int proc_stat(void *arg)
         sleep(1);
         proc_num = self->m_req_num - prev_req_num;
         prev_req_num = self->m_req_num;
-        LOG(ERROR)<<"poc req num: "<<proc_num;
+        LOG(INFO)<<"poc req num: "<<proc_num;
     }
 
     return 0;

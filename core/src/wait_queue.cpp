@@ -57,16 +57,16 @@ WaitQueue::~WaitQueue()
 
     list_for_each_entry_safe(it, next, &queue, link)
     {
-        list_del(&it->link);
+        list_del_init(&it->link);
         conet::resume(it->co);
     }
 }
 
 int WaitQueue::wait_on(int ms)
 {
-     WaitItem w;
      coroutine_t * co = CO_SELF(); 
 
+     WaitItem w;
      // 初始化 wait_item
      w.wq = this;
      w.co = co; 
@@ -84,6 +84,7 @@ int WaitQueue::wait_on(int ms)
 
      yield(NULL, NULL);
 
+     list_del_init(&w.link);
 
      --this->wait_num; 
 
@@ -106,7 +107,7 @@ int WaitQueue::wakeup_head_n(int num)
     WaitItem *it=NULL, *next=NULL;
     list_for_each_entry_safe(it, next, &this->queue, link)
     {
-        list_del(&it->link);
+        list_del_init(&it->link);
         coroutine_t *co = it->co;
         conet::resume(co);
         ++n;
@@ -119,7 +120,7 @@ int WaitQueue::wakeup_head()
 {
     if (!list_empty(&this->queue)) {
         WaitItem *item = container_of(this->queue.next, WaitItem, link); 
-        list_del(&item->link);
+        list_del_init(&item->link);
         coroutine_t *co = item->co;
         conet::resume(co);
         return 1;
@@ -131,7 +132,7 @@ int WaitQueue::wakeup_tail()
 {
     if (!list_empty(&this->queue)) {
         WaitItem *item = container_of(this->queue.prev, WaitItem, link); 
-        list_del(&item->link);
+        list_del_init(&item->link);
         coroutine_t *co = item->co;
         conet::resume(co);
         return 1;
@@ -146,7 +147,7 @@ int WaitQueue::wakeup_tail_n(int num)
     WaitItem *it=NULL, *next=NULL;
     list_for_each_entry_safe_reverse(it, next, &this->queue, link)
     {
-        list_del(&it->link);
+        list_del_init(&it->link);
         coroutine_t *co = it->co;
         conet::resume(co);
         ++n;
@@ -162,7 +163,7 @@ int WaitQueue::wakeup_all()
     WaitItem *it=NULL, *next=NULL;
     list_for_each_entry_safe(it, next, &this->queue, link)
     {
-        list_del(&it->link);
+        list_del_init(&it->link);
         coroutine_t *co = it->co;
         conet::resume(co);
         ++n;

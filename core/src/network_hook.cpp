@@ -224,8 +224,12 @@ HOOK_SYS_FUNC_DEF(
 
 namespace conet 
 {
+__attribute__ ((weak))
 ssize_t disk_read(int fd, void *buf, size_t nbyte);
+
+__attribute__((weak))
 ssize_t disk_write(int fd, const void *buf, size_t nbyte);
+
 }
 
 HOOK_SYS_FUNC_DEF(
@@ -248,8 +252,11 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        //return _(read)(fd, buf, nbyte);
-        return conet::disk_read(fd, buf, nbyte);
+        if (conet::disk_read) {
+            return conet::disk_read(fd, buf, nbyte);
+        } else {
+            return _(read)(fd, buf, nbyte);
+        }
     }
 
 
@@ -306,8 +313,11 @@ HOOK_SYS_FUNC_DEF(
 
     if (lp->type == 2)
     {
-        //return _(write)(fd, buf, nbyte);
-        return conet::disk_write(fd, buf, nbyte);
+        if (conet::disk_write) {
+            return conet::disk_write(fd, buf, nbyte);
+        }else {
+            return _(write)(fd, buf, nbyte);
+        }
     }
 
     ret = _(write)(fd, (const char*) buf, nbyte);
@@ -336,7 +346,10 @@ HOOK_SYS_FUNC_DEF(
 
 namespace conet
 {
-ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt);
+
+__attribute__ ((weak)) ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt);
+
+__attribute__((weak))
 ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt);
 }
 
@@ -355,8 +368,11 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
     }
     if (ctx->type == 2) {
         //disk
-        //return _(writev)(fd, iov, iovcnt);
-        return disk_writev(ctx, fd, iov, iovcnt);
+        if (conet::disk_writev) {
+            return disk_writev(ctx, fd, iov, iovcnt);
+        }else {
+            return _(writev)(fd, iov, iovcnt);
+        }
     }
     ssize_t ret = 0;
     ret = _(writev)(fd, iov, iovcnt);
@@ -395,8 +411,10 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
     }
     if (ctx->type == 2) {
         //disk
-        //return _(readv)(fd, iov, iovcnt);
-        return conet::disk_readv(fd, iov, iovcnt);
+        if (conet::disk_readv)
+            return conet::disk_readv(fd, iov, iovcnt);
+        else 
+            return _(readv)(fd, iov, iovcnt);
     }
     int timeout = ctx->rcv_timeout;
 

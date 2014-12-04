@@ -60,7 +60,6 @@ void co_return(coroutine_t *co)
 
     coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
     list_del_init(&last->wait_to);
-    list_del_init(&co->wait_to);
 
     env->curr_co = last;
     last->state = RUNNING;
@@ -75,6 +74,31 @@ void delay_del_coroutine(void *arg)
 
 int64_t g_page_size  = sysconf(_SC_PAGESIZE);
 
+struct exit_notify_t
+{
+    list_head queue;
+    int ret_val;
+};
+
+static 
+int proc_exit_notify(void *arg)
+{
+    exit_notify_t * data = (exit_notify_t *)(arg);
+
+    list_head *it=NULL, *next=NULL;
+    list_for_each_safe(it, next, &data->queue)
+    {
+        list_del_init(it);
+        coroutine_t * co2 = container_of(it, coroutine_t, wait_to);
+        if (co2->state < STOP) 
+        {
+            resume(co2, (void *)(int64_t)(data->ret_val));
+        }
+    }
+    delete data;
+    return 0;
+}
+
 static
 void co_main_helper2(void *p)
 {
@@ -86,15 +110,14 @@ void co_main_helper2(void *p)
     co->state = STOP;
 
     list_del_init(&co->wait_to);
+    if (!list_empty(&co->exit_notify_queue))
     {
-        // notify exit wait queue
-        list_head *it=NULL, *next=NULL;
-        list_for_each_safe(it, next, &co->exit_notify_queue)
-        {
-            coroutine_t * co2 = container_of(it, coroutine_t, wait_to);
-            list_del_init(it);
-            resume(co2, (void *)(int64_t)(co->ret_val));
-        }
+        exit_notify_t * data = new exit_notify_t();
+        INIT_LIST_HEAD(&data->queue);
+        list_add(&data->queue, &co->exit_notify_queue);
+        list_del_init(&co->exit_notify_queue);
+        data->ret_val = co->ret_val;
+        registry_delay_task(proc_exit_notify, data);
     }
 
     if (co->is_end_delete) 
@@ -283,6 +306,7 @@ void *resume(coroutine_t * co, void * val)
         list_del_init(&co->wait_to);
     }
 
+    list_del_init(&cur->wait_to);
     list_add_tail(&cur->wait_to, &env->run_queue);
 
     return  jump_fcontext(&(cur->fctx), co->fctx, val);
