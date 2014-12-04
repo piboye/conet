@@ -98,6 +98,11 @@ void print_ucontext(ucontext_t *a_uc, int fd)
 
 void print_stacktrace(coroutine_t *co, int fd)
 {
+   ucontext_t uctx;
+   fcontext_t *fctx = co->fctx;
+   uctx.uc_stack.stack = fctx->fc_stack.sp; 
+   uctx.uc_stack.stack_size = fctx->fc_stack.size; 
+   uctx.uc_mcontext.gregs[] = fctx->fc_greg[];
    print_ucontext(&co->ctx, fd); 
 }
 
