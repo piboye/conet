@@ -50,7 +50,7 @@ bool is_stop(coroutine_t *co)
 }
 
 static
-void co_return() 
+void co_return(coroutine_t *co) 
 {
     coroutine_env_t *env = get_coroutine_env();
     if (list_empty(&env->run_queue)) {
@@ -58,15 +58,13 @@ void co_return()
         return ;
     }
 
-    coroutine_t * curr_co = env->curr_co;
-
     coroutine_t *last = container_of(env->run_queue.prev, coroutine_t, wait_to);
     list_del_init(&last->wait_to);
-    list_del_init(&curr_co->wait_to);
+    list_del_init(&co->wait_to);
 
     env->curr_co = last;
     last->state = RUNNING;
-    jump_fcontext(&(curr_co->fctx), last->fctx, NULL);
+    jump_fcontext(&(co->fctx), last->fctx, NULL);
 }
 
 void delay_del_coroutine(void *arg)
@@ -86,11 +84,8 @@ void co_main_helper2(void *p)
     co->ret_val = co->pfn(co->pfn_arg);
 
     co->state = STOP;
+
     list_del_init(&co->wait_to);
-    coroutine_env_t *env = get_coroutine_env();
-    assert(env->curr_co == co);
-    //env->curr_co = container_of(co->ctx.uc_link, coroutine_t, ctx);
-    list_del_init(&env->curr_co->wait_to);
     {
         // notify exit wait queue
         list_head *it=NULL, *next=NULL;
@@ -102,16 +97,18 @@ void co_main_helper2(void *p)
         }
     }
 
-    if (co->is_end_delete) {
+    if (co->is_end_delete) 
+    {
         //auto delete coroute object;
         //free_coroutine(co);
         timeout_handle_t del_self;
         init_timeout_handle(&del_self, delay_del_coroutine, co);
         set_timeout(&del_self, 0);
-        co_return();
+        co_return(co);
         return;
     }
-    co_return();
+
+    co_return(co);
     return ;
 }
 

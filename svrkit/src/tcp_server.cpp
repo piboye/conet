@@ -44,8 +44,13 @@ int conn_proc_co(conn_info_t *info)
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
     conet::coroutine_t *co = CO_SELF();
-    tcp_server_t *server = (tcp_server_t *)info->server;
     info = (conn_info_t *)yield();
+    if (info == NULL)
+    {
+        return 0;
+    }
+
+    tcp_server_t *server = (tcp_server_t *)info->server;
 
     tcp_server_t::conn_proc_cb_t conn_proc = server->conn_proc_cb;
     void * cb_arg = server->cb_arg;

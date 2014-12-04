@@ -518,8 +518,8 @@ int write_all(int fd, std::vector<std::vector<char>*> const &out_datas)
             }
         } while(wlen < total_len);
 
-        delete iov;
-        delete need_outs;
+        delete [] iov;
+        delete [] need_outs;
 
         if (wlen == total_len) return 0;
         return -1;
