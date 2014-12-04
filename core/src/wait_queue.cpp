@@ -36,6 +36,7 @@ void wait_queue_item_timeout(void *arg)
 {
     WaitItem *self = (WaitItem *)(arg);
     self->expired_flag = 1;
+    list_del_init(&self->link);
     resume(self->co, NULL);
 }
 
@@ -84,7 +85,6 @@ int WaitQueue::wait_on(int ms)
 
      yield(NULL, NULL);
 
-     list_del_init(&w.link);
 
      --this->wait_num; 
 

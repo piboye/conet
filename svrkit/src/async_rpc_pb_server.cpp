@@ -448,7 +448,7 @@ int async_rpc_pb_server_t::main_proc(conn_info_t *conn)
         usleep(10000);
     }
 
-    //a_ctx.rsp_wait.wakeup
+    //a_ctx.rsp_wait.wakeup();
     conet::wait(w_co);
     conet::free_coroutine(w_co);
 
