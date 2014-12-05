@@ -39,17 +39,20 @@ int t2(void * arg)
       resume(co, (void *)(i));
   }
   resume(co, NULL);
+  conet::free_coroutine(co);
   return 0;
 }
 
 DEFINE_int32(num, 1000000, "swap num");
 
+coroutine_t  *g_co = NULL;
 int main(int argc, char * argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, false); 
-  coroutine_t  *co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
-  resume(co, NULL);
-  conet::wait(co);
+  g_co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
+  resume(g_co, NULL);
+  conet::wait(g_co);
+  conet::free_coroutine(g_co);
   return 0;
 }
 
