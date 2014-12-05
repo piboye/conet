@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <dlfcn.h>
 #include <unwind.h>
+#include <libunwind.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -157,13 +158,14 @@ __backtrace_symbols_fd(void **buffer, int depth, int fd)
 {
 	static char outbuf[102400];
 	static char cxx_name[102400];
+    //static char symname[10000];
 	static struct bt_frame bt;
 	if (buffer == NULL || depth <= 0)
 		return ;
 
 	for (int i = 0; i < depth; ++i) {
-        void * ip =  _Unwind_FindEnclosingFunction(buffer[i]);
-		if (dladdr(ip, &bt.bt_dlinfo) == 0) {
+        //void * ip =  _Unwind_FindEnclosingFunction(buffer[i]);
+		if (dladdr(buffer[i], &bt.bt_dlinfo) == 0) {
 			/* try something */
             uc_out("#%d\t%p", i, buffer[i]);
 		} else {
@@ -182,8 +184,8 @@ __backtrace_symbols_fd(void **buffer, int depth, int fd)
                 i,
 			    buffer[i],
 			    pname,
-			    //((char *)(buffer[i]) - (char *)bt.bt_dlinfo.dli_saddr),
-			    ((char *)(buffer[i]) - (char *)ip),
+			    ((char *)(buffer[i]) - (char *)bt.bt_dlinfo.dli_saddr),
+			    //((char *)(buffer[i]) - (char *)ip),
 			    bt.bt_dlinfo.dli_fname);
 		}
 	}
