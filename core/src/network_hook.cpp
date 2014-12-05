@@ -246,7 +246,7 @@ HOOK_SYS_FUNC_DEF(
 
     if( !lp || ( O_NONBLOCK & lp->user_flag ) )
     {
-        ret = syscall(SYS_read, fd, buf, nbyte);
+        ret = _(read)(fd, buf, nbyte);
         return ret;
     }
 
@@ -258,7 +258,6 @@ HOOK_SYS_FUNC_DEF(
             return _(read)(fd, buf, nbyte);
         }
     }
-
 
     int timeout = lp->rcv_timeout;
 

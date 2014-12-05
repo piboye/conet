@@ -21,8 +21,16 @@
 
 using namespace conet;
 
+namespace conet
+{
+void print_stacktrace(coroutine_t *co, int fd, int baddr);
+}
+
+coroutine_t  *g_co = NULL;
+
 int t(void *arg)
 {
+    conet::print_stacktrace(g_co, 2, 1);
     uint64_t i =  0;
     do {
         i = (uint64_t)yield();
@@ -45,12 +53,12 @@ int t2(void * arg)
 
 DEFINE_int32(num, 1000000, "swap num");
 
-coroutine_t  *g_co = NULL;
 int main(int argc, char * argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, false); 
   g_co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
   resume(g_co, NULL);
+  //conet::print_stacktrace(g_co, 2);
   conet::wait(g_co);
   conet::free_coroutine(g_co);
   return 0;

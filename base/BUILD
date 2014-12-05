@@ -15,6 +15,7 @@ gen_rule(
 cc_library(
     name="base",
     srcs = [
+        'src/addr2line.cpp',
         'src/pb2sqlite.cpp',
         'src/net_tool.cpp',
         'src/tls.cpp',
@@ -46,6 +47,7 @@ cc_library(
         "//thirdparty/jsoncpp:jsoncpp",
         "//thirdparty/protobuf:protobuf",
         "//thirdparty/sqlite:sqlite3",
+        "//thirdparty/glog:glog",
     ],
 );
 

@@ -14,7 +14,7 @@
 #include "../../base/incl/fixed_mempool.h"
 #include "../../base/incl/tls.h"
 
-DEFINE_int32(stack_size, 2*4096, "default stack size bytes");
+DEFINE_int32(stack_size, 4*4096, "default stack size bytes");
 
 extern "C" void conet_swapcontext(ucontext_t *co, ucontext_t *co2);
 extern "C" void conet_setcontext(ucontext_t *co);

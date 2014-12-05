@@ -121,6 +121,7 @@ fd_ctx_t *get_fd_ctx(int fd, int type)
     }
     fd_ctx_t *ctx =   mgr->fds[fd];
     if (NULL == ctx) {
+        /*
         struct stat sb;
         int ret = fstat(fd, &sb);
         if (ret) return NULL;
@@ -133,7 +134,6 @@ fd_ctx_t *get_fd_ctx(int fd, int type)
         if (S_ISCHR(sb.st_mode)) {
             return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
         }
-        /*
         // because FILE read buffer, can't hook
         if (S_ISREG(sb.st_mode)) {
             return alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
@@ -177,8 +177,8 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     d->snd_timeout = 1000;
     d->domain = 0;
     int flags = 0;
-    //flags = _(fcntl)(fd, F_GETFL, 0);
-    //d->user_flag = flags;
+    flags = _(fcntl)(fd, F_GETFL, 0);
+    d->user_flag = flags;
     
     //default is block 
     d->user_flag = 0;
