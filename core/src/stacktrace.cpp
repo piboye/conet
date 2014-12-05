@@ -157,16 +157,29 @@ int backtrace(fcontext_t *ctx, void ** array, int num)
 int popen2(int *pipefd, char const *cmd, char * const argv[])
 {
     pid_t pid = NULL;
-    pipe(pipefd);
+    int fds1[2]={-1, -1};
+    int fds2[2]={-1, -1};
+    pipe(fds1);
+    pipe(fds2);
     pid = fork();
     if (pid == 0)
     { // Child
-      dup2(pipefd[0], STDIN_FILENO);
-      dup2(pipefd[1], STDOUT_FILENO);
-      dup2(pipefd[1], STDERR_FILENO);
-      execv(cmd, argv);
+      dup2(fds1[0], STDIN_FILENO);
+      dup2(fds2[1], STDOUT_FILENO);
+      dup2(fds2[1], STDERR_FILENO);
+      close(fds1[0]);
+      close(fds1[1]);
+      close(fds2[0]);
+      close(fds2[1]);
+      execvp(cmd, argv);
       exit(1);
     }
+
+    close(fds1[0]);
+    close(fds2[1]);
+
+    pipefd[0]=fds2[0];
+    pipefd[1]=fds1[1];
     return 0;
 }
 
@@ -178,54 +191,58 @@ __backtrace_symbols_fd(void **buffer, int depth, int fd, int baddr2line = 0)
 	static char cxx_name[102400];
 	static struct bt_frame bt;
     static char symname[10000];
-    static char file_name[10000];
 
     int fds[2]={-1,-1};
     if (baddr2line)
     {
-        static char cmd[1024]={0};
-
-        snprintf(cmd, sizeof(cmd), "/proc/%d/exe", (int)(getpid()));
-        static char const * args[10]={"-e", 0, "-f", "-C", "-i"};
-        args[1] = cmd;
-        popen2(fds, "usr/bin/addr2line", (char **)args);
+        char const *cmd = "/usr/bin/addr2line";
+        static char exe[100]={0};
+        snprintf(exe, sizeof(exe)-1, "/proc/%d/exe", (int)(getpid()));
+        char const * args[]={cmd, "-e", exe, "-f", "-C", "-i", NULL};
+        popen2(fds, cmd, (char **)args);
     }
 
 	if (buffer == NULL || depth <= 0)
 		return ;
 
 	for (int i = 0; i < depth; ++i) {
-        //void * ip =  _Unwind_FindEnclosingFunction(buffer[i]);
-		if (dladdr(buffer[i], &bt.bt_dlinfo) == 0) {
-            uc_out("#%d\t%p", i, buffer[i]);
-		} else {
-			char const *s = (char *)bt.bt_dlinfo.dli_sname;
-			if (s == NULL) {
-				s = "???";
-            }
-            size_t name_len = sizeof(cxx_name);
-            int status = 0;
-            __cxa_demangle(s, cxx_name, &name_len, &status);
-            char const *pname = s;
-            if (status == 0) 
-                pname = cxx_name;
-
-            uc_out("#%d\t%p <%s+%ld> at %s",
-                i,
-			    buffer[i],
-			    pname,
-			    ((char *)(buffer[i]) - (char *)bt.bt_dlinfo.dli_saddr),
-			    //((char *)(buffer[i]) - (char *)ip),
-			    bt.bt_dlinfo.dli_fname);
-		}
-        if (fds[0] >=0 ) {
+        if (baddr2line && fds[0] >=0 ) {
             static char buff[100];
             int len = 0;
             len = snprintf(buff, sizeof(buff) -1, "%p\n", buffer[i]);
             write(fds[1], buff, len);
             read(fds[0], symname, sizeof(symname)-1);
-            //read(fds[0], file_name, sizeof(file_name)-1);
-            uc_out("%s", symname);
+            char *file_name = strchr(symname, '\n');
+            *file_name = 0;
+            file_name +=1;
+            char *p = strchr(file_name, '\n');
+            if (p) {
+                *p = 0;
+            }
+            uc_out("#%d\t%p\t%s in %s", i, buffer[i], symname, file_name);
+        } else {
+            if (dladdr(buffer[i], &bt.bt_dlinfo) == 0) {
+                uc_out("#%d\t%p", i, buffer[i]);
+            } else {
+                char const *s = (char *)bt.bt_dlinfo.dli_sname;
+                if (s == NULL) {
+                    s = "???";
+                }
+                size_t name_len = sizeof(cxx_name);
+                int status = 0;
+                __cxa_demangle(s, cxx_name, &name_len, &status);
+                char const *pname = s;
+                if (status == 0) 
+                    pname = cxx_name;
+
+                uc_out("#%d\t%p <%s+%ld> at %s",
+                        i,
+                        buffer[i],
+                        pname,
+                        ((char *)(buffer[i]) - (char *)bt.bt_dlinfo.dli_saddr),
+                        //((char *)(buffer[i]) - (char *)ip),
+                        bt.bt_dlinfo.dli_fname);
+            }
         }
 	}
 
