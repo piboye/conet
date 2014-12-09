@@ -9,11 +9,6 @@ cc_library(
     ],
     deps =[
         "//core:conet", 
-        #"#unwind", 
-        #"#unwind-x86_64",
-        #"//thirdparty/libunwind:unwind-x86_64",
-        #"//thirdparty/libunwind:unwind",
-        #"//thirdparty/libunwind:unwind-elf64",
         "#rt",
     ],
     link_all_symbols = True,

@@ -38,7 +38,19 @@ namespace conet
 
     struct ServerCombine :public ServerBase
     {
+        ServerBase * m_main_server;
         std::vector<ServerBase *> m_servers;
+
+        ServerCombine()
+        {
+            m_main_server = NULL;
+        }
+
+        int init(ServerBase * main_server)
+        {
+            m_main_server = main_server;
+            return 0;
+        }
 
         int add(ServerBase *server)
         {
@@ -48,28 +60,12 @@ namespace conet
 
         virtual int start()
         {
-            int ret = 0, ret2 = 0;
-            for(size_t i =0; i<m_servers.size(); ++i)
-            {
-                ret = m_servers[i]->start();
-                if (ret) {
-                    ret2 -=1;
-                }
-            }
-            return ret2;
+            return m_main_server->start();
         }
 
         virtual int stop(int wait_ms)
         {
-            int ret = 0, ret2 = 0;
-            for(size_t i =0; i<m_servers.size(); ++i)
-            {
-                ret = m_servers[i]->stop(wait_ms);
-                if (ret) {
-                    ret2 -=1;
-                }
-            }
-            return ret2;
+            return m_main_server->stop(wait_ms);
         }
 
         virtual ~ServerCombine() 
@@ -78,7 +74,7 @@ namespace conet
             {
                 delete m_servers[i];
             }
-            m_servers.clear();
+            delete m_main_server;
         }
     };
 }

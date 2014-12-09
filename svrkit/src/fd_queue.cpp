@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboye
  *   Organization:  
  *
  * =====================================================================================
@@ -21,6 +21,7 @@
 #include "glog/logging.h"
 
 #include "fd_queue.h"
+// 因为 fd 不能在多个进程间简单传递， 这个实现意义不大
 
 namespace conet
 {
@@ -31,7 +32,7 @@ namespace conet
         int size = sizeof(FdQueue) + max_num * sizeof(uint64_t);
 
 
-        // MAP_SHARED  为了多进程共享
+        // MAP_SHARED  为了多线程共享
         FdQueue * q = (FdQueue *)  mmap(NULL, size, PROT_READ| PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0); 
 
         q->alloc_size = (uint64_t) size;
@@ -122,4 +123,3 @@ namespace conet
         munmap(q, q->alloc_size);
     }
 }
-
