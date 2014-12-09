@@ -47,7 +47,7 @@ namespace conet
             cmsg->cmsg_level = SOL_SOCKET;
             cmsg->cmsg_type  = SCM_RIGHTS;
 
-            *(int*)CMSG_DATA(cmsg) = fd;
+            *(reinterpret_cast<int*>(CMSG_DATA(cmsg))) = fd;
 
             int ret = sendmsg(sock, &hdr, MSG_DONTWAIT);
             if (ret <=0) {
@@ -68,7 +68,6 @@ namespace conet
             struct cmsghdr *cmsg = NULL;
             char ctrl_buf[CMSG_SPACE(sizeof(int))];
             char data[1];
-            int res;
 
             memset(&msg, 0, sizeof(struct msghdr));
             memset(ctrl_buf, 0, CMSG_SPACE(sizeof(int)));
