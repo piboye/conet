@@ -103,9 +103,6 @@ struct tcp_server_t: public ServerBase
     }
 };
 
-
-
-
 }
 
 #endif /* end of include guard */
