@@ -94,7 +94,7 @@ struct Task
 
         conet::tcp_server_t tcp_server;    
         conet::http_server_t http_server;    
-        conet::async_rpc_pb_server_t rpc_server;    
+        conet::rpc_pb_server_t rpc_server;    
 
         ip_port_t rpc_ip_port;
 
@@ -216,8 +216,8 @@ int Task::init(TaskEnv *env)
     int ret = 0;
     ret = tcp_server.init(rpc_ip_port.ip.c_str(), rpc_ip_port.port, rpc_listen_fd);
     ret = http_server.init(&tcp_server);
-    //ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
-    ret = rpc_server.init(&env->base_server, &tcp_server);
+    ret = rpc_server.init(&env->base_server, &tcp_server, &http_server);
+    //ret = rpc_server.init(&env->base_server, &tcp_server);
 
     return ret;
 }

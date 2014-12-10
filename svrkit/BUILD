@@ -2,7 +2,7 @@ cc_library(
     name = 'tcp_server',
     srcs = [
         "src/tcp_server.cpp",
-        "src/fd_queue.cpp",
+        "src/to_lua_mgr.cpp",
     ],
     incs= [ 
         "incl/",

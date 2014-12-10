@@ -30,6 +30,12 @@
 #include "base/incl/ptr_cast.h"
 #include "core/incl/fd_ctx.h"
 
+#include "lua/lua.hpp"
+#include "LuaBridge/LuaBridge.h"
+
+
+#include "to_lua_mgr.h"
+
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
 DEFINE_int32(max_packet_size, 1*4096, "default max packet size");
@@ -357,6 +363,19 @@ int tcp_server_t::stop(int wait_ms)
             <<"] exit, but leak conn num:"<<server->data.cur_conn_num; 
         return -1;
     }
+    return 0;
+}
+
+REG_TO_LUA_HELP(tcp_server, lua_state)
+{
+    luabridge::getGlobalNamespace(lua_state)
+        .beginNamespace("conet")
+            .beginClass<tcp_server_t>("tcp_server")
+                .addConstructor <void (*) (void)> ()
+                .addFunction("init", &tcp_server_t::init)
+            .endClass()
+        .endNamespace();
+
     return 0;
 }
 

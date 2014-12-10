@@ -23,22 +23,14 @@
 namespace conet
 {
 
-
-class ToLuaMgr
-{
-public:
-    class Item
+    static ToLuaMgr * get_global_to_lua_mgr()
     {
-        public:
-        int (*f)(luaState *l);
-        int line;
-        std::string file;
-        std::string name;
-    };
 
-    std::vector<Item> m_to_luas;
+        static ToLuaMgr * g_to_lua_mgr = new ToLuaMgr();
+        return g_to_lua_mgr;
+    }
 
-    int Add(int (*f)(luaState *l), 
+    int ToLuaMgr::Add(int (*f)(lua_State *l), 
             char const * name, char const * file,  int line)
     {
         Item item;
@@ -46,11 +38,30 @@ public:
         item.file = file;
         item.name = name;
         item.line = line;
+        m_to_luas.push_back(item);
+        return 0;
     }
-}
 
-int registry_to_lua(int (*f)(luaState *l))
+    int ToLuaMgr::ToLua(lua_State *l)
+    {
+        for (size_t i=0; i<m_to_luas.size(); ++i)
+        {
+           m_to_luas[i].f(l);
+        }
+        return 0;
+    }
 
-int construct_to_lua(luaState *l);
+    int ToLuaMgr::GlobalAdd(int (*f)(lua_State *l),
+            char const * name, char const * file,  int line)
+    {
+        return get_global_to_lua_mgr()->Add(f, name, file, line);
+    }
+
+    int ToLuaMgr::GlobalToLua(lua_State *l)
+    {
+        return get_global_to_lua_mgr()->ToLua(l);
+    }
+
+
 }
 
