@@ -93,6 +93,7 @@ cc_library(
     name = 'rpc_pb_server_main',
     srcs = [
         "src/rpc_pb_server_main.cpp",
+        "src/server_controller.cpp",
     ],
     incs= [ 
         "incl/",
