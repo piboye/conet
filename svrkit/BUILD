@@ -2,7 +2,6 @@ cc_library(
     name = 'tcp_server',
     srcs = [
         "src/tcp_server.cpp",
-        "src/to_lua_mgr.cpp",
     ],
     incs= [ 
         "incl/",
@@ -93,15 +92,19 @@ cc_library(
     name = 'rpc_pb_server_main',
     srcs = [
         "src/rpc_pb_server_main.cpp",
+        "src/server_common.cpp",
         "src/server_controller.cpp",
+        "src/server_worker.cpp",
+        "src/server_task.cpp",
+        "src/rpc_pb_server_task.cpp",
     ],
     incs= [ 
         "incl/",
     ],
     deps =[
         ":rpc_pb_server",
-        #"//thirdparty/perftools:tcmalloc",
-    ]
+    ],
+    link_all_symbols = True,
 );
 
 cc_test(

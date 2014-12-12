@@ -93,7 +93,9 @@ HOOK_SYS_FUNC_DEF(
     }
     if (client_fd >=0) {
         fd_ctx_t *ctx = alloc_fd_ctx(client_fd);
-        ctx->domain = lp->domain;
+        if (lp) {
+            ctx->domain = lp->domain;
+        }
     }
     return client_fd;
 }
@@ -137,7 +139,9 @@ HOOK_SYS_FUNC_DEF(
         } else {
             ctx = conet::alloc_fd_ctx(client_fd, 1);
         }
-        ctx->domain = lp->domain;
+        if (lp) {
+            ctx->domain = lp->domain;
+        }
         //ctx->user_flag = flags;
     }
     return client_fd;

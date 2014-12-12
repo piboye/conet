@@ -42,21 +42,10 @@ public:
     std::vector<int> m_cpu_set;
 
 
-    ServerController()
-    {
-        m_worker_mode = 0;
-        m_stop_flag = 0;
-        m_curr_num = 1;
-    }
+    ServerController();
 
     virtual
     ~ServerController();
-
-    int set_curr_num(int num)
-    {
-        m_curr_num = num;
-        return 0;
-    }
 
     virtual
     int start()
@@ -71,7 +60,7 @@ public:
 
     int run();
 
-    static ServerController * create(int thread_mode = 0);
+    static ServerController * create();
 
 };
 

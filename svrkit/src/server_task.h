@@ -19,6 +19,8 @@
 #ifndef __CONET_SERVER_TASK_H__
 #define __CONET_SERVER_TASK_H__
 
+#include <vector>
+
 namespace conet
 {
 
@@ -27,15 +29,33 @@ class ServerTask
 
 public:
 
+    virtual
     int start()
     {
         return 0;
     }
 
+    virtual
     int stop(int wait_ms)
     {
         return 0;
     }
+
+    virtual ~ServerTask()
+    {
+
+    }
+
+    virtual
+    ServerTask * clone() { return NULL;};
+
+    typedef ServerTask * generator_fun_t();
+
+    static 
+    int add_task(ServerTask *task);
+
+    static 
+    int get_all_task(std::vector<ServerTask *> * tasks);
 
 };
 

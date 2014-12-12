@@ -210,9 +210,10 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
 
     } else {
         wait_item->wait_events= 0;
+        ev.events = events;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
         if (ret) {
-            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
+            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]"<<"[events:"<<events;
         }
     }
     return;

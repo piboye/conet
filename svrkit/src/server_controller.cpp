@@ -21,14 +21,34 @@
 #include "base/incl/auto_var.h"
 #include "base/incl/gcc_builtin_help.h"
 #include "base/incl/ptr_cast.h"
+#include "core/incl/conet_all.h"
+
 #include "thirdparty/glog/logging.h"
+#include "thirdparty/gflags/gflags.h"
 
 #include <pthread.h>
 #include <sys/wait.h>
 
+#include "server_common.h"
+
 
 namespace conet
 {
+
+DEFINE_int32(work_num, 1, "server work num");
+DEFINE_string(cpu_set, "", "cpu affinity set");
+
+int get_epoll_pend_task_num();
+ServerController::ServerController()
+{
+    m_worker_mode = 0;
+    m_stop_flag = 0;
+    m_curr_num = FLAGS_work_num;
+
+    parse_affinity(FLAGS_cpu_set.c_str(), &m_cpu_set);
+    //get_epoll_pend_task_num();
+}
+
 // 进程模式
 class ServerControllerProcessMode
     :public ServerController
@@ -68,7 +88,7 @@ public:
                 worker->pid = pid;
                 m_worker_map[pid] = worker;
             } else {
-                LOG(ERROR)<<"for child failed";
+                LOG(ERROR)<<"fork worker failed";
             }
         }
 
@@ -181,20 +201,15 @@ public:
         for (int i=0; i< num; ++i)
         {
             ServerWorker  *worker = new ServerWorker();
-            worker->set_thread_mode();
             m_workers.push_back(worker);
             if (!m_cpu_set.empty()) {
                 worker->cpu_id = m_cpu_set[i%m_cpu_set.size()];
             }
 
             pthread_create(&worker->tid, NULL, 
-                    conet::ptr_cast<void *(*)(void*)>(&ServerWorker::run), worker);
+                    conet::ptr_cast<void *(*)(void*)>(&ServerWorker::proc), worker);
         }
 
-        for (int i=0; i<num; ++i)
-        {
-            delete m_workers[i];
-        }
         return 0;
     }
 
@@ -208,15 +223,16 @@ public:
         }
         return 0;
     }
+
 };
 
-ServerController * ServerController::create(int thread_mode)
+ServerController * ServerController::create()
 {
     ServerController * server = NULL;
-    if (thread_mode) {
+    if (is_thread_mode()) {
         server =  new ServerControllerThreadMode();
     } else {
-        server =  new  ServerControllerThreadMode();
+        server =  new ServerControllerProcessMode();
     }
     return server;
 }
@@ -231,6 +247,9 @@ ServerController::~ServerController()
 
 int ServerController::run()
 {
+    if (m_worker_mode) {
+        return 0;
+    }
 
     while (likely(!this->m_stop_flag)) 
     {
