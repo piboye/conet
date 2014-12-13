@@ -41,6 +41,8 @@
 namespace conet
 {
 
+void close_fd_notify_poll(int fd);
+
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
 
@@ -164,12 +166,9 @@ void fini_timewheel(timewheel_t *self)
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
 
-
-static
-int timewheel_task(void *arg)
+static 
+int create_timer_fd()
 {
-    conet::enable_sys_hook(); 
-    timewheel_t *tw = (timewheel_t *)arg;
     int timerfd = 0;
     timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
     if (timerfd < 0) {
@@ -190,9 +189,20 @@ int timewheel_task(void *arg)
         return -3;
     }
 
+    return timerfd;
+}
+
+static
+int timewheel_task(void *arg)
+{
+    conet::enable_sys_hook(); 
+    timewheel_t *tw = (timewheel_t *)arg;
+    int timerfd = -1;
+    timerfd = create_timer_fd();
     tw->timerfd = timerfd;
 
     uint64_t cnt = 0;
+    int ret = 0;
 
     //ret = _(gettimeofday)(&tw->prev_tv, NULL);
     //tw->update_timeofday_flag = 1;
@@ -201,11 +211,16 @@ int timewheel_task(void *arg)
     while (!tw->stop) {
        struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
        ret = co_poll(&pf, 1, -1);
-       
+
        cnt = 0;
        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
        if (ret != sizeof(cnt)) {
-           LOG(ERROR)<<" timewheel read failed";
+          LOG(ERROR)<<" timewheel read failed, "
+               "[ret:"<<ret<<"]"
+               "[timerfd:"<<timerfd<<"]"
+               "[errno:"<<errno<<"]"
+               "[errmsg:"<<strerror(errno)<<"]"
+               ;
            continue;
        }
 
@@ -228,7 +243,7 @@ void stop_timewheel(timewheel_t *self)
 
 timewheel_t *alloc_timewheel()
 {
-    timewheel_t *tw =  new timewheel_t;
+    timewheel_t *tw =  new timewheel_t();
     init_timewheel(tw, FLAGS_timewheel_slot_num);
     return tw;
 }
@@ -252,9 +267,10 @@ timewheel_t *get_timewheel()
         timewheel_t *tw = alloc_timewheel();
         if (NULL == g_tw) {
             g_tw = tw;
-            tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
             coroutine_t *co = alloc_coroutine(timewheel_task, tw, 128*4096);
             tw->co = co;
+            // 这个必须在 alloc_coroutine 下面
+            tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
             conet::resume((coroutine_t *)tw->co);
         } else {
             free_timewheel(tw);

@@ -193,7 +193,7 @@ public:
                     m_get_req->Run(&ctx);
 
                     if (NULL == ctx) {
-                        usleep(10);
+                        usleep(10000);
                         continue;
                     }
                     int ret = proc_req(ctx);

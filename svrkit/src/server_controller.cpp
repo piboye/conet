@@ -43,6 +43,7 @@ ServerController::ServerController()
 {
     m_worker_mode = 0;
     m_stop_flag = 0;
+    m_stop_finished = 0;
     m_curr_num = FLAGS_work_num;
 
     parse_affinity(FLAGS_cpu_set.c_str(), &m_cpu_set);
@@ -55,11 +56,10 @@ class ServerControllerProcessMode
 {
 public:
 
-    coroutine_t * m_montior_co;
+    ServerWorker *m_cur_worker;
 
     ServerControllerProcessMode()
     {
-        m_montior_co = NULL;
     }
 
     virtual int start()
@@ -80,7 +80,7 @@ public:
             if (pid == 0) {
                 // child
                 m_worker_mode = 1;
-
+                m_cur_worker = worker;
                 worker->start();
                 worker->run();
                 return 0;
@@ -92,74 +92,84 @@ public:
             }
         }
 
-        if (!m_worker_mode) 
-        {
-            m_montior_co = conet::alloc_coroutine(
-                    conet::ptr_cast<conet::co_main_func_t>(
-                        &ServerControllerProcessMode::wait_childs), this);
-
-            conet::resume(m_montior_co);
-        }
-
         return 0;
     }
 
     virtual int stop()
     {
         int ret = 0; 
-        ret = ServerController::stop();
-        kill_worker();
+        if (m_worker_mode) {
+           m_cur_worker->stop(); 
+        }else {
+            ret = ServerController::stop();
+            kill_worker();
+        }
+        m_stop_finished = 1;
         return 0;
     }
 
+
+
     int wait_childs()
     {
-        while(m_stop_flag)  
-        {
-            usleep(10000);
-            int status = 0;
-            pid_t pid = waitpid(-1, &status, WNOHANG);
+        int status = 0;
+        pid_t pid = waitpid(-1, &status, WNOHANG);
 
-            if (pid < 0) continue;
+        if (pid < 0) return 0;
 
-            if (m_worker_map.find(pid) == m_worker_map.end()) {
-                continue;
-            }
-
-            if (status != 0)
-            {
-                LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
-            }
-            else {
-                LOG(INFO)<<"work process:"<<pid<<" succes exit, status:"<<status;
-            }
-
-            if (m_stop_flag) {
-                return 0;
-            }
-
-
-            LOG(INFO)<<"restore work process:";
-
-            ServerWorker *worker = m_worker_map[pid];
-            m_worker_map.erase(pid);
-
-            if (!m_stop_flag) {
-                pid = fork(); 
-                if (pid == 0) {
-                    m_worker_mode = 1;
-                    worker->start();
-                    worker->run();
-                    return 0;;
-                } else if (pid > 0) {
-                    m_worker_map[pid] = worker;
-                } else {
-                    LOG(ERROR)<<"for child failed";
-                }
-            }
+        if (m_worker_map.find(pid) == m_worker_map.end()) {
+            return 0;
         }
 
+        if (status != 0)
+        {
+            LOG(ERROR)<<"work process:"<<pid<<" error exit, status:"<<status;
+        }
+        else {
+            LOG(INFO)<<"work process:"<<pid<<" succes exit, status:"<<status;
+        }
+
+        if (m_stop_flag) {
+            return 0;
+        }
+
+
+        LOG(INFO)<<"restore work process:";
+
+        ServerWorker *worker = m_worker_map[pid];
+        m_worker_map.erase(pid);
+
+        if (!m_stop_flag) {
+            pid = fork(); 
+            if (pid == 0) {
+                m_worker_mode = 1;
+                m_cur_worker = worker;
+                worker->start();
+                worker->run();
+                return 0;;
+            } else if (pid > 0) {
+                m_worker_map[pid] = worker;
+            } else {
+                LOG(ERROR)<<"for child failed";
+            }
+        }
         return 0;
+    }
+
+    virtual int run()
+    {
+        int ret = 0;
+        if (m_worker_mode)
+        {
+            return 0;
+        } else {
+            while (!m_stop_flag) 
+            {
+                wait_childs();
+                if (!m_stop_flag) sleep(1);
+            }
+        }
+        return ret;
     }
 
     int kill_worker()
@@ -213,14 +223,30 @@ public:
         return 0;
     }
 
+    int run()
+    {
+        while (!m_stop_flag) 
+        {
+            sleep(1);
+        }
+        return 0;
+    }
+
     int stop()
     {
         int ret = 0;
         ret = ServerController::stop();
+
+        for (size_t i=0; i< m_workers.size(); ++i)
+        {
+            m_workers[i]->stop();
+        }
+
         for (size_t i=0; i< m_workers.size(); ++i)
         {
             pthread_join(m_workers[i]->tid, NULL);
         }
+        m_stop_finished = 1;
         return 0;
     }
 
@@ -245,16 +271,13 @@ ServerController::~ServerController()
     }
 }
 
+int ServerController::start()
+{
+    return 0;
+}
+
 int ServerController::run()
 {
-    if (m_worker_mode) {
-        return 0;
-    }
-
-    while (likely(!this->m_stop_flag)) 
-    {
-        conet::dispatch();
-    }
     return 0;
 }
 

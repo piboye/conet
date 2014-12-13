@@ -93,7 +93,7 @@ int rpc_pb_call_impl(int fd,
     int packet_len = 0;
 
     struct pollfd pf = { fd : fd, events: ( POLLIN | POLLERR | POLLHUP ) };
-    ret =  poll( &pf, 1, timeout );
+    ret =  poll(&pf, 1, timeout );
     if (ret == 0) {
         // timeout;
         return -2;

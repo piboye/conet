@@ -43,6 +43,7 @@
 #include "base/incl/ptr_cast.h"
 #include <linux/netdevice.h>
 #include "server_controller.h"
+#include "server_common.h"
 
 
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
@@ -75,7 +76,8 @@ static
 void sig_exit(int sig)
 {
    g_exit_flag=1; 
-   g_server_controller->m_stop_flag = 1;
+   set_server_stop();
+   if (g_server_controller) g_server_controller->m_stop_flag = 1;
 }
 
 
@@ -112,9 +114,7 @@ int main(int argc, char * argv[])
     g_server_controller = ServerController::create(); 
 
     ret = g_server_controller->start();
-
     g_server_controller->run();
-
     g_server_controller->stop();
 
     delete g_server_controller;

@@ -29,6 +29,9 @@ namespace conet
     int get_listen_fd(char const *ip, int port, int listen_fd);
 
     int create_listen_fd(ip_port_t const &ip_port);
+
+    int set_server_stop();
+    int get_server_stop_flag();
 }
 
 

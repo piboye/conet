@@ -61,5 +61,16 @@ namespace conet
             return rpc_listen_fd;
     }
 
+    static int g_server_stop_flag = 0;
+    int set_server_stop()
+    {
+        g_server_stop_flag = 1;
+        return 0;
+    }
+
+    int get_server_stop_flag()
+    {
+        return g_server_stop_flag;
+    }
 }
 

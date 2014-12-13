@@ -72,6 +72,9 @@ struct timewheel_t
 void init_timewheel(timewheel_t *self, int solt_num = 60*1000);
 void fini_timewheel(timewheel_t *self);
 
+int timewheel_reinit_timerfd(timewheel_t * tw);
+int timewheel_reinit_timerfd();
+
 //void free_timewheel(timewheel_t *tw);
 //timewheel_t *alloc_timewheel();
 

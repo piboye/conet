@@ -44,7 +44,7 @@ void fixed_mempool_t::free_mem_help(void *e)
     if (is_page_alloc) {
         munmap(e, alloc_size);
     } else {
-        free((void *)e);
+        ::free((void *)e);
     }
 }
 

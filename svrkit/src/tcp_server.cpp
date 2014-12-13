@@ -296,6 +296,7 @@ int tcp_server_t::main_proc2()
         for(int i=0; i<accept_num; ++i)
         {
             int fd = accept4(listen_fd, (struct sockaddr *)&conn_info->addr, &len, O_NONBLOCK);
+            //int fd = accept(listen_fd, (struct sockaddr *)&conn_info->addr, &len);
             if (fd <0) break;
             new_fds.push_back(fd);
         } 

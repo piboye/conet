@@ -66,7 +66,7 @@ namespace conet
 
       while (likely(!this->exit_finsished)) 
       {
-          if (unlikely(m_exit_flag && exit_co == NULL)) 
+          if (unlikely(get_server_stop_flag() && exit_co == NULL)) 
           {
               exit_co = conet::alloc_coroutine(conet::ptr_cast<conet::co_main_func_t>(&ServerWorker::proc_server_exit), this);
               conet::resume(exit_co);

@@ -98,8 +98,9 @@ DELAY_INIT()
         for(size_t i=0; i< rpc_ip_list.size(); ++i)
         {
             RpcPbServerTask * task = new RpcPbServerTask();
-            task->rpc_ip_port = rpc_ip_list[i];
-            task->rpc_listen_fd = create_listen_fd( rpc_ip_list[i]);
+            ip_port_t ip_port = rpc_ip_list[i];
+            task->rpc_ip_port = ip_port;
+            task->rpc_listen_fd = conet::create_tcp_socket(ip_port.port, ip_port.ip.c_str(), true);
             if (task->rpc_listen_fd < 0) {
                 delete task;
             } else {
