@@ -45,9 +45,9 @@ TEST(pbc, decode)
 
     ASSERT_STREQ("abc", ref_str_as_string(&cmd_base.cmd_name).c_str());
 
-    ASSERT_EQ(1, cmd_base.cmd_id);
+    ASSERT_EQ(1, (int)cmd_base.cmd_id);
 
-    ASSERT_EQ(2, cmd_base.seq_id);
+    ASSERT_EQ(2, (int)cmd_base.seq_id);
 
     ASSERT_STREQ("abcdef", ref_str_as_string(&cmd_base.body).c_str());
 
@@ -72,7 +72,7 @@ TEST(pbc, encode)
     conet_rpc_pb::CmdBase msg;
     msg.ParseFromArray(buff, out_len);
 
-    ASSERT_EQ(1, msg.type());
+    ASSERT_EQ(1, (int)msg.type());
 
     ASSERT_STREQ("abc", msg.cmd_name().c_str());
 

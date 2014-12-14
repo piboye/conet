@@ -28,54 +28,32 @@
 #include <map>
 #include <vector>
 
-#include "rpc_pb_server.h"
-#include "async_rpc_pb_server.h"
-#include "rpc_pb_server_base.h"
-
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "base/incl/ip_list.h"
 #include "base/incl/delay_init.h"
 #include "base/incl/net_tool.h"
-#include "base/incl/cpu_affinity.h"
-#include "base/incl/auto_var.h"
-#include "base/incl/gcc_builtin_help.h"
-#include "base/incl/ptr_cast.h"
-#include <linux/netdevice.h>
 #include "server_controller.h"
 #include "server_common.h"
 
 
-DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
+DEFINE_int32(stop_wait_seconds, 2, "server stop wait seconds");
 
 namespace conet
 {
 
-typedef void server_fini_func_t(void);
-std::vector<server_fini_func_t *> g_server_fini_funcs;
-
-int registry_server_fini_func(server_fini_func_t *func)
-{
-    g_server_fini_funcs.push_back(func); 
-    return 1;
-}
 
 }
 
-#define REG_SERVER_FININSH(func) \
-    static int CONET_MACRO_CONCAT(g_registry_fini_, __LINE__) = conet::registry_server_fini_func(func);
 
 
 using namespace conet;
 
-static int g_exit_flag = 0;
 
 ServerController *g_server_controller = NULL;
 
 static
 void sig_exit(int sig)
 {
-   g_exit_flag=1; 
    set_server_stop();
    if (g_server_controller) g_server_controller->m_stop_flag = 1;
 }
@@ -115,19 +93,12 @@ int main(int argc, char * argv[])
 
     ret = g_server_controller->start();
     g_server_controller->run();
-    g_server_controller->stop();
+    g_server_controller->stop(FLAGS_stop_wait_seconds);
 
     delete g_server_controller;
     g_server_controller = NULL;
 
-    for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 
-    {
-        conet::server_fini_func_t *func = conet::g_server_fini_funcs[i];
-        if (func) {
-            func();
-        }
-    }
-
+    conet::call_server_fini_func();
     return 0;
 }
 

@@ -95,13 +95,13 @@ public:
         return 0;
     }
 
-    virtual int stop()
+    virtual int stop(int wait_seconds)
     {
         int ret = 0; 
         if (m_worker_mode) {
-           m_cur_worker->stop(); 
+           m_cur_worker->stop(wait_seconds); 
         }else {
-            ret = ServerController::stop();
+            ret = ServerController::stop(wait_seconds);
             kill_worker();
         }
         m_stop_finished = 1;
@@ -232,14 +232,14 @@ public:
         return 0;
     }
 
-    int stop()
+    int stop(int wait_seconds)
     {
         int ret = 0;
-        ret = ServerController::stop();
+        ret = ServerController::stop(wait_seconds);
 
         for (size_t i=0; i< m_workers.size(); ++i)
         {
-            m_workers[i]->stop();
+            m_workers[i]->stop(wait_seconds);
         }
 
         for (size_t i=0; i< m_workers.size(); ++i)
@@ -281,7 +281,7 @@ int ServerController::run()
     return 0;
 }
 
-int ServerController::stop()
+int ServerController::stop(int wait_seconds)
 {
     m_stop_flag = 1;
     for (size_t i=0; i<m_workers.size(); ++i)

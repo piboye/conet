@@ -53,7 +53,7 @@ public:
     int start();
 
     virtual
-    int stop();
+    int stop(int wait_seconds);
 
 
     virtual

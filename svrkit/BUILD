@@ -87,21 +87,35 @@ cc_library(
     link_all_symbols = True,
 );
 
-
 cc_library(
-    name = 'rpc_pb_server_main',
+    name = 'server_main',
     srcs = [
-        "src/rpc_pb_server_main.cpp",
+        "src/server_main.cpp",
         "src/server_common.cpp",
         "src/server_controller.cpp",
         "src/server_worker.cpp",
         "src/server_task.cpp",
+    ],
+    incs= [ 
+        "incl/",
+    ],
+    deps = [
+        "//base:base",
+    ],
+    link_all_symbols = True,
+);
+
+
+cc_library(
+    name = 'rpc_pb_server_main',
+    srcs = [
         "src/rpc_pb_server_task.cpp",
     ],
     incs= [ 
         "incl/",
     ],
     deps =[
+        ":server_main",
         ":rpc_pb_server",
     ],
     link_all_symbols = True,

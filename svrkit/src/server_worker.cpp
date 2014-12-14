@@ -31,6 +31,7 @@ namespace conet
       m_exit_flag = 0;
       exit_finsished = 0;
       cpu_id = -1;
+      m_stop_wait_second = 2;
   }
 
   int ServerWorker::start()
@@ -82,15 +83,16 @@ namespace conet
       return 0;
   }
 
-  int ServerWorker::stop()
+  int ServerWorker::stop(int stop_wait_seconds)
   {
      m_exit_flag = 1;
+     m_stop_wait_second = stop_wait_seconds; 
      return 0;
   }
 
   int ServerWorker::proc_server_exit()
   {
-      int wait_ms = 10000; // 10s
+      int wait_ms = 10000 * m_stop_wait_second; // 10s
       for(size_t i=0; i< tasks.size(); ++i)
       {
           tasks[i]->stop(wait_ms);

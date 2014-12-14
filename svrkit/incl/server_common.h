@@ -32,6 +32,13 @@ namespace conet
 
     int set_server_stop();
     int get_server_stop_flag();
+
+    typedef void server_fini_func_t(void);
+    int registry_server_fini_func(server_fini_func_t *func);
+    int call_server_fini_func();
+
+#define REG_SERVER_FININSH(func) \
+    static int CONET_MACRO_CONCAT(g_registry_fini_, __LINE__) = conet::registry_server_fini_func(func)
 }
 
 

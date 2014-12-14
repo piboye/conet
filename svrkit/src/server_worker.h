@@ -35,6 +35,7 @@ public:
   int m_exit_flag;
   int exit_finsished;
   int cpu_id;
+  int m_stop_wait_second;
 
   std::vector<ServerTask *> tasks;
 
@@ -52,7 +53,7 @@ public:
       return ret;
   }
 
-  int stop();
+  int stop(int stop_wait_seconds);
 
   int proc_server_exit();
 

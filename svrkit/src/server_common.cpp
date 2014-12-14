@@ -72,5 +72,26 @@ namespace conet
     {
         return g_server_stop_flag;
     }
+
+    typedef void server_fini_func_t(void);
+    std::vector<server_fini_func_t *> g_server_fini_funcs;
+
+    int registry_server_fini_func(server_fini_func_t *func)
+    {
+        g_server_fini_funcs.push_back(func); 
+        return 1;
+    }
+
+    int call_server_fini_func()
+    {
+        for(size_t i=0, len = g_server_fini_funcs.size(); i<len; ++i) 
+        {
+            conet::server_fini_func_t *func = conet::g_server_fini_funcs[i];
+            if (func) {
+                func();
+            }
+        }
+        return 0;
+    }
 }
 
