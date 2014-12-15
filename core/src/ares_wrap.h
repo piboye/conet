@@ -29,6 +29,7 @@
 #include <string>
 #include "timewheel.h"
 #include "thirdparty/glog/logging.h"
+#include "wait_queue.h"
 
 namespace conet
 {
@@ -39,10 +40,20 @@ public:
     ares_channel m_channel;  
     int m_stop_flag;
     int m_query_cnt;
+    list_head m_prefetch_queue;
+    WaitQueue m_prefetch_wait;
+    coroutine_t *m_prefetch_co;
 
     int init()
     {
         int ret = 0;
+
+        coroutine_t *co = conet::alloc_coroutine(&do_gethostname_prefetch,  this);
+        conet::set_auto_delete(co);
+        conet::resume(co);
+        
+        m_prefetch_co = co;
+
         ret = ares_init(&m_channel);
         if (ret != ARES_SUCCESS) {
             return -1;
@@ -64,7 +75,6 @@ public:
             return -2;
         }
 
-
         return 0;
     }
 
@@ -73,8 +83,15 @@ public:
     struct HostEnt
     {
         uint64_t data_time; // fetch seconds
+        std::string host_name;
+        int af;
         hostent host;
         std::vector<char> buffer;
+        list_head link;
+        HostEnt()
+        {
+            INIT_LIST_HEAD(&link);
+        }
     };
 
     std::map<std::string,  HostEnt> m_hostent_cache;
@@ -304,16 +321,28 @@ public:
     static 
     int do_gethostname_prefetch(void *arg)
     {
-        prefetch_task_t *task = (prefetch_task_t *)(arg);
+        AresWrap * self = (AresWrap *)(arg);
         cb_ctx_t ctx;
-        int ret = task->ares->gethostbyname2_raw(task->host_name.c_str(), task->af, ctx);
-        if (0 == ret) {
-            uint64_t now = conet::get_tick_ms() / 1000;
-            HostEnt &hc = task->ares->m_hostent_cache[task->host_name];
-            hostent_copy(&ctx.host, &hc.host, &hc.buffer);
-            hc.data_time = now;
+        while(!self->m_stop_flag)
+        {
+            if (list_empty(&self->m_prefetch_queue))
+            {
+                self->m_prefetch_wait.wait_on();
+                continue;
+            }
+
+            HostEnt *data=NULL, *next=NULL;
+            list_for_each_entry_safe(data, next, &self->m_prefetch_queue, link) 
+            {
+                int ret = self->gethostbyname2_raw(data->host_name.c_str(), data->af, ctx);
+                if (0 == ret) {
+                    uint64_t now = conet::get_tick_ms() / 1000;
+                    hostent_copy(&ctx.host, &data->host, &data->buffer);
+                    data->data_time = now;
+                }
+                list_del_init(&data->link);
+            }
         }
-        delete task;
         return 0;
     }
 
@@ -347,14 +376,11 @@ public:
         if (it != m_hostent_cache.end()) {
             uint64_t now = conet::get_tick_ms() / 1000;
             HostEnt &data = it->second;
-            if (data.data_time + 5 < now) {
-                prefetch_task_t * task = new prefetch_task_t();
-                task->ares = this;
-                task->host_name = host_name;
-                task->af = af;
-                coroutine_t *co = conet::alloc_coroutine(&do_gethostname_prefetch,  task);
-                conet::set_auto_delete(co);
-                conet::resume(co);
+            if ((data.data_time + 5 < now) && ((data.data_time + 10)<=now)) 
+            {
+                list_del_init(&data.link);
+                list_add(&data.link, &m_prefetch_queue);
+                m_prefetch_wait.wakeup_all();
             }
             if (data.data_time + 10 > now) {
                 // 缓存 10 秒
@@ -367,8 +393,11 @@ public:
         if (0 == ret) {
             uint64_t now = conet::get_tick_ms() / 1000;
             HostEnt &hc = m_hostent_cache[host_name];
+            hc.host_name = name;
+            hc.af = af;
             hostent_copy(&ctx.host, &hc.host, &hc.buffer);
             hc.data_time = now;
+            list_del_init(&hc.link);
         }
         return 0;
     }
@@ -447,6 +476,8 @@ public:
     {
         m_query_cnt = 0;
         m_stop_flag = 0;
+        INIT_LIST_HEAD(&m_prefetch_queue);
+        m_prefetch_co = NULL;
         init();
     }
 

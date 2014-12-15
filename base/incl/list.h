@@ -506,6 +506,17 @@ static inline list_head * list_pop_tail(struct list_head * head)
     return n;
 }
 
+static inline void list_swap(struct list_head * l, struct list_head * r)
+{
+    list_head mid;
+    list_add(&mid, l);
+    list_del_init(l);
+    list_add(l, r);
+    list_del_init(r);
+    list_add(r, &mid);
+    list_del_init(&mid);
+}
+
 /*
  * Double linked lists with a single pointer list head.
  * Mostly useful for hash tables where the two pointer list head is
