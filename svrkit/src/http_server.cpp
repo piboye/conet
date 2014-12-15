@@ -165,19 +165,22 @@ int http_server_t::conn_proc(conn_info_t *conn)
     ssize_t end =  0;
     int ret = 0;
     ssize_t recved = 0;
+    int malloc_buff = 0;
 
     PacketStream *stream = (PacketStream *) conn->extend;
     if (NULL == stream) {
+        malloc_buff = 1;
         buf = (char *)malloc(len);
     } else  {
         recved = stream->prev_pos;
         if (stream->max_size < len) {
+            malloc_buff = 1;
             buf = (char *)malloc(len);
             memcpy(buf, stream->buff, recved);
         }  else {
             buf = stream->buff;    
             len = stream->max_size;
-            stream->buff = NULL;
+            //stream->buff = NULL;
         }
         conn->extend = NULL;
     }
@@ -229,7 +232,8 @@ int http_server_t::conn_proc(conn_info_t *conn)
 
     } while(ret == 0 && base_server->to_stop == 0);
 
-    free(buf);
+
+    if (malloc_buff == 1) free(buf);
 
     return 0;
 }
