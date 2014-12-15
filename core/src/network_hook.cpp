@@ -1139,3 +1139,14 @@ HOOK_SYS_FUNC_DEF(hostent *, gethostbyname, (char const *name))
     
     return TLS_GET(g_ares_wrap)->gethostbyname(name);
 }
+
+HOOK_SYS_FUNC_DEF(hostent *, gethostbyname2, (char const *name, int af))
+{
+    HOOK_SYS_FUNC(gethostbyname2);
+    if( !conet::is_enable_sys_hook() )
+    {    
+        return _(gethostbyname2)(name, af);
+    }
+    
+    return TLS_GET(g_ares_wrap)->gethostbyname2(name, af);
+}
