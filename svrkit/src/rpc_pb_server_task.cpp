@@ -102,7 +102,10 @@ DELAY_INIT()
             task->rpc_ip_port = ip_port;
             task->rpc_listen_fd = conet::create_tcp_socket(ip_port.port, ip_port.ip.c_str(), true);
             if (task->rpc_listen_fd < 0) {
+                LOG(ERROR)<<"create listen fd failed! [errno:"<<errno<<"][errmsg:"<<strerror(errno)<<"]";
+                LOG(ERROR)<<"listen address "<<ip_port.ip<<":"<<ip_port.port<<" maybe used by other program, please check";
                 delete task;
+                exit(1);
             } else {
                 ServerTask::add_task(task);
             }

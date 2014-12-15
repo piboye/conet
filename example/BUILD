@@ -115,6 +115,7 @@ cc_binary(
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 
            ],
+    link_all_symbols=True,
 )
 
 cc_binary(

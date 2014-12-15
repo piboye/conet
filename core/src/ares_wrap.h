@@ -199,7 +199,7 @@ public:
 
         for (int i = 0; src->h_addr_list[i]; ++i)
         {
-            len += strlen(src->h_addr_list[i]) +1;
+            len += sizeof(in_addr);
             len += sizeof(char *);
         }
         len += sizeof(char *);
@@ -243,11 +243,9 @@ public:
 
         for (i = 0; src->h_addr_list[i]; ++i)
         {
-            nlen = strlen(src->h_addr_list[i]);
-            bcopy(src->h_addr_list[i], p, nlen); 
-            p[nlen] = 0;
+            bcopy(src->h_addr_list[i], p, sizeof(in_addr)); 
             p_addr_list[i] = p;
-            p+=nlen +1;
+            p+=nlen;
         }
         p_addr_list[i] = 0;
 
