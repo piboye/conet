@@ -41,7 +41,8 @@ void destructor_proxy(void * arg, int num)
 {
     T * obj = (T*)(arg);
     for (int i=0; i<num; ++i) {
-        ~T(obj+i);
+        (obj+i)->~T();
+        //~T(obj+i);
     }
 }
 

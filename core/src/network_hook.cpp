@@ -21,9 +21,12 @@
 
 #include <time.h>
 
+#include "ares_wrap.h"
+
 #include "network_hook.h"
 #include "dispatch.h"
 #include "hook_helper.h"
+
 
 #include "coroutine.h"
 #include "coroutine_impl.h"
@@ -1119,4 +1122,20 @@ HOOK_SYS_FUNC_DEF(int, pselect,(int nfds, fd_set *readfds, fd_set *writefds,
     } else {
         return select(nfds, readfds, writefds, exceptfds, NULL);
     }    
+}
+
+static
+__thread conet::AresWrap *g_ares_wrap = NULL;
+
+CONET_DEF_TLS_VAR_HELP_DEF(g_ares_wrap);
+
+HOOK_SYS_FUNC_DEF(hostent *, gethostbyname, (char const *name))
+{
+    HOOK_SYS_FUNC(gethostbyname);
+    if( !conet::is_enable_sys_hook() )
+    {    
+        return _(gethostbyname)(name);
+    }
+    
+    return TLS_GET(g_ares_wrap)->gethostbyname(name);
 }

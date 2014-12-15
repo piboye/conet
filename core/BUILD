@@ -29,6 +29,7 @@ cc_library(
         '//base:base',
         '//thirdparty/gflags:gflags',
         '//thirdparty/glog:glog',
+        '//thirdparty/c-ares:c-ares',
         '#aio',
         '#dl', 
         '#pthread',
@@ -46,6 +47,14 @@ cc_library(
 cc_binary(
     name = 'co_swap_test',
     srcs = ['src/co_swap_test.cpp'],
+    deps = [
+        ':conet',
+    ],
+);
+
+cc_binary(
+    name = 'gethostbyname_test',
+    srcs = ['src/gethostbyname_test.cpp'],
     deps = [
         ':conet',
     ],

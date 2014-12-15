@@ -78,14 +78,14 @@ void * set_static_var(void * key, void *val);
 
 
 
-#define CO_DEF_STATIC_VAR(type, name, init_val) \
+#define CO_DEF_STATIC_VAR0(type, name) \
     static int co_static_var_ct_ ## name = 0; \
     type * co_static_var_p_ ## name =  (type *) get_static_var(& co_static_var_ct_ ## name); \
     if (co_static_var_p_ ## name == NULL) { \
-        co_static_var_p_ ## name = gc_new_with_init<type>(init_val, get_gc_mgr(), false); \
+        co_static_var_p_ ## name = gc_new<type>(1, conet::get_gc_mgr()); \
         set_static_var(&co_static_var_ct_ ## name, co_static_var_p_ ## name); \
     } \
-    type & name = * co_static_var_p_ ## name;
+    type & name = * co_static_var_p_ ## name
 
 #define CO_DEF_STATIC_PTR(type, name, init_val) \
     static int co_static_var_ct_ ## name = 0; \
