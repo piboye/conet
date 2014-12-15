@@ -397,7 +397,7 @@ public:
             hc.data_time = now;
             list_del_init(&hc.link);
         }
-        return 0;
+        return ret;
     }
 
 
