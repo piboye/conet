@@ -72,6 +72,7 @@ public:
 
     struct HostEnt
     {
+        uint64_t data_time; // fetch seconds
         hostent host;
         std::vector<char> buffer;
     };
@@ -195,7 +196,7 @@ public:
         bcopy(src->h_name, p, nlen);
         p[nlen] = 0;
         dst->h_name = p;
-        p+=nlen+1;
+        p+=(nlen+1);
         
         int i = 0;
 
@@ -212,7 +213,7 @@ public:
             bcopy(src->h_aliases[i], p, nlen); 
             p[nlen] = 0;
             p_aliases[i] = p;
-            p+=nlen +1;
+            p+=(nlen +1);
         }
         p_aliases[i] = 0;
 
@@ -228,7 +229,7 @@ public:
             nlen = strlen(src->h_addr_list[i]);
             bcopy(src->h_addr_list[i], p, nlen); 
             p[nlen] = 0;
-            p_aliases[i] = p;
+            p_addr_list[i] = p;
             p+=nlen +1;
         }
         p_addr_list[i] = 0;
@@ -238,7 +239,7 @@ public:
         dst->h_addr_list = p_addr_list;
         dst->h_addrtype = src->h_addrtype;
         dst->h_length = src->h_length;
-        dst->h_addr = p_addr_list[0];
+        //dst->h_addr = p_addr_list[0];
         return 0;
     }
 
@@ -247,7 +248,7 @@ public:
     {
         int len = calc_hostent_len(src);
         buff->clear();
-        buff->reserve(len);
+        buff->resize(len);
 
         char *p = buff->data();
         return hostent_copy(src, dst, p, len);
@@ -282,17 +283,8 @@ public:
             return;
         }
 
-        if (!ctx->user_host) {
-            hostent_copy(host, &ctx->host, &ctx->host_buff);
-            ctx->status = status;
-        } else {
-            int len = calc_hostent_len(host);
-            if (ctx->user_host_len >= len) {
-                hostent_copy(host, ctx->user_host, ctx->user_host_buff, len);
-            }
-            status = ARES_SUCCESS;
-            ctx->user_host_len = len;
-        }
+        hostent_copy(host, &ctx->host, &ctx->host_buff);
+        ctx->status = status;
 
         if (ctx->co) {
             conet::resume(ctx->co);
@@ -301,28 +293,32 @@ public:
 
 
 
-    hostent* gethostbyname(char const *name)
+
+    struct prefetch_task_t
     {
-        return this->gethostbyname2(name, AF_INET);
+        AresWrap * ares;
+        std::string host_name;
+        int af;
+    };
+
+    static 
+    int do_gethostname_prefetch(void *arg)
+    {
+        prefetch_task_t *task = (prefetch_task_t *)(arg);
+        cb_ctx_t ctx;
+        int ret = task->ares->gethostbyname2_raw(task->host_name.c_str(), task->af, ctx);
+        if (0 == ret) {
+            uint64_t now = conet::get_tick_ms() / 1000;
+            HostEnt &hc = task->ares->m_hostent_cache[task->host_name];
+            hostent_copy(&ctx.host, &hc.host, &hc.buffer);
+            hc.data_time = now;
+        }
+        delete task;
+        return 0;
     }
 
-    hostent* gethostbyname2(char const *name, int af)
+    int gethostbyname2_raw(char const *name, int af, cb_ctx_t &ctx)
     {
-        /*
-        //std::string host_name(name);
-        AUTO_VAR(it, =, m_hostent_cache.find(host_name));
-        if (it != m_hostent_cache.end()) {
-            return &it->second.host;
-        }
-        */
-
-        CO_DEF_STATIC_VAR0(cb_ctx_t, ctx);
-
-        ctx.host_name = name;
-
-        ctx.user_host = NULL;
-        ctx.user_host_buff = NULL;
-        ctx.user_host_len = 0;
         ctx.finished = 0;
         ctx.co = NULL;
         //本地 host 会直接回调
@@ -336,15 +332,67 @@ public:
         }
 
         if (ctx.status != ARES_SUCCESS) {
+            return -1;
+        }
+        return 0;
+
+    }
+
+    int gethostbyname2_cache(char const *name, int af, cb_ctx_t &ctx)
+    {
+
+        std::string host_name(name);
+        host_name.append((char *)&af, sizeof(af));
+        AUTO_VAR(it, =, m_hostent_cache.find(host_name));
+        if (it != m_hostent_cache.end()) {
+            uint64_t now = conet::get_tick_ms() / 1000;
+            HostEnt &data = it->second;
+            if (data.data_time + 5 < now) {
+                prefetch_task_t * task = new prefetch_task_t();
+                task->ares = this;
+                task->host_name = host_name;
+                task->af = af;
+                coroutine_t *co = conet::alloc_coroutine(&do_gethostname_prefetch,  task);
+                conet::set_auto_delete(co);
+                conet::resume(co);
+            }
+            if (data.data_time + 10 > now) {
+                // 缓存 10 秒
+                hostent_copy(&data.host, &ctx.host, &ctx.host_buff);
+                ctx.status = ARES_SUCCESS;
+                return 0;
+            }
+        }
+        int ret = gethostbyname2_raw(name, af, ctx);
+        if (0 == ret) {
+            uint64_t now = conet::get_tick_ms() / 1000;
+            HostEnt &hc = m_hostent_cache[host_name];
+            hostent_copy(&ctx.host, &hc.host, &hc.buffer);
+            hc.data_time = now;
+        }
+        return 0;
+    }
+
+
+    hostent* gethostbyname(char const *name)
+    {
+        return this->gethostbyname2(name, AF_INET);
+    }
+    
+
+    hostent* gethostbyname2(char const *name, int af)
+    {
+
+        CO_DEF_STATIC_VAR0(cb_ctx_t, ctx);
+
+        ctx.host_name = name;
+
+        int ret = gethostbyname2_cache(name, af, ctx);
+
+        if (ret != 0 || ctx.status != ARES_SUCCESS) {
             return NULL;
         }
 
-        /*
-        HostEnt &hc = m_hostent_cache[host_name];
-        bcopy(&ctx.host, &hc.host, sizeof(hostent));
-        hc.buffer.swap(ctx.host_buff);
-        return &hc.host;
-        */
         return &ctx.host;
     }
 
@@ -361,29 +409,17 @@ public:
 
         ctx.host_name = name;
 
+        int ret2 = gethostbyname2_cache(name, af, ctx);
 
-        ctx.user_host = ret;
-        ctx.user_host_buff = buf;
-        ctx.user_host_len = buflen;
-        ctx.finished = 0;
-        ctx.co = NULL;
-        //本地 host 会直接回调
-        ares_gethostbyname(m_channel, name, af, gethostbyname_cb, &ctx);
-
-        if (!ctx.finished) {
-            ctx.co = CO_SELF();
-            ++m_query_cnt;
-            conet::yield();
-            --m_query_cnt;
-        }
-
-        if (ctx.status == ARES_SUCCESS) {
+        if (ret2 == 0 && ctx.status == ARES_SUCCESS) {
             if (h_errnop) {
                 *h_errnop =  0;
             }
-            if (ctx.user_host_len > (int)buflen) {
+            int need_host_len = calc_hostent_len(&ctx.host);
+            if (need_host_len > (int)buflen) {
                 return ERANGE;
             }
+            hostent_copy(&ctx.host, ret, buf, buflen);
             if (result) {
                 *result = ret;
             }
@@ -405,8 +441,6 @@ public:
             }
         }
         return -1;
-
-
     }
 
     AresWrap()
