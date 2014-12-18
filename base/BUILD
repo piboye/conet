@@ -113,3 +113,14 @@ cc_binary(
     deps = [
     ],
 ) 
+
+cc_binary(
+    name = 'functor_test',
+    srcs = [
+        'src/functor_test.cpp',
+    ],
+
+    incs= [ 
+        "incl/",
+    ],
+)
