@@ -612,4 +612,86 @@ int Pb2Sqlite::create_table(const char * sql)
     return 0;
 }
 
+namespace 
+{
+struct FieldType
+{
+    std::string name;
+    std::string type;
+};
+}
+
+static
+int Descriptor2SqlType(
+    const google::protobuf::Descriptor* descriptor,
+    std::vector<FieldType> *out)
+{
+    using namespace std;
+    using namespace google::protobuf;
+
+    vector<const FieldDescriptor*> fields;
+    for (int i = 0; i < descriptor->field_count(); i++) {
+        fields.push_back(descriptor->field(i));
+    }
+
+    for (size_t i = 0; i < fields.size(); i++) {
+        const FieldDescriptor* field = fields[i];
+        if (field->is_repeated()) {
+            LOG(ERROR)<<"unsupported repeated field, [field_name:"<<field->full_name()<<"]";
+            return -1;
+        }
+
+        switch (field->cpp_type()) {
+
+#undef CASE_FIELD_TYPE
+#define CASE_FIELD_TYPE(cpptype, vtype)                          \
+            case FieldDescriptor::CPPTYPE_##cpptype: {           \
+                FieldType ft; \
+                ft.name = field->name(); \
+                ft.type= vtype; \
+                out->push_back(ft) ; \
+                break;                                \
+            }                                         \
+
+            CASE_FIELD_TYPE(INT32,  "int");
+            CASE_FIELD_TYPE(UINT32, "int");
+            CASE_FIELD_TYPE(FLOAT,  "REAL");
+            CASE_FIELD_TYPE(BOOL,   "int");
+            CASE_FIELD_TYPE(INT64,  "int");
+            CASE_FIELD_TYPE(UINT64, "int");
+            CASE_FIELD_TYPE(DOUBLE, "REAL");
+            CASE_FIELD_TYPE(STRING, "BLOB");
+
+#undef CASE_FIELD_TYPE
+        default:
+        	LOG(FATAL)<<"unspported [type:"<<field->cpp_type()<<"] [field_name:"<<field->full_name()<<"]";
+
+        }
+    }
+    return 0;
+}
+
+int Pb2Sqlite::create_table(google::protobuf::Message const &proto)
+{
+    std::vector<FieldType> field_types;
+
+    int ret  = 0;
+    ret = Descriptor2SqlType( proto.GetDescriptor(), &field_types); 
+    if (ret) {
+        return -1;
+    }
+
+    std::string sql = " create table if not exists ";
+    sql += "\"" + m_table_name + "\" (";
+
+    for(size_t i=0, len = field_types.size(); i<len; ++i)
+    {
+        if (i >0) sql += ",";
+        sql+=  "\"" + field_types[i].name + "\" " + field_types[i].type;
+    }
+
+    sql += " );";
+    return create_table(sql.c_str());
+}
+
 }

@@ -41,6 +41,7 @@ namespace conet
 
             int init(std::string const &file_name, std::string const &table);
 
+            int create_table(google::protobuf::Message const &proto);
             int create_table(const char * sql);
 
             int insert(google::protobuf::Message& message);
@@ -69,9 +70,7 @@ namespace conet
     };
 
 
-    int Pb2Map(
-            const google::protobuf::Message& message,
-            std::map<std::string, std::string> *out);
+    int Pb2Map(const google::protobuf::Message& message, std::map<std::string, std::string> *out);
 
 }
 

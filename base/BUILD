@@ -114,6 +114,31 @@ cc_binary(
     ],
 ) 
 
+proto_library(
+    name = 'test_proto',
+    srcs = [
+        'src/test.proto',
+    ],
+)
+
+cc_binary(
+    name = 'pb2sqlite_test',
+
+    srcs = [
+        'src/pb2sqlite_test.cpp',
+    ],
+
+    incs= [ 
+        "incl/",
+    ],
+
+    deps = [
+        ':base',
+        ':test_proto',
+        '#dl',
+    ],
+) 
+
 cc_binary(
     name = 'functor_test',
     srcs = [
