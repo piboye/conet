@@ -32,27 +32,29 @@ namespace conet
                 }
             }
 
-            int init(sqlite3 *db, std::string const &table)
-            {
-                m_db = db;
-                m_table_name = table;
-                return 0;
-            }
+            int init(sqlite3 *db, std::string const &table);
 
             int init(std::string const &file_name, std::string const &table);
 
             int create_table(google::protobuf::Message const &proto);
             int create_table(const char * sql);
 
-            int insert(google::protobuf::Message& message);
+            int insert(google::protobuf::Message const & message);
 
-            int update(google::protobuf::Message & wheres, google::protobuf::Message &updates);
+            int update(google::protobuf::Message const & wheres, google::protobuf::Message const &data);
 
-            int update(uint64_t id,  google::protobuf::Message &updates);
+            int update(uint64_t id,  google::protobuf::Message const &updates);
 
-            int get(google::protobuf::Message & wheres, google::protobuf::Message *result);
+            int get(google::protobuf::Message const & wheres, google::protobuf::Message *result);
 
-            int get_all(google::protobuf::Message & wheres, std::vector<google::protobuf::Message* > *results);
+            int get_all(google::protobuf::Message const & wheres, std::vector<google::protobuf::Message* > *results);
+
+            template<typename T>
+            int get_all(google::protobuf::Message const & wheres, std::vector<T*> *results)
+            {
+                std::vector<google::protobuf::Message *> * r2 = (std::vector<google::protobuf::Message *> *)(results);
+                return get_all(wheres, r2);
+            }
 
             int get(uint64_t id, google::protobuf::Message *result);
 
@@ -68,10 +70,6 @@ namespace conet
             int m_hold_db;
 
     };
-
-
-    int Pb2Map(const google::protobuf::Message& message, std::map<std::string, std::string> *out);
-
 }
 
 #endif 

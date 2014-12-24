@@ -1,0 +1,5 @@
+message Test
+{
+    optional int32 id=1;
+    optional bytes name=2;
+};

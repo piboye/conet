@@ -184,7 +184,7 @@ class SqliteData
 {
 public:
     Pb2Sqlite * server;
-    google::protobuf::Message * msg_proto; 
+    google::protobuf::Message const * msg_proto; 
     std::vector<google::protobuf::Message *> result;
 
     ~SqliteData()
@@ -266,7 +266,7 @@ int sqlite2pb(
     return 0;
 }
 
-int Pb2Sqlite::insert(google::protobuf::Message& message)
+int Pb2Sqlite::insert(google::protobuf::Message const & message)
 {
 	std::string field_names;
 	std::string value_list;
@@ -296,13 +296,13 @@ int Pb2Sqlite::insert(google::protobuf::Message& message)
 }
 
 
-int Pb2Sqlite::replace(google::protobuf::Message const &updates)
+int Pb2Sqlite::replace(google::protobuf::Message const &msg)
 {
 	std::string field_names;
 	std::string value_list;
 	char * errmsg = NULL;
 	int ret = 0;
-	ret = pb2sql_row(updates, &field_names, &value_list);
+	ret = pb2sql_row(msg, &field_names, &value_list);
 	if (ret) {
 		LOG(ERROR)<<"Pb2Sqlite.replace failed [ret:"<<ret<<"]";
 		return -1;
@@ -337,14 +337,14 @@ void get_assign_expr(
 	}
 }
 
-int Pb2Sqlite::update(google::protobuf::Message & wheres, google::protobuf::Message &updates)
+int Pb2Sqlite::update(google::protobuf::Message const & wheres, google::protobuf::Message const & msg)
 {
 	std::string field_names;
 	std::string value_list;
 	char * errmsg = NULL;
 	int ret = 0;
 	std::map<std::string, std::string> datas;
-	ret = PB2Map(updates, &datas);
+	ret = PB2Map(msg, &datas);
 	if (ret) {
 		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
 		return -1;
@@ -379,14 +379,14 @@ int Pb2Sqlite::update(google::protobuf::Message & wheres, google::protobuf::Mess
     return 0;
 }
 
-int Pb2Sqlite::insert_or_update(google::protobuf::Message const &updates)
+int Pb2Sqlite::insert_or_update(google::protobuf::Message const &msg)
 {
 	std::string field_names;
 	std::string value_list;
     char *errmsg = NULL;
 	int ret = 0;
 	std::map<std::string, std::string> datas;
-	ret = PB2Map(updates, &datas);
+	ret = PB2Map(msg, &datas);
 	if (ret) {
 		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
 		return -1;
@@ -394,7 +394,7 @@ int Pb2Sqlite::insert_or_update(google::protobuf::Message const &updates)
 	std::string set_values;
 	get_assign_expr(datas, &set_values);
 
-	ret = pb2sql_row(updates, &field_names, &value_list);
+	ret = pb2sql_row(msg, &field_names, &value_list);
 	if (ret) {
 		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
 		return -1;
@@ -418,14 +418,14 @@ int Pb2Sqlite::insert_or_update(google::protobuf::Message const &updates)
 	return 0;
 }
 
-int Pb2Sqlite::update(uint64_t id, google::protobuf::Message &updates)
+int Pb2Sqlite::update(uint64_t id, google::protobuf::Message const &msg)
 {
 	std::string field_names;
 	std::string value_list;
 	char * errmsg = NULL;
 	int ret = 0;
 	std::map<std::string, std::string> datas;
-	ret = PB2Map(updates, &datas);
+	ret = PB2Map(msg, &datas);
 	if (ret) {
 		LOG(ERROR)<<"Pb2Sqlite.pb2map failed [ret:"<<ret<<"]";
 		return -1;
@@ -502,7 +502,7 @@ int Pb2Sqlite::get(uint64_t id, google::protobuf::Message *out)
 	return ret;
 }
 
-int Pb2Sqlite::get(google::protobuf::Message & wheres, google::protobuf::Message *result)
+int Pb2Sqlite::get(google::protobuf::Message const & wheres, google::protobuf::Message *result)
 {
 	std::string field_names;
 	std::string value_list;
@@ -540,7 +540,7 @@ int Pb2Sqlite::get(google::protobuf::Message & wheres, google::protobuf::Message
 	return 1;
 }
 
-int Pb2Sqlite::get_all(google::protobuf::Message & wheres, std::vector<google::protobuf::Message *> *result)
+int Pb2Sqlite::get_all(google::protobuf::Message const & wheres, std::vector<google::protobuf::Message *> *result)
 {
 	std::string field_names;
 	std::string value_list;
@@ -593,6 +593,14 @@ int Pb2Sqlite::init(
         return -1;
     }
     m_hold_db = 1;
+    return 0;
+}
+
+int Pb2Sqlite::init(sqlite3 *db, std::string const &table)
+{
+    m_db = db;
+    m_table_name = table;
+    m_hold_db = 0;
     return 0;
 }
 
