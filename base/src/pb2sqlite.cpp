@@ -78,9 +78,9 @@ int PB2Map(
             CASE_FIELD_TYPE(DOUBLE, Double, double);
 
             case FieldDescriptor::CPPTYPE_STRING: {
-                std::string val = "\"";
-                val += reflection->GetString(message, field);
-                val += "\"";
+                char * p = sqlite3_mprintf("%Q", reflection->GetString(message, field).c_str());
+                std::string val(p);
+                sqlite3_free(p);
                 out->insert(
         			std::make_pair(std::string(field->name()), val));
                 break;
@@ -160,9 +160,9 @@ int pb2sql_row(
             CASE_FIELD_TYPE(DOUBLE, Double, double);
 
         case FieldDescriptor::CPPTYPE_STRING: {
-            std::string val = "\"";
-            val += reflection->GetString(message, field);
-            val += "\"";
+            char * p = sqlite3_mprintf("%Q", reflection->GetString(message, field).c_str());
+            std::string val(p);
+            sqlite3_free(p);
             if (count != 0) {
             	sql_fields += ",";
             	sql_values += ",";
