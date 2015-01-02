@@ -23,11 +23,12 @@
 
 #include "svrkit/rpc_base_pb.pb.h"
 #include "google/protobuf/message.h"
-#include "base/incl/str_map.h"
-#include "base/incl/int_map.h"
-#include "base/incl/pb_obj_pool.h"
 #include "conn_info.h"
-#include "base/incl/ptr_cast.h"
+
+#include "base/str_map.h"
+#include "base/int_map.h"
+#include "base/pb_obj_pool.h"
+#include "base/ptr_cast.h"
 
 #include "cmd_base.h"
 

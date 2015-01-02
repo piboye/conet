@@ -47,7 +47,7 @@ namespace conet
             cmsg->cmsg_level = SOL_SOCKET;
             cmsg->cmsg_type  = SCM_RIGHTS;
 
-            *(reinterpret_cast<int*>(CMSG_DATA(cmsg))) = fd;
+            *((int*)(CMSG_DATA(cmsg))) = fd;
 
             int ret = sendmsg(sock, &hdr, MSG_DONTWAIT);
             if (ret <=0) {

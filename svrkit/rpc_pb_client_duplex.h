@@ -24,13 +24,13 @@
 #include <string.h>
 
 #include <errno.h>
-#include "base/incl/net_tool.h"
-#include "base/incl/list.h"
-#include "base/incl/ip_list.h"
-#include "base/incl/int_map.h"
+#include "base/net_tool.h"
+#include "base/list.h"
+#include "base/ip_list.h"
+#include "base/int_map.h"
 
-#include "core/incl/wait_queue.h"
-#include "core/incl/conet_all.h"
+#include "core/wait_queue.h"
+#include "core/conet_all.h"
 
 #include "svrkit/rpc_base_pb.pb.h"
 

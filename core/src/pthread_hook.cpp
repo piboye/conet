@@ -28,9 +28,9 @@
 #include "event_notify.h"
 #include "pthread_hook.h"
 
-#include "../../base/incl/tls.h"
-#include "../../base/incl/auto_var.h"
-#include "../../base/incl/addr_map.h"
+#include "../../base/tls.h"
+#include "../../base/auto_var.h"
+#include "../../base/addr_map.h"
 
 
 #define SYS_FUNC(name) g_sys_##name##_func

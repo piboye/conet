@@ -22,10 +22,10 @@
 #include "http_server.h"
 #include "thirdparty/glog/logging.h"
 
-#include "base/incl/auto_var.h"
-#include "base/incl/http_parser.h"
-#include "base/incl/net_tool.h"
-#include "base/incl/ptr_cast.h"
+#include "base/auto_var.h"
+#include "base/http_parser.h"
+#include "base/net_tool.h"
+#include "base/ptr_cast.h"
 
 namespace conet
 {

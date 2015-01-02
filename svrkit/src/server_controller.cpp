@@ -17,11 +17,11 @@
  */
 #include "server_controller.h"
 #include "server_worker.h"
-#include "base/incl/cpu_affinity.h"
-#include "base/incl/auto_var.h"
-#include "base/incl/gcc_builtin_help.h"
-#include "base/incl/ptr_cast.h"
-#include "core/incl/conet_all.h"
+#include "base/cpu_affinity.h"
+#include "base/auto_var.h"
+#include "base/gcc_builtin_help.h"
+#include "base/ptr_cast.h"
+#include "core/conet_all.h"
 
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"

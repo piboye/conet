@@ -22,11 +22,10 @@
 
 #include "thirdparty/gflags/gflags.h"
 
-#include "base/incl/ip_list.h"
-#include "base/incl/net_tool.h"
-
-#include "base/incl/ref_str.h"
-#include "core/incl/conet_all.h"
+#include "base/ip_list.h"
+#include "base/net_tool.h"
+#include "base/ref_str.h"
+#include "core/conet_all.h"
 
 //using namespace conet;
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");

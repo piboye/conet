@@ -26,9 +26,9 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#include "base/incl/net_tool.h"
-#include "base/incl/ptr_cast.h"
-#include "core/incl/fd_ctx.h"
+#include "base/net_tool.h"
+#include "base/ptr_cast.h"
+#include "core/fd_ctx.h"
 
 
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");

@@ -35,7 +35,7 @@ cc_library(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     extra_cppflags=["-fPIC"],
@@ -58,7 +58,7 @@ cc_test(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
 
@@ -75,7 +75,7 @@ cc_binary(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     deps = [
@@ -91,7 +91,7 @@ cc_binary(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     deps = [
@@ -107,7 +107,7 @@ cc_binary(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     deps = [
@@ -129,7 +129,7 @@ cc_binary(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     deps = [
@@ -146,6 +146,6 @@ cc_binary(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 )

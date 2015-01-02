@@ -26,15 +26,16 @@
 #include "rpc_pb_server_base_impl.h"
 #include "tcp_server.h"
 #include "http_server.h"
-#include "base/incl/ptr_cast.h"
+#include "base/ptr_cast.h"
 
 
-#include "base/incl/net_tool.h"
-#include "base/incl/auto_var.h"
-#include "glog/logging.h"
-#include "core/incl/wait_queue.h"
-#include "base/incl/obj_pool.h"
+#include "base/net_tool.h"
+#include "base/auto_var.h"
+#include "core/wait_queue.h"
+#include "base/obj_pool.h"
 #include "cmd_base.h"
+
+#include "glog/logging.h"
 
 using namespace conet_rpc_pb;
 namespace conet

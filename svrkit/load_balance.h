@@ -26,13 +26,12 @@
 #include <algorithm>
 #include <math.h>
 
-#include "base/incl/net_tool.h"
-#include "base/incl/time_helper.h"
-#include "base/incl/ip_list.h"
-#include "base/incl/auto_var.h"
-#include "base/incl/time_helper.h"
-
-#include "base/incl/random.h"
+#include "../base/net_tool.h"
+#include "../base/time_helper.h"
+#include "../base/ip_list.h"
+#include "../base/auto_var.h"
+#include "../base/time_helper.h"
+#include "../base/random.h"
 
 
 namespace conet

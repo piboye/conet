@@ -20,12 +20,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "example/echo_rpc.pb.h"
-#include "svrkit/incl/rpc_pb_client.h"
+#include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
 #include "thirdparty/glog/logging.h"
-#include "conet_all.h"
+#include "core/conet_all.h"
 
-#include "base/incl/net_tool.h"
+#include "base/net_tool.h"
 
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");

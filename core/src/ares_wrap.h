@@ -21,8 +21,8 @@
 
 #include "thirdparty/c-ares/ares.h"
 #include "coroutine.h"
-#include "base/incl/auto_var.h"
-#include "base/incl/ptr_cast.h"
+#include "../base/auto_var.h"
+#include "../base/ptr_cast.h"
 #include <netdb.h>
 #include <vector>
 #include <map>

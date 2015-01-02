@@ -18,12 +18,12 @@
 #include <stdlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "conet_all.h"
+#include "core/conet_all.h"
 #include "thirdparty/gflags/gflags.h"
 #include "thirdparty/glog/logging.h"
 
-#include "base/incl/ip_list.h"
-#include "base/incl/net_tool.h"
+#include "base/ip_list.h"
+#include "base/net_tool.h"
 
 //using namespace conet;
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");

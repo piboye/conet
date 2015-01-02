@@ -18,7 +18,7 @@
 #ifndef __GC_H_INC__
 #define __GC_H_INC__
 
-#include "../../base/incl/list.h"
+#include "../../base/list.h"
 namespace conet
 {
 

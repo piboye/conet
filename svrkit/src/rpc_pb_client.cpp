@@ -22,11 +22,11 @@
 #include <errno.h>
 #include "rpc_pb_client.h"
 #include "glog/logging.h"
-#include "../../base/incl/obj_pool.h"
-#include "../../base/incl/tls.h"
-#include "../../base/incl/ptr_cast.h"
+#include "base/obj_pool.h"
+#include "base/tls.h"
+#include "base/ptr_cast.h"
 #include <poll.h>
-#include "../../core/incl/coroutine.h"
+#include "core/coroutine.h"
 #include "cmd_base.h"
 
 namespace conet

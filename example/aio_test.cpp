@@ -22,7 +22,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "conet_all.h"
+#include "core/conet_all.h"
 #include "thirdparty/gflags/gflags.h"
 
 DEFINE_string(out_file, "2.txt", "output file name");

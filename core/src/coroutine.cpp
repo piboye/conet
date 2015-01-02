@@ -11,8 +11,8 @@
 #include "timewheel.h"
 #include "gflags/gflags.h"
 #include "log.h"
-#include "../../base/incl/fixed_mempool.h"
-#include "../../base/incl/tls.h"
+#include "../../base/fixed_mempool.h"
+#include "../../base/tls.h"
 
 DEFINE_int32(stack_size, 4*4096, "default stack size bytes");
 

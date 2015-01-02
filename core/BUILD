@@ -22,7 +22,7 @@ cc_library(
     ],
 
     incs= [ 
-        "incl/",
+        "./",
     ],
 
     deps=[
@@ -46,6 +46,9 @@ cc_library(
 
 cc_binary(
     name = 'co_swap_test',
+    incs= [ 
+        "./",
+    ],
     srcs = ['src/co_swap_test.cpp'],
     deps = [
         ':conet',
@@ -54,6 +57,9 @@ cc_binary(
 
 cc_binary(
     name = 'gethostbyname_test',
+    incs= [ 
+        "./",
+    ],
     srcs = ['src/gethostbyname_test.cpp'],
     deps = [
         ':conet',

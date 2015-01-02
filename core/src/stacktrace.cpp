@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "../../base/incl/addr2line.h"
+#include "../../base/addr2line.h"
 #include "network_hook.h"
 
 struct bt_frame {

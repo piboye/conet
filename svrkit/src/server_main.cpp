@@ -30,8 +30,8 @@
 
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "base/incl/delay_init.h"
-#include "base/incl/net_tool.h"
+#include "base/delay_init.h"
+#include "base/net_tool.h"
 #include "server_controller.h"
 #include "server_common.h"
 

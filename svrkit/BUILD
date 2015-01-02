@@ -4,7 +4,9 @@ cc_library(
         "src/tcp_server.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps =[
         "//core:conet", 
@@ -20,7 +22,9 @@ cc_library(
         "src/rpc_pb_client_duplex.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps =[
         "//core:conet", 
@@ -36,7 +40,9 @@ cc_library(
         'src/http_server.cpp',
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps=[
         ':tcp_server',
@@ -73,7 +79,9 @@ cc_library(
         "src/rpc_pb_server_base.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps =[
         ":rpc_base_pb_proto",
@@ -97,7 +105,9 @@ cc_library(
         "src/server_task.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps = [
         "//base:base",
@@ -112,7 +122,9 @@ cc_library(
         "src/rpc_pb_server_task.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps =[
         ":server_main",
@@ -139,7 +151,9 @@ cc_test(
         "src/rpc_base_test.cpp",
     ],
     incs= [ 
-        "incl/",
+        "./",
+        "../base/",
+        "../core/",
     ],
     deps =[
         ":rpc_base_pb_proto",

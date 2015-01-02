@@ -17,9 +17,9 @@
 #include "dispatch.h"
 #include "gflags/gflags.h"
 
-#include "../../base/incl/list.h"
-#include "../../base/incl/tls.h"
-#include "../../base/incl/gcc_builtin_help.h"
+#include "../../base/list.h"
+#include "../../base/tls.h"
+#include "../../base/gcc_builtin_help.h"
 
 DEFINE_int32(epoll_size, 102400, "epoll event size ");
 

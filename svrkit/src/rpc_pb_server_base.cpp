@@ -19,15 +19,17 @@
 #include <map>
 #include <string>
 
-#include "base/incl/auto_var.h"
+#include "glog/logging.h"
+
 #include "rpc_pb_server_base.h"
 #include "rpc_pb_server_base_impl.h"
-#include "base/incl/auto_var.h"
-#include "glog/logging.h"
-#include "base/incl/pb2json.h"
-#include "base/incl/net_tool.h"
-#include "base/incl/query_string.h"
 #include "svrkit/static_resource.h"
+
+#include "base/auto_var.h"
+#include "base/auto_var.h"
+#include "base/pb2json.h"
+#include "base/net_tool.h"
+#include "base/query_string.h"
 
 namespace conet
 {

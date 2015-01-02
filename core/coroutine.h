@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <poll.h>
-#include "../../base/incl/list.h"
+#include "../../base/list.h"
 #include "gc.h"
-#include "../../base/incl/closure.h"
+#include "../../base/closure.h"
 
 namespace conet
 {

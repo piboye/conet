@@ -18,10 +18,10 @@
 #include <stdlib.h>
 
 #include "svrkit/rpc_base_pb.pb.h"
-#include "../../base/incl/pbc.h"
+#include "base/pbc.h"
 #include "gtest/gtest.h"
 
-#include "../incl/cmd_base.h"
+#include "../cmd_base.h"
 
 using namespace conet;
 

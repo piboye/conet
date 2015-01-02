@@ -15,8 +15,8 @@
 #include "glog/logging.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/descriptor.h"
-#include "base/incl/pb2sqlite.h"
-#include "base/incl/string2number.h"
+#include "pb2sqlite.h"
+#include "string2number.h"
 
 
 namespace conet

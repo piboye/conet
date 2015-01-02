@@ -20,13 +20,13 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/incl/tcp_server.h"
+#include "svrkit/tcp_server.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "base/incl/cpu_affinity.h"
-#include "base/incl/delay_init.h"
-#include "base/incl/ip_list.h"
-#include "base/incl/net_tool.h"
+#include "base/cpu_affinity.h"
+#include "base/delay_init.h"
+#include "base/ip_list.h"
+#include "base/net_tool.h"
 
 using namespace conet;
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");

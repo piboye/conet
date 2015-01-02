@@ -19,7 +19,7 @@
 #ifndef __CONET_SERVER_COMMON_H__
 #define __CONET_SERVER_COMMON_H__
 
-#include "base/incl/ip_list.h"
+#include "../base/ip_list.h"
 
 namespace conet
 {

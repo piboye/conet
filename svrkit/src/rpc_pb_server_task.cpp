@@ -17,13 +17,13 @@
  */
 #include <stdlib.h>
 #include "server_task.h"
-#include "base/incl/delay_init.h"
+#include "base/delay_init.h"
 
 #include "async_rpc_pb_server.h"
 #include "rpc_pb_server.h"
 #include "rpc_pb_server_base.h"
 
-#include "base/incl/ip_list.h"
+#include "base/ip_list.h"
 #include "server_common.h"
 
 

@@ -24,9 +24,9 @@
 #include <map>
 #include <sys/epoll.h>
 #include "gflags/gflags.h"
-#include "../../base/incl/fixed_mempool.h"
-#include "../../base/incl/tls.h"
-#include "../../base/incl/list.h"
+#include "../../base/fixed_mempool.h"
+#include "../../base/tls.h"
+#include "../../base/list.h"
 #include "fcontext.h"
 
 #ifdef USE_VALGRIND

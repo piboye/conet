@@ -21,9 +21,9 @@
 
 #include "rpc_pb_server_base.h"
 #include "http_server.h"
-#include "base/incl/str_map.h"
-#include "base/incl/int_map.h"
-#include "base/incl/ref_str.h"
+#include "base/str_map.h"
+#include "base/int_map.h"
+#include "base/ref_str.h"
 
 namespace conet
 {

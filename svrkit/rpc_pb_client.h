@@ -24,11 +24,11 @@
 
 #include "cmd_base.h"
 #include "svrkit/rpc_base_pb.pb.h"
-#include "base/incl/net_tool.h"
-#include "base/incl/list.h"
-#include "base/incl/ip_list.h"
+#include "../base/net_tool.h"
+#include "../base/list.h"
+#include "../base/ip_list.h"
 #include "load_balance.h"
-#include "../../base/incl/obj_pool.h"
+#include "../../base/obj_pool.h"
 #include "glog/logging.h"
 
 namespace conet

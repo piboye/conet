@@ -23,8 +23,8 @@
 
 #include "http_server.h"
 #include "tcp_server.h"
-#include "../../base/incl/obj_pool.h"
-#include "base/incl/net_tool.h"
+#include "../base/obj_pool.h"
+#include "../base/net_tool.h"
 #include "google/protobuf/message.h"
 #include "cmd_base.h"
 

@@ -18,9 +18,9 @@
 #include <stdlib.h>
 #include "server_worker.h"
 #include "server_task.h"
-#include "base/incl/cpu_affinity.h"
-#include "core/incl/conet_all.h"
-#include "base/incl/ptr_cast.h"
+#include "base/cpu_affinity.h"
+#include "core/conet_all.h"
+#include "base/ptr_cast.h"
 #include "server_common.h"
 #include "thirdparty/glog/logging.h"
 

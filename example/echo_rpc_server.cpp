@@ -20,11 +20,11 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "svrkit/incl/rpc_pb_server.h"
+#include "svrkit/rpc_pb_server.h"
 #include "example/echo_rpc.pb.h"
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
-#include "base/incl/delay_init.h"
+#include "base/delay_init.h"
 
 using namespace conet;
 
