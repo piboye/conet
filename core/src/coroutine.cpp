@@ -25,6 +25,7 @@ static __thread conet::fixed_mempool_t * g_coroutine_struct_pool = NULL;
 static 
 void free_co_struct_pool(void *arg)
 {
+
     conet::fixed_mempool_t * pool = (conet::fixed_mempool_t *)(arg);
     pool->fini();
     delete pool;
