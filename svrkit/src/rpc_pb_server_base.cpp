@@ -30,9 +30,11 @@
 #include "base/pb2json.h"
 #include "base/net_tool.h"
 #include "base/query_string.h"
+#include "thirdparty/gflags/gflags.h"
 
 namespace conet
 {
+DEFINE_bool(log_failed_rpc, true, "log failed rpc call");
 
 static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
 static 
@@ -273,6 +275,18 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx,
     if (req1) 
         self->req_pool.release(req1);
 
+    if (ret != 0 && FLAGS_log_failed_rpc)
+    {
+        LOG(ERROR)<<"rpc call failed, "
+            "[method_name:"<<self->method_name<<"]"
+            "[cmd_id:"<<self->cmd_id<<"]"
+            "[seq_id:"<<ctx->cmd_base.seq_id<<"]"
+            "[ret:"<<ret<<"]"
+            "[errmsg:"<<*errmsg<<"]"
+            "[req:"<<req1->ShortDebugString()<<"]"
+            "[rsp:"<<rsp1->ShortDebugString()<<"]"
+            ;
+    }
     return ret;
 }
 
