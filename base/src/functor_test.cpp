@@ -19,27 +19,29 @@
 #include <stdio.h>
 #include "functor.h"
 
-
-class F
-{
-public:
-    virtual int operator()()=0;
-    virtual ~F()
-    {
-    }
-};
-
+using namespace conet;
 
 int main(int argc, char const* argv[])
 {
 
-    F *a = new_func_def (F, int, operator(), ()) {
+    int k = comac_argc(CONET_REMOVE_BRA_(()));
+    printf("%d\n",k);
+    int c=1, b=2;
+    conet::Closure<int> *a = NewFunc(int,(), (c), (b))
+    {
             printf("hello \n");
             return 0;
-    } new_func_end;
-    
-    (*a)();
+    }
+    EndFunc;
+    a->Run();
 
+    conet::Closure<int> *a2 = NewFunc(int,())
+    {
+            printf("hello \n");
+            return 0;
+    }
+    EndFunc;
+    a2->Run();
     return 0;
 }
 
