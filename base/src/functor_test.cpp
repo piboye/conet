@@ -23,24 +23,19 @@ using namespace conet;
 
 int main(int argc, char const* argv[])
 {
-
-    int k = comac_argc(CONET_REMOVE_BRA_(()));
-    printf("%d\n",k);
     int c=1, b=2;
-    conet::Closure<int> *a = NewFunc(int,(), (c), (b))
+    conet::Closure<int> *a = NewFunc(int,(), (c, b),
     {
             printf("hello \n");
             return 0;
-    }
-    EndFunc;
+    });
     a->Run();
 
-    conet::Closure<int> *a2 = NewFunc(int,())
+    conet::Closure<int> *a2 = NewFunc(int,(), ,
     {
             printf("hello \n");
             return 0;
-    }
-    EndFunc;
+    });
     a2->Run();
     return 0;
 }
