@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 echo "get thirdparty"
 if [[ ! -d thirdparty ]]
 then
