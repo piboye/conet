@@ -178,8 +178,6 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     d->domain = 0;
     int flags = 0;
     flags = _(fcntl)(fd, F_GETFL, 0);
-    d->user_flag = flags;
-    
     //default is block 
     d->user_flag = 0;
 

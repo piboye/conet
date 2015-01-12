@@ -779,7 +779,15 @@ HOOK_SYS_FUNC_DEF(
     case F_DUPFD:
     {
         int param = va_arg(arg_list,int);
-        ret = _(fcntl)( fd,cmd,param );
+        ret = (fcntl)( fd,cmd,param );
+        if (ret >=0 && lp && conet::is_enable_sys_hook())
+        {
+            fd_ctx_t *lp0 = alloc_fd_ctx( ret );
+            lp0->domain = lp->domain;
+            lp0->rcv_timeout = lp->rcv_timeout;
+            lp0->snd_timeout = lp->snd_timeout;
+            lp0->user_flag = lp->user_flag;
+        }
         break;
     }
     case F_GETFD:
@@ -796,6 +804,10 @@ HOOK_SYS_FUNC_DEF(
     case F_GETFL:
     {
         ret = _(fcntl)( fd,cmd );
+        if (lp && (!(lp->user_flag & O_NONBLOCK ) && (ret & O_NONBLOCK)))
+        {
+            ret &= ~O_NONBLOCK;
+        }
         break;
     }
     case F_SETFL:
