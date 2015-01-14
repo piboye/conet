@@ -29,7 +29,7 @@
 namespace conet
 {
 
-enum 
+enum
 {
     ERR_TIMEOUT_NET_HELPER = -2  // 超时错误码
 };
@@ -41,7 +41,7 @@ template <typename T>
 int send_pb_obj(int fd,  T const &data, char *buf, int max_size, int timeout=1000)
 {
     uint32_t len = data.ByteSize();
-    
+
     *((uint32_t *)buf) = htonl(len);
     data.SerializeToArray(buf+4, len);
 

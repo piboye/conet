@@ -24,6 +24,7 @@
 namespace conet 
 {
 template<typename dst_fn_t, typename src_fn_t>    
+inline
 dst_fn_t ptr_cast(src_fn_t fn)
 {
     dst_fn_t ret_fn=NULL;

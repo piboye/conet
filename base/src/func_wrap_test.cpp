@@ -47,9 +47,7 @@ int main(int argc, char const* argv[])
 {
     A a;
     void * p = mmap(0, 4096, PROT_READ| PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_LOCKED | MAP_ANONYMOUS, -1, 0);  
-    printf("p:%p\n", p);
     FuncWrapData *d = (FuncWrapData *)(p);
-    printf("d:%p\n", d);
     d->jump_func = (uint64_t)(( int(*)(int))(conet::func_wrap_pb100<int, int>));
     d->self = (uint64_t )&a;
     d->mem_func = reinterpret_cast<uint64_t>(&A::f2);
