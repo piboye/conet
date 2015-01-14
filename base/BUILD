@@ -15,6 +15,7 @@ gen_rule(
 cc_library(
     name="base",
     srcs = [
+        'src/thumb.s',
         'src/pb2sqlite.cpp',
         'src/net_tool.cpp',
         'src/tls.cpp',
@@ -143,6 +144,18 @@ cc_binary(
     name = 'functor_test',
     srcs = [
         'src/functor_test.cpp',
+    ],
+
+    incs= [ 
+        "./",
+    ],
+)
+
+cc_binary(
+    name = 'func_wrap_test',
+    srcs = [
+        'src/func_wrap_test.cpp',
+        'src/thumb.s',
     ],
 
     incs= [ 
