@@ -22,8 +22,25 @@
 namespace conet
 {
 
+struct FuncWrapData
+{
+    uint64_t jump_func;
+    uint64_t self;
+    uint64_t mem_func;
+    uint64_t other;
+    char code[32];
+};
+
 FuncWrapData * get_func_wrap_data();
 void free_func_wrap_data(FuncWrapData *d);
+
+inline
+void free_func_wrap(void *f)
+{
+    free_func_wrap_data(
+            (FuncWrapData *)((char*)f - ((size_t)&((FuncWrapData *)0)->code)));
+}
+
 }
 
 #endif /* end of include guard */

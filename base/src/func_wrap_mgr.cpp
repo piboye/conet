@@ -20,7 +20,9 @@
 #include "func_wrap.h"
 #include <sys/mman.h>
 #include "tls.h"
+#include <string.h>
 
+extern "C" void jump_to_real_func(void);
 namespace conet
 {
 
@@ -40,8 +42,8 @@ struct FuncWrapMgr
         list_head *n = NULL;
         for(size_t i= 0; i< sz; i+=64)
         {
-            n = (list_head *)(p+i);
-            memcpy(&(((FuncWrapData*)(p+i))->code),
+            n = (list_head *)((char *)p+i);
+            memcpy((void *)&(((FuncWrapData*)((char *)p+i))->code),
                 (void *)(&jump_to_real_func), 32);
             INIT_LIST_HEAD(n);
             list_add_tail(n, &m_free_list);
@@ -79,7 +81,7 @@ FuncWrapData * get_func_wrap_data()
 
 void free_func_wrap_data(FuncWrapData *d)
 {
-    return TLS_GET(g_func_wrap_mgr)->free_func_wrap_data(d);
+    return TLS_GET(g_func_wrap_mgr)->free_obj(d);
 }
 
 }

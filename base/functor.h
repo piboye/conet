@@ -102,6 +102,19 @@ public:\
      } };  new conet_functor_ a_copy;})
 
 
+#define DEFER(param, op)  \
+struct __Defer##__LINE__ \
+{ \
+   repeat( comac_argc param ,impl_typeof, CONET_REMOVE_BRA_(param) )\
+	int _member_cnt;\
+	__Defer##__LINE__( \
+		repeat( comac_argc param,con_param_typeof, CONET_REMOVE_BRA_(param) ) ... ): \
+		repeat( comac_argc ,param_init_typeof, CONET_REMOVE_BRA(param) ) _member_cnt(comac_argc param) \
+	{}\
+    ~__Defer##__LINE__() \
+    op  \
+} __defer_##__LINE__ param \
+
 }
 
 #endif /* end of include guard */
