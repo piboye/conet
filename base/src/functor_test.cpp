@@ -24,6 +24,10 @@ using namespace conet;
 int main(int argc, char const* argv[])
 {
     int c=1, b=2;
+    DEFER((c), {
+        printf("end\n");
+    });
+
     conet::Closure<int> *a = NewFunc(int,(), (c, b),
     {
             printf("hello \n");
@@ -37,6 +41,7 @@ int main(int argc, char const* argv[])
             return 0;
     });
     a2->Run();
+    
     return 0;
 }
 

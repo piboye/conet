@@ -108,8 +108,8 @@ struct __Defer##__LINE__ \
    repeat( comac_argc param ,impl_typeof, CONET_REMOVE_BRA_(param) )\
 	int _member_cnt;\
 	__Defer##__LINE__( \
-		repeat( comac_argc param,con_param_typeof, CONET_REMOVE_BRA_(param) ) ... ): \
-		repeat( comac_argc ,param_init_typeof, CONET_REMOVE_BRA(param) ) _member_cnt(comac_argc param) \
+		repeat( comac_argc param, con_param_typeof, CONET_REMOVE_BRA_(param) ) ... ): \
+		repeat( comac_argc param, param_init_typeof, CONET_REMOVE_BRA(param) ) _member_cnt(comac_argc param) \
 	{}\
     ~__Defer##__LINE__() \
     op  \
