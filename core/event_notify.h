@@ -46,7 +46,7 @@ struct event_notify_t
     int init(cb_type cb, void *cb_arg) 
     {
         int evfd = 0; 
-        evfd = eventfd(0, EFD_NONBLOCK);
+        evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
         if (evfd <0) return -1;
         fd_ctx_t *ev_ctx = alloc_fd_ctx(evfd, 1);
         ev_ctx->user_flag &= ~O_NONBLOCK;

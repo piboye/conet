@@ -170,7 +170,7 @@ static
 int create_timer_fd()
 {
     int timerfd = 0;
-    timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
         LOG_SYS_CALL(timerfd_create, timerfd); 
         return -1;

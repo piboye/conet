@@ -192,7 +192,7 @@ disk_io_ctx_t * get_disk_ctx()
         g_disk_io_ctx->num = 128;
 
         int evfd = 0; 
-        evfd = eventfd(0, EFD_NONBLOCK);
+        evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
         if (evfd <0) return NULL;
         g_disk_io_ctx->eventfd = evfd; 
 

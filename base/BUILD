@@ -15,7 +15,6 @@ gen_rule(
 cc_library(
     name="base",
     srcs = [
-        'src/thumb.s',
         'src/pb2sqlite.cpp',
         'src/net_tool.cpp',
         'src/tls.cpp',
