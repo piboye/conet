@@ -312,7 +312,7 @@ void init_epoll_ctx(epoll_ctx_t *self, int size)
 
     memset(self->m_epoll_events, 0, mem_size);
 
-    self->m_epoll_fd = epoll_create(102400);
+    self->m_epoll_fd = epoll_create1(EPOLL_CLOEXEC);
     self->wait_num = 0;
     self->m_mem_size = mem_size;
     return;
