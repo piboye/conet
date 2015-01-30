@@ -11,8 +11,8 @@
  *       Revision:  none
  *       Compiler:  gcc
  * 
- *         Author:  piboye (), piboyeliu@tencent.com
- *        Company:  tencent
+ *         Author:  piboye
+ *        Company:  
  * 
  * =====================================================================================
  */

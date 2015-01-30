@@ -47,7 +47,7 @@ int main(int argc, char const* argv[])
 {
     A a;
     int (*f)(int) = BindThis(a, &A::f);
-    (*f)(1);
+    f(1);
     return 0;
 }
 
