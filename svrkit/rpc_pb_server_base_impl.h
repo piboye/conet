@@ -42,7 +42,7 @@ struct rpc_pb_server_base_t
     rpc_pb_cmd_t * get_rpc_pb_cmd(char const *name, size_t name_len);
     rpc_pb_cmd_t * get_rpc_pb_cmd(uint64_t cmd_id);
 
-    int get_global_server_cmd();
+    int get_global_server_cmd(std::string const & server_name);
 
     int registry_http_rpc_default_api(http_server_t *http_server, std::string const &base_path);
     int registry_rpc_cmd_http_api(http_server_t *http_server, std::string const & method_name, rpc_pb_cmd_t *cmd, std::string const & base_path);

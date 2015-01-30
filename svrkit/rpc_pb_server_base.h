@@ -3,7 +3,7 @@
  *
  *       Filename:  rpc_pb_server_base.h
  *
- *    Description:  
+ *    Description:
  *
  *        Version:  1.0
  *        Created:  2014年11月02日 05时47分50秒
@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  piboye
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -186,7 +186,7 @@ private:
    rpc_pb_cmd_t & operator=(rpc_pb_cmd_t const &v);
 };
 
-int global_registry_cmd(rpc_pb_cmd_t  *cmd);
+int global_registry_cmd(std::string const & server_name, rpc_pb_cmd_t  *cmd);
 
 template <typename T>
 inline 
@@ -203,7 +203,8 @@ google::protobuf::Message *new_rpc_req_rsp_obj_help<void>()
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name, 
+int registry_rpc_pb_cmd(std::string const & server_name, 
+        uint64_t cmd_id, std::string const &method_name, 
         int (*func) (T1 *, rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), void *arg)
 {
     int ret = 0;
@@ -213,7 +214,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 
     cmd->proc = conet::ptr_cast<rpc_pb_callback>(func); 
     cmd->arg = (void *)arg; 
-    ret = conet::global_registry_cmd(cmd); 
+    ret = conet::global_registry_cmd(server_name, cmd); 
     if (ret)  {
        delete cmd;
     }
@@ -221,7 +222,8 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name, 
+int registry_rpc_pb_cmd(std::string const & server_name, 
+        uint64_t cmd_id, std::string const &method_name, 
         int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2 *rsp, std::string *errmsg), T1* arg)
 {
     int ret = 0;
@@ -231,7 +233,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
     cmd->proc = conet::ptr_cast<rpc_pb_callback>(func);  
 
     cmd->arg = (void *)arg; 
-    ret = conet::global_registry_cmd(cmd); 
+    ret = conet::global_registry_cmd(server_name, cmd); 
     if (ret) {
         delete cmd;
     }
@@ -239,7 +241,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 }
 
 template <typename T1, typename R1, typename R2>
-int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
+int registry_rpc_pb_cmd(std::string const & server_name, uint64_t cmd_id, std::string const &method_name,
         int (T1::*func) (rpc_pb_ctx_t *ctx, R1 *req, R2*rsp, std::string *errmsg), 
         cmd_class_obj_mgr_base_t *obj_mgr)
 {
@@ -251,7 +253,7 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 
     cmd->arg = (void *)NULL; 
     cmd->obj_mgr = obj_mgr;
-    ret = conet::global_registry_cmd(cmd);
+    ret = conet::global_registry_cmd(server_name, cmd);
     if (ret) {
         delete cmd;
     }
@@ -263,7 +265,8 @@ int registry_rpc_pb_cmd(uint64_t cmd_id, std::string const &method_name,
 #define CONET_MACRO_CONCAT(a, b) CONET_MACRO_CONCAT_IMPL(a,b)
 
 #define REGISTRY_RPC_PB_FUNC(cmd_id, method_name, func, arg) \
-    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) = conet::registry_rpc_pb_cmd(cmd_id, method_name, func, arg)
+    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) =  \
+        conet::registry_rpc_pb_cmd("main_server", cmd_id, method_name, func, arg)
 
 
 template <typename T>
@@ -297,7 +300,7 @@ public:
 
 #define REGISTRY_RPC_PB_CLASS_MEHTORD(cmd_id, method_name, Class, func) \
     static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_,__LINE__) = \
-        conet::registry_rpc_pb_cmd(cmd_id, method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
+        conet::registry_rpc_pb_cmd("main_server", cmd_id, method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
 
 }
 

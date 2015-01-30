@@ -26,7 +26,6 @@
 #include "svrkit/static_resource.h"
 
 #include "base/auto_var.h"
-#include "base/auto_var.h"
 #include "base/pb2json.h"
 #include "base/net_tool.h"
 #include "base/query_string.h"
@@ -36,13 +35,20 @@ namespace conet
 {
 DEFINE_bool(log_failed_rpc, true, "log failed rpc call");
 
-static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
+static std::map<std::string, std::map<std::string, rpc_pb_cmd_t*> * >  *g_server_cmd_maps=NULL;
+//static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
+
 static 
 void clear_server_maps(void)
 {
     if (g_server_cmd_maps) {
         AUTO_VAR(it, = , g_server_cmd_maps->begin());
         for (; it != g_server_cmd_maps->end(); ++it) {
+            if (it->second == NULL) continue;
+            AUTO_VAR(it2, = ,it->second->begin());
+            for (; it2 != it->second->end(); ++it2) {
+                delete it2->second;
+            }
             delete it->second;
         }
     }
@@ -51,7 +57,7 @@ void clear_server_maps(void)
 }
 
 
-int global_registry_cmd(rpc_pb_cmd_t  *cmd)
+int global_registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
 {
     if (NULL == g_server_cmd_maps) {
         g_server_cmd_maps = new typeof(*g_server_cmd_maps);
@@ -59,13 +65,21 @@ int global_registry_cmd(rpc_pb_cmd_t  *cmd)
     }
 
     std::string const & method_name = cmd->method_name;
-
-    if (g_server_cmd_maps->find(method_name) != g_server_cmd_maps->end())
+    std::map<std::string, rpc_pb_cmd_t *> * server_map = (*g_server_cmd_maps)[server_name];
+    if (server_map == NULL)
     {
-        LOG(ERROR)<<"duplicate cmd:"<<method_name<<" has been registried!";
+        server_map = new std::map<std::string, rpc_pb_cmd_t*>();
+        (*g_server_cmd_maps)[server_name] = server_map;
+    }
+
+
+    if (server_map->find(method_name) != server_map->end())
+    {
+        LOG(ERROR)<<"duplicate cmd:"<<method_name<<" has been registried!"
+            <<" in [server:"<<server_name<<"]";
         return -1;
     }
-    g_server_cmd_maps->insert(std::make_pair(method_name, cmd));
+    server_map->insert(std::make_pair(method_name, cmd));
 
     return 0;
 }
@@ -104,15 +118,20 @@ rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(uint64_t cmd_id)
     return container_of(n, rpc_pb_cmd_t, cmd_id_map_node);
 }
 
-int rpc_pb_server_base_t::get_global_server_cmd()
+int rpc_pb_server_base_t::get_global_server_cmd(std::string const & server_name)
 {
     if (NULL == g_server_cmd_maps) {
-        LOG(ERROR)<<"no cmd has been registried!";
+        LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";
         return -1;
     }
 
-    AUTO_VAR(it, = , g_server_cmd_maps->begin());
-    for (; it != g_server_cmd_maps->end(); ++it) 
+    std::map<std::string, rpc_pb_cmd_t *> * server_map = (*g_server_cmd_maps)[server_name];
+    if (server_map == NULL)
+    {
+        LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";
+    }
+    AUTO_VAR(it, = , server_map->begin());
+    for (; it != server_map->end(); ++it) 
     {
         rpc_pb_cmd_t *cmd = it->second;
         rpc_pb_cmd_t *cmd2 = cmd->clone(); 
