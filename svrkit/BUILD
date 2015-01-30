@@ -1,4 +1,16 @@
 cc_library(
+     name = 'stat_mgr',
+    srcs=[
+        'src/stat_mgr.cpp',
+    ],
+    incs= [ 
+        "./",
+        "../base/",
+        "../core/",
+    ],
+);
+
+cc_library(
     name = 'tcp_server',
     srcs = [
         "src/tcp_server.cpp",
@@ -10,6 +22,7 @@ cc_library(
     ],
     deps =[
         "//core:conet", 
+        ':stat_mgr',
         "#rt",
     ],
     link_all_symbols = True,
