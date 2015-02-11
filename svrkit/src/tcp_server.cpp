@@ -40,6 +40,7 @@ DEFINE_int32(accept_num, 100, "call accept num in one loop");
 namespace conet
 {
 
+static
 int conn_proc_co(conn_info_t *info)
 {
     conet::enable_sys_hook();
@@ -93,6 +94,7 @@ int conn_proc_co(conn_info_t *info)
 
 
 
+static
 int proc_pool(tcp_server_t *server, conn_info_t *conn_info)
 {
     conn_info->co = (coroutine_t *)server->co_pool.alloc();
