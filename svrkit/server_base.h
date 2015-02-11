@@ -22,6 +22,11 @@ namespace conet
 {
     struct ServerBase
     {
+        enum {
+            SERVER_START=0,
+            SERVER_RUNNING=1,
+            SERVER_STOPED=2,
+        };
 
         std::string m_server_name;
 

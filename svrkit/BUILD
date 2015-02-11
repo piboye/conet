@@ -11,6 +11,24 @@ cc_library(
 );
 
 cc_library(
+    name = 'udp_server',
+    srcs = [
+        "src/udp_server.cpp",
+    ],
+    incs= [ 
+        "./",
+        "../base/",
+        "../core/",
+    ],
+    deps =[
+        "//core:conet", 
+        ':stat_mgr',
+        "#rt",
+    ],
+    link_all_symbols = True,
+);
+
+cc_library(
     name = 'tcp_server',
     srcs = [
         "src/tcp_server.cpp",

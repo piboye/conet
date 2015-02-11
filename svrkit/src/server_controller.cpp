@@ -30,6 +30,7 @@
 #include <sys/wait.h>
 
 #include "server_common.h"
+#include "base/delay_init.h"
 
 
 namespace conet
@@ -48,6 +49,23 @@ ServerController::ServerController()
 
     parse_affinity(FLAGS_cpu_set.c_str(), &m_cpu_set);
     //get_epoll_pend_task_num();
+}
+
+
+static int call_delay_init()
+{
+    // delay init
+    delay_init::call_all_level();
+    LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
+        <<" success:"<<delay_init::success_cnt
+        <<", failed:"<<delay_init::failed_cnt;
+
+    if(delay_init::failed_cnt>0)
+    {
+        LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+        return 1;
+    }
+    return 0;
 }
 
 // 进程模式
@@ -81,6 +99,10 @@ public:
                 // child
                 m_worker_mode = 1;
                 m_cur_worker = worker;
+                if (call_delay_init())
+                {
+                    exit (1);
+                }
                 worker->start();
                 worker->run();
                 return 0;
@@ -204,6 +226,10 @@ public:
     int start()
     {
 
+        if (call_delay_init())
+        {
+            exit (1);
+        }
         int ret = 0;
         ret = ServerController::start();
         int num = m_curr_num;

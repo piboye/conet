@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  tcp_server.h
+ *       Filename:  udp_server.h
  *
  *    Description:
  *
@@ -15,8 +15,8 @@
  *
  * =====================================================================================
  */
-#ifndef __TCP_SERVER_H_INC__
-#define __TCP_SERVER_H_INC__
+#ifndef __UDP_SERVER_H_INC__
+#define __UDP_SERVER_H_INC__
 #include <string>
 #include <stdint.h>
 #include <netinet/in.h>
@@ -33,9 +33,10 @@ namespace conet
 
 struct coroutine_t;
 
-struct tcp_server_t: public ServerBase
+struct udp_server_t: public ServerBase
 {
-    int listen_fd;
+
+    int udp_socket;
     std::string ip;
     int port;
 
@@ -44,15 +45,31 @@ struct tcp_server_t: public ServerBase
     int to_stop;
     void *extend;
 
-    typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn);
+    struct udp_req_ctx_t
+    {
+        conn_info_t conn_info;
+        char * data;
+        size_t len;
+    };
+
+    typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn, 
+            char const * data, size_t len,
+            char * out_data, size_t *olen
+            );
 
     conn_proc_cb_t conn_proc_cb;
     void *cb_arg;
+    void set_conn_cb(conn_proc_cb_t cb, void *arg)
+    {
+        conn_proc_cb = cb;
+        cb_arg = arg;
+    }
 
     obj_pool_t co_pool;
 
-    ObjPool<conn_info_t> conn_info_pool;
+    ObjPool<udp_req_ctx_t> udp_req_pool;
 
+    fixed_mempool_t buffer_pool; 
 
     struct conf_t 
     {
@@ -67,23 +84,11 @@ struct tcp_server_t: public ServerBase
     } data;
 
 
-    UnixSocketSendFd *accept_fd_queue;
-
-
-    void set_conn_cb(conn_proc_cb_t cb, void *arg)
-    {
-        conn_proc_cb = cb;
-        cb_arg = arg;
-    }
-
-
     int main_proc();
 
     int main_proc2();
-    int main_proc_with_fd_queue();
-    
 
-    int init(const char *ip, int port, int listen_fd=-1);
+    int init(const char *ip, int port, int fd=-1);
 
     virtual
     int start();
@@ -91,7 +96,7 @@ struct tcp_server_t: public ServerBase
     virtual
     int stop(int wait_ms=0);
 
-    ~tcp_server_t()
+    ~udp_server_t()
     {
 
     }
