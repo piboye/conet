@@ -38,4 +38,3 @@ message ServerConf
     repeated ServerGroup  server_groups = 1;
     optional int32 proc_num=2; // 进程数
 }
-
