@@ -3,7 +3,7 @@
  *
  *       Filename:  rpc_pb_server_task.cpp
  *
- *    Description:  
+ *    Description:  组装server
  *
  *        Version:  1.0
  *        Created:  2014年12月12日 06时11分53秒
@@ -25,7 +25,6 @@
 
 #include "base/ip_list.h"
 #include "server_common.h"
-
 
 namespace conet
 {
@@ -50,7 +49,9 @@ public:
         int ret = 0;
         ret = tcp_server.init(rpc_ip_port.ip.c_str(), rpc_ip_port.port, rpc_listen_fd);
         ret = http_server.init(&tcp_server);
-        ret = rpc_server.init(&g_rpc_pb_server_base, &tcp_server, &http_server);
+        ret = rpc_server.init(&g_rpc_pb_server_base);
+        ret = rpc_server.add_server(&tcp_server);
+        ret = rpc_server.add_server(&http_server);
 
         return ret;
     }

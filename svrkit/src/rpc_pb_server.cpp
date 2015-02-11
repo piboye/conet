@@ -49,13 +49,104 @@ void append_to_str(uint64_t v, std::string *out)
     out->append(buf, len);
 }
 
-static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn);
+static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn);
+static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char const *data, size_t len, char *out, size_t *olen)
+{
+    rpc_pb_server_base_t * base_server = server->base_server;
+    int ret = 0;
+    
+    rpc_pb_ctx_t ctx;
+
+    ctx.server = server;
+    ctx.conn_info = conn;
+    ctx.to_close = 0;
+    cmd_base_t & cmd_base = ctx.cmd_base;
+    cmd_base.init();
+    ret = ctx.cmd_base.parse(data, len);
+    std::string errmsg;
+    int fd = conn->fd;
+    do {
+        if (ret)
+        {
+            // parse cmd base head failed;
+            LOG(ERROR)<<"parse cmd base failed, fd:"<<conn->fd<<", ret:"<<ret;
+            *olen = 0;
+            break;
+        }
+
+
+        if (cmd_base.type != CmdBase::REQUEST_TYPE) {
+            LOG(ERROR)<<"request type["<<cmd_base.type<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
+            *olen = 0;
+            break;
+        }
+
+        rpc_pb_cmd_t * cmd = NULL; 
+        uint64_t cmd_id = cmd_base.cmd_id;
+        if (cmd_id > 0) {
+            cmd = base_server->get_rpc_pb_cmd(cmd_id);
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
+
+                cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
+
+                errmsg = "unsuppored cmd_id:";
+                append_to_str(cmd_id, &errmsg);
+
+                init_ref_str(&cmd_base.errmsg, errmsg);
+                ret = serialize_cmd_base(out, olen, &cmd_base, NULL);
+                if (ret < 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
+            }
+        } else if (cmd_base.cmd_name.len >0) {
+            ref_str_t cmd_name = cmd_base.cmd_name;
+            cmd = base_server->get_rpc_pb_cmd(cmd_name.data, cmd_name.len);
+            if (NULL == cmd) {
+                // not unsuppend cmd;
+                std::string cmd_name_s;
+                ref_str_to(&cmd_name, &cmd_name_s);
+                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name_s;
+
+                cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
+                errmsg ="unsuppored cmd:"+cmd_name_s;
+                init_ref_str(&cmd_base.errmsg, errmsg);
+                ret = serialize_cmd_base(out,olen, &cmd_base, NULL);
+                if (ret < 0) {
+                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                }
+                break;
+            }
+        }
+
+
+
+        int retcode = 0;
+        google::protobuf::Message *rsp = NULL;
+        retcode = rpc_pb_call_cb(cmd, &ctx, cmd_base.body, &rsp, &errmsg);
+
+        cmd_base.init();
+        cmd_base.type = CmdBase::RESPONSE_TYPE;
+        cmd_base.ret = retcode;
+
+        ret = serialize_cmd_base(out, olen, &cmd_base, rsp);
+        if (rsp) {
+            cmd->rsp_pool.release(rsp);
+        }
+        if (ret <=0) {
+            // send data failed;
+            LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+            break;
+        } 
+    } while(0);
+    return 0;
+}
 
 rpc_pb_server_t::rpc_pb_server_t()
 {
-    tcp_server = NULL;
     base_server = NULL;
-    http_server = NULL;
 }
 
 static 
@@ -65,38 +156,65 @@ void free_packet_stream(void *arg, void *ps)
     delete ps2;
 }
 
-
 PacketStream *rpc_pb_server_t::alloc_packet_stream()
 {
-    int max_size = this->tcp_server->conf.max_packet_size;    
+    int max_size = this->max_packet_size;
     PacketStream *ps = new PacketStream(max_size);
-    ps->is_http = this->http_server && (this->tcp_server == this->http_server->tcp_server);
+    ps->is_http =  0;
     return ps;
 }
 
 int rpc_pb_server_t::init(
-        rpc_pb_server_base_t *base_server,
-        tcp_server_t * tcp_server,
-        http_server_t * http_server
-    )
+        rpc_pb_server_base_t *base_server)
 {
+    this->max_packet_size = 10240;
     this->base_server = base_server;
-    this->tcp_server = tcp_server;
-    this->http_server = http_server;
-    if (http_server)  {
-        base_server->registry_all_rpc_http_api(http_server, this->http_base_path);
-    }
-    tcp_server->set_conn_cb(ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_rpc_pb), this);
     this->m_packet_stream_pool.set_alloc_obj_func(ptr_cast<obj_pool_t::alloc_func_t>(&rpc_pb_server_t::alloc_packet_stream), this);
     this->m_packet_stream_pool.set_free_obj_func(free_packet_stream, NULL);
 
     return 0;
 }
 
+int rpc_pb_server_t::add_server(tcp_server_t *server)
+{
+    server->set_conn_cb(ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_tcp_rpc_pb), this);
+    this->m_servers.push_back(server);
+    return 0;
+}
+
+int rpc_pb_server_t::add_server(udp_server_t *server)
+{
+    server->set_conn_cb(ptr_cast<udp_server_t::conn_proc_cb_t>(&proc_udp_rpc_pb), this);
+    this->m_servers.push_back(server);
+    return 0;
+}
+
+int rpc_pb_server_t::add_server(http_server_t *server)
+{
+    base_server->registry_all_rpc_http_api(server, this->http_base_path);
+    this->m_servers.push_back(server);
+    return 0;
+}
+
 int rpc_pb_server_t::start()
 {
     int ret =  0;
-    ret = tcp_server->start();
+    for (size_t i= 0; i< m_servers.size(); ++i)
+    {
+        ret = m_servers[i]->start();
+    }
+    return ret;
+}
+
+int rpc_pb_server_t::stop(int wait)
+{
+    int ret = 0;
+    for (size_t i= 0; i< m_servers.size(); ++i)
+    {
+        ret = m_servers[i]->stop(wait);
+    }
+    
+    LOG(INFO)<<"stop rpc finished";
     return ret;
 }
 
@@ -112,12 +230,10 @@ int rpc_pb_server_t::send_pb(int fd, cmd_base_t *cmd_base, google::protobuf::Mes
 
 
 
-static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
+static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 {
     tcp_server_t * tcp_server = (tcp_server_t *)conn->server;
     rpc_pb_server_base_t * base_server = server->base_server;
-    http_server_t *http_server = server->http_server;
-
     int ret = 0;
 
     int fd = conn->fd;
@@ -170,7 +286,7 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         {
             if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
                 conn->extend = stream;
-                http_server->conn_proc(conn);
+                //http_server->conn_proc(conn);
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             }
@@ -271,30 +387,6 @@ static int proc_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
 
 
-int rpc_pb_server_t::stop(int wait)
-{
-    int ret = 0;
-    LOG(INFO)<<"stop rpc main server";
-    ret = tcp_server->stop(wait);
-    if (ret) {
-        LOG(INFO)<<"stop rpc main server success";
-    } else {
-        LOG(INFO)<<"stop rpc main server failed, [ret:"<<ret<<"]";
-    }
-    
-    LOG(INFO)<<"stop rpc http server";
-    if (http_server) {
-        ret = http_server->stop(wait);
-        if (ret) {
-            LOG(ERROR)<<"stop rpc http server failed, [ret:"<<ret<<"]";
-        } else {
-            LOG(INFO)<<"stop rpc http server success";
-        }
-    }
-
-    LOG(INFO)<<"stop rpc finished";
-    return ret;
-}
 
 rpc_pb_server_t::~rpc_pb_server_t()
 {

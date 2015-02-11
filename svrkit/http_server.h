@@ -22,7 +22,6 @@
 #include <map>
 #include <string>
 #include <vector>
-
 #include "base/http_parser.h"
 
 namespace conet
@@ -65,7 +64,7 @@ struct http_cmd_t
 };
 
 
-struct http_server_t
+struct http_server_t: public ServerBase
 {
     struct tcp_server_t *tcp_server;
 
@@ -87,8 +86,6 @@ struct http_server_t
 
     int conn_proc(conn_info_t *conn);
 };
-
-
 
 }
 

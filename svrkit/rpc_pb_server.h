@@ -23,6 +23,7 @@
 
 #include "http_server.h"
 #include "tcp_server.h"
+#include "udp_server.h"
 #include "../base/obj_pool.h"
 #include "../base/net_tool.h"
 #include "google/protobuf/message.h"
@@ -37,31 +38,33 @@ struct rpc_pb_server_base_t;
 
 struct rpc_pb_server_t: public ServerBase
 {
-    tcp_server_t * tcp_server;
-    http_server_t *http_server;
+    std::vector<ServerBase *> m_servers;
 
     rpc_pb_server_base_t * base_server;
 
     std::string http_base_path;
     obj_pool_t m_packet_stream_pool;
-    
+
+    int max_packet_size;
 
     rpc_pb_server_t();
 
-    int init(
-        rpc_pb_server_base_t *base_server,
-        tcp_server_t * tcp_server,
-        http_server_t * http_server
-        );
+    int init(rpc_pb_server_base_t *base_server);
+
+    int add_server(tcp_server_t *tcp_server);
+    int add_server(udp_server_t *tcp_server);
+    int add_server(http_server_t *tcp_server);
 
     int start();
 
     int stop(int wait_ms);
 
+    virtual ~rpc_pb_server_t();
+
+    // help function
     PacketStream *alloc_packet_stream();
     int send_pb(int fd, cmd_base_t *, google::protobuf::Message *rsp=NULL);
 
-    virtual ~rpc_pb_server_t();
 };
 
 }

@@ -181,6 +181,52 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
 }
 
 inline
+int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
+{
+    uint32_t out_len = 0;
+    int ret = 0;
+    uint32_t max_len = *len;
+
+    uint32_t msg_len = 0;
+    if (msg ) {
+        msg_len = msg->ByteSize();
+    }
+
+    char *ptr = out;
+
+    pb_buff_t pb_buff;
+
+    pb_init_buff(&pb_buff, (void *)(ptr+4), max_len -4);
+    
+    cmd_base->serialize_common(pb_buff);
+    if (msg) 
+    {
+        ret = pb_add_string_head(&pb_buff, 5, msg_len);
+        if (ret) {
+            return -1;
+        }
+
+        if (pb_buff.left - msg_len<=0) 
+        {
+            return -2;
+        }
+
+        msg->SerializeWithCachedSizesToArray((uint8_t *)pb_buff.ptr);
+
+        pb_buff.ptr += msg_len;
+        pb_buff.left -= msg_len;
+    }
+
+    out_len = pb_get_encoded_length(&pb_buff);
+
+     
+    *((uint32_t *)(ptr)) = htonl(out_len);
+
+    *len = out_len+4;
+    return 0;
+}
+
+inline
 int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
     uint32_t out_len = 0;
