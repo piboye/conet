@@ -70,19 +70,6 @@ int main(int argc, char * argv[])
     ret = google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
-    {
-        // delay init
-        delay_init::call_all_level();
-        LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
-                <<" success:"<<delay_init::success_cnt
-                <<", failed:"<<delay_init::failed_cnt;
-
-        if(delay_init::failed_cnt>0)
-        {
-            LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
-            return 1;
-        }
-    }
 
     if (conet::can_reuse_port()) {
         LOG(INFO)<<"can reuse port, very_good";
