@@ -36,9 +36,9 @@ struct tcp_server_t;
 struct http_server_t;
 struct rpc_pb_server_base_t;
 
-struct rpc_pb_server_t: public ServerBase
+struct rpc_pb_server_t: public server_base_t
 {
-    std::vector<ServerBase *> m_servers;
+    std::vector<server_base_t *> m_servers;
 
     rpc_pb_server_base_t * base_server;
 

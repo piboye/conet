@@ -33,7 +33,7 @@ namespace conet
 
 struct coroutine_t;
 
-struct tcp_server_t: public ServerBase
+struct tcp_server_t: public server_base_t
 {
     int listen_fd;
     std::string ip;

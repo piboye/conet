@@ -20,7 +20,7 @@
 
 namespace conet
 {
-    struct ServerBase
+    struct server_base_t
     {
         enum {
             SERVER_START=0,
@@ -34,30 +34,30 @@ namespace conet
 
         virtual int stop(int wait_ms)=0;
 
-        virtual ~ServerBase() 
+        virtual ~server_base_t() 
         {
 
         }
     };
 
 
-    struct ServerCombine :public ServerBase
+    struct server_combine_t :public server_base_t
     {
-        ServerBase * m_main_server;
-        std::vector<ServerBase *> m_servers;
+        server_base_t * m_main_server;
+        std::vector<server_base_t *> m_servers;
 
-        ServerCombine()
+        server_combine_t()
         {
             m_main_server = NULL;
         }
 
-        int init(ServerBase * main_server)
+        int init(server_base_t * main_server)
         {
             m_main_server = main_server;
             return 0;
         }
 
-        int add(ServerBase *server)
+        int add(server_base_t *server)
         {
             m_servers.push_back(server);
             return 0;
@@ -73,7 +73,7 @@ namespace conet
             return m_main_server->stop(wait_ms);
         }
 
-        virtual ~ServerCombine() 
+        virtual ~server_combine_t() 
         {
             for(size_t i =0; i<m_servers.size(); ++i)
             {

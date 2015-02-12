@@ -33,7 +33,7 @@ namespace conet
 
 struct coroutine_t;
 
-struct udp_server_t: public ServerBase
+struct udp_server_t: public server_base_t
 {
 
     int udp_socket;

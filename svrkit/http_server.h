@@ -64,7 +64,7 @@ struct http_cmd_t
 };
 
 
-struct http_server_t: public ServerBase
+struct http_server_t: public server_base_t
 {
     struct tcp_server_t *tcp_server;
 
