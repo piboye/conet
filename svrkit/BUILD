@@ -81,6 +81,12 @@ cc_library(
 );
 
 
+proto_library(
+    name='rpc_conf_proto',
+    srcs=[
+        'rpc_conf.proto'
+    ],
+);
 
 proto_library(
     name='rpc_base_pb_proto',
@@ -99,6 +105,7 @@ resource_library(
         'static/bootstrap.min.js',
         'static/bootstrap.min.css',
         'static/qrcode.min.js',
+        'default_server.conf',
     ]
 );
 
@@ -131,9 +138,10 @@ cc_library(
     srcs = [
         "src/server_main.cpp",
         "src/server_common.cpp",
-        "src/server_controller.cpp",
-        "src/server_worker.cpp",
-        "src/server_task.cpp",
+        #"src/server_controller.cpp",
+        #"src/server_worker.cpp",
+        #"src/server_task.cpp",
+        "src/server_builder.cpp",
     ],
     incs= [ 
         "./",
@@ -142,6 +150,7 @@ cc_library(
     ],
     deps = [
         "//base:base",
+        ":rpc_conf_proto",
     ],
     link_all_symbols = True,
 );
@@ -150,7 +159,6 @@ cc_library(
 cc_library(
     name = 'rpc_pb_server_main',
     srcs = [
-        "src/rpc_pb_server_task.cpp",
     ],
     incs= [ 
         "./",

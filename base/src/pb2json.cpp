@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string>
 
+
+#include "glog/logging.h"
 #include "pb2json.h"
 #include "google/protobuf/descriptor.h"
 #include "jsoncpp/json.h"
@@ -167,7 +169,7 @@ void pb2json(const google::protobuf::Message *msg, std::string *out)
 }
 
 #define SET_ERROR_INFO(error_var, error_val)    \
-        do { if (error_var) *error_var = error_val; } while (0)
+        do { LOG(ERROR)<<error_val; if (error_var) *error_var = error_val; } while (0)
 
 int json2pb(
     Json::Value& json_value,
@@ -198,6 +200,7 @@ int json2pb(
     for (int i = 0; i < descriptor->field_count(); i++) {
         fields.push_back(descriptor->field(i));
     }
+    int ret = 0;
 
     for (size_t i = 0; i < fields.size(); i++) {
         const FieldDescriptor* field = fields[i];
@@ -359,22 +362,32 @@ int json2pb(
                         index++) {
                         Json::Value item = value[Json::Value::ArrayIndex(index)];
                         if (item.isObject()) {
-                            if (!json2pb(item,
+                            ret = json2pb(item,
                                     reflection->AddMessage(message, field),
-                                    error, urlencoded))
+                                    error, urlencoded); 
+                            if (ret)
+                            {
+                                 SET_ERROR_INFO(error,
+                                    "invalid type for field 1 " + field->full_name() + ".");
+                                 return ret;
                                 return -24;
+                            }
 
                         } else {
                             SET_ERROR_INFO(error,
-                                    "invalid type for field " + field->full_name() + ".");
+                                    "invalid type for field 2 " + field->full_name() + ".");
                             return -25;
                         }
                     }
                 } else {
-                    if (!json2pb(value,
+                    if (json2pb(value,
                             reflection->MutableMessage(message, field),
                             error, urlencoded))
+                    {
+                        SET_ERROR_INFO(error,
+                                "invalid type for field 3 " + field->full_name() + ".");
                         return -26;
+                    }
                 }
                 break;
             }

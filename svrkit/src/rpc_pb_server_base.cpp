@@ -129,6 +129,7 @@ int rpc_pb_server_base_t::get_global_server_cmd(std::string const & server_name)
     if (server_map == NULL)
     {
         LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";
+        return -2;
     }
     AUTO_VAR(it, = , server_map->begin());
     for (; it != server_map->end(); ++it) 

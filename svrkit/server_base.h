@@ -18,6 +18,9 @@
 #ifndef __CONET_SERVER_BASE_H__
 #define __CONET_SERVER_BASE_H__
 
+#include <string>
+#include <vector>
+
 namespace conet
 {
     struct server_base_t

@@ -10,7 +10,7 @@ cc_binary(
     deps = [
             "//svrkit:client_base",
             "#dl", 
-            "//thirdparty/perftools:tcmalloc",
+            #"//thirdparty/perftools:tcmalloc",
             "#pthread"
     ],
 )
@@ -61,7 +61,7 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            "//thirdparty/perftools:tcmalloc",
+            #"//thirdparty/perftools:tcmalloc",
             #"//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )
@@ -72,7 +72,7 @@ cc_binary(
     deps = [
             ":echo_rpc_proto", 
             "//svrkit:client_base", 
-            "//thirdparty/perftools:tcmalloc",
+            #"//thirdparty/perftools:tcmalloc",
             #"//thirdparty/perftools:profiler",
             "#dl", "#pthread"],
 )
@@ -90,7 +90,7 @@ cc_binary(
     deps = [
         "//svrkit:tcp_server", 
         "#dl", 
-        "//thirdparty/perftools:tcmalloc",
+        #"//thirdparty/perftools:tcmalloc",
         "#pthread"
     ],
 )

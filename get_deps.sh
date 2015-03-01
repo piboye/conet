@@ -13,7 +13,7 @@ then
     (cd blade; ./install)
 fi
 
-cp -r tools/* ~/bin/*
+cp -r tools/* ~/bin/
 
 exit
 

@@ -90,6 +90,9 @@ DELAY_INIT()
 {
     int ret = 0;
     ret = g_rpc_pb_server_base.get_global_server_cmd("main_server");
+    if (ret) {
+        return -1;
+    }
 
     if (!FLAGS_server_address.empty())
     {
@@ -112,7 +115,6 @@ DELAY_INIT()
             }
         }
     }
-
     return 0;
 }
 

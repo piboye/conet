@@ -64,7 +64,6 @@ struct rpc_pb_server_t: public server_base_t
     // help function
     PacketStream *alloc_packet_stream();
     int send_pb(int fd, cmd_base_t *, google::protobuf::Message *rsp=NULL);
-
 };
 
 }
