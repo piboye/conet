@@ -62,6 +62,7 @@ namespace conet
     }
 
     static int g_server_stop_flag = 0;
+
     int set_server_stop()
     {
         g_server_stop_flag = 1;

@@ -95,6 +95,7 @@ int server_worker_t::proc_server_exit()
             LOG(ERROR)<<"stop rpc server failed! ";
         }
     }
+    exit_finsished = 1;
     return 0;
 }
 

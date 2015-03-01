@@ -167,6 +167,7 @@ int main(int argc, char * argv[])
        sleep(1); 
     }
 
+    LOG(INFO)<<"server ready exit!";
     ret = g_server_container->stop(FLAGS_stop_wait_seconds);
 
     delete g_server_container;
