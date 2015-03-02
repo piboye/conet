@@ -29,11 +29,10 @@
 
 namespace conet
 {
-    DEFINE_bool(thread_mode, false, "multithread");
 
     int is_thread_mode()
     {
-        return FLAGS_thread_mode;
+        return 1;
     }
 
     int get_listen_fd(char const *ip, int port, int listen_fd)

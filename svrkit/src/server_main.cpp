@@ -48,6 +48,7 @@ DEFINE_string(conf, "", "server conf");
 DEFINE_string(ip, "0.0.0.0", "server ip");
 DEFINE_int32(port, 12314, "server port");
 DEFINE_int32(thread_num, 0, "thread num");
+DEFINE_bool(duplex, false, "duplex in tcp");
 }
 
 
@@ -68,6 +69,7 @@ std::string get_default_conf()
             RESOURCE_svrkit_default_server_conf,
             FLAGS_ip.c_str(),
             FLAGS_port,
+            (int)FLAGS_duplex,
             FLAGS_thread_num
     );
     data.resize(size);
