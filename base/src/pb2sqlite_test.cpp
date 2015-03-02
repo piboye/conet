@@ -37,6 +37,11 @@ int main(int argc, char * argv[])
   Test d;
 
   ret = db.init("./test.db", "test");
+  if (ret)
+  {
+      LOG(ERROR)<<"init db failed!";
+      return 0;
+  }
 
   db.create_table(d);
     

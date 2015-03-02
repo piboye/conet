@@ -34,6 +34,7 @@ cc_library(
         'src/unix_socket_send_fd.cpp',
         'src/func_wrap_mgr.cpp',
         'src/thumb.s',
+        'src/fd_queue.cpp',
     ],
 
     incs= [ 
