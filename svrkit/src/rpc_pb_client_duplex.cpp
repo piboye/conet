@@ -91,6 +91,7 @@ namespace conet
                     m_client->m_req_wait.wakeup_all();
                     conet::wait(m_mgr_co);
                     conet::free_coroutine(m_mgr_co);
+                    m_mgr_co = NULL;
                 }
                 return 0;
             }

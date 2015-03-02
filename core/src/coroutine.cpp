@@ -318,6 +318,11 @@ void * yield(list_head *wait_to, void * val)
     coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
 
+    if (list_empty(&env->run_queue)) {
+       LOG(ERROR)<<"cur run queue is empty!"; 
+       abort();
+    }
+
     coroutine_t *last = container_of(list_pop_tail(&env->run_queue), coroutine_t, wait_to);
 
     env->curr_co = last;
@@ -416,7 +421,18 @@ int wait(coroutine_t *co)
         return co->ret_val; 
     }
 
-    ret = (int64_t)(yield(&co->exit_notify_queue, NULL));
+    /*
+    coroutine_env_t *env = get_coroutine_env();
+    coroutine_t *cur = env->curr_co;
+    if (unlikely(list_empty(&env->run_queue)))
+    {
+        list_del_init(&cur->wait_to);
+        list_add_tail(&cur->wait_to, &co->exit_notify_queue);
+        resume(co, NULL);
+    } else {
+    */
+        ret = (int64_t)(yield(&co->exit_notify_queue, NULL));
+    //}
     return ret;
 }
 

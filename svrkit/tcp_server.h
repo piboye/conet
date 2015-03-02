@@ -59,6 +59,7 @@ struct tcp_server_t: public server_base_t
         int listen_backlog;
         int max_packet_size;
         uint32_t max_conn_num;
+        int duplex;
     } conf;
 
     struct data_t

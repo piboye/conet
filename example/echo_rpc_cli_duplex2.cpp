@@ -66,28 +66,50 @@ int proc_send(void *arg)
     return 0;
 }
 
-::task_t *tasks = NULL;
+class Main: public Coroutine
+{
+    ::task_t *tasks;
+    public:
+        int run()
+        {
+            exit = 0;
+            conet::RpcPbClientDuplex *client = new conet::RpcPbClientDuplex(); 
+
+            int ret = 0;
+            ret = client->init(FLAGS_server_addr.c_str());
+            if (ret) {
+                LOG(ERROR)<<"init server address "<<FLAGS_server_addr<<" failed!, ret:"<<ret;
+                exit = 1;
+                return -1;
+            }
+
+            tasks = new ::task_t[FLAGS_task_num];
+            for (int i=0; i<FLAGS_task_num; ++i) {
+                tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
+                tasks[i].client = client;
+                conet::resume(tasks[i].co);
+            }
+
+            while (g_finish_task_num < FLAGS_task_num) {
+                sleep(1);
+            }
+            exit = 1;
+            return 0;
+        }
+        int exit;
+};
+
 int main(int argc, char * argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
-    conet::RpcPbClientDuplex client; 
-
-    int ret = 0;
-    ret = client.init(FLAGS_server_addr.c_str());
-    
-    tasks = new ::task_t[FLAGS_task_num];
-    for (int i=0; i<FLAGS_task_num; ++i) {
-        tasks[i].co = conet::alloc_coroutine(proc_send, tasks+i);
-        tasks[i].client = &client;
-        resume(tasks[i].co);
-    }
-
-    while (g_finish_task_num < FLAGS_task_num) {
+    Main c1;
+    c1.resume();
+    while (!c1.exit)
+    {
         conet::dispatch();
     }
-
     return 0;
 }
 

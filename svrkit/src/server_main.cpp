@@ -46,7 +46,7 @@ namespace conet
 DEFINE_int32(stop_wait_seconds, 2, "server stop wait seconds");
 DEFINE_string(conf, "", "server conf");
 DEFINE_string(ip, "0.0.0.0", "server ip");
-DEFINE_int32(port, 12345, "server port");
+DEFINE_int32(port, 12314, "server port");
 DEFINE_int32(thread_num, 0, "thread num");
 }
 

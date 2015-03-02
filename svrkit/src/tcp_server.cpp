@@ -129,6 +129,7 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
     server->conf.listen_backlog = FLAGS_listen_backlog;
     server->conf.max_conn_num = FLAGS_max_conn_num;
     server->conf.max_packet_size = FLAGS_max_packet_size;
+    server->conf.duplex = 0; // 默认禁用多路复用
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
     server->listen_fd = listen_fd;

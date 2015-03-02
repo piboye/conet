@@ -173,6 +173,7 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
             return NULL;
         }
         tcp_server->conf.max_conn_num = tcp_conf.max_conn_num();
+        tcp_server->conf.duplex = tcp_conf.duplex();
         ret = server->add_server(tcp_server);
     }
     return server;
