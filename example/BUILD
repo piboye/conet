@@ -95,23 +95,13 @@ cc_binary(
     ],
 )
 
-#cc_binary(
-#    name = "echo_server_async",
-#    srcs = ["echo_server_async.cpp"],
-#    deps = [
-#        "//svrkit:tcp_server", 
-#        "#dl", 
-#        "#pthread"
-#    ],
-#)
-
 cc_binary(
     name = "echo_rpc_server",
     srcs = ["echo_rpc_server.cpp"],
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server_main", 
-            #"//thirdparty/perftools:tcmalloc",
-            #"//thirdparty/perftools:profiler",
+            "//thirdparty/perftools:tcmalloc",
+            "//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 
            ],

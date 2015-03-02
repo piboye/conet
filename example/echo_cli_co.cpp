@@ -89,7 +89,7 @@ int proc_send(void *arg)
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
 
     int num = FLAGS_task_num;
 

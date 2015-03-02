@@ -101,7 +101,7 @@ class Main: public Coroutine
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
     Main c1;

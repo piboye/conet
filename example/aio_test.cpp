@@ -43,7 +43,7 @@ int proc(void *arg)
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
     conet::coroutine_t *co = conet::alloc_coroutine(proc, NULL); 
     conet::resume(co);
     while (conet::get_epoll_pend_task_num() >0) {

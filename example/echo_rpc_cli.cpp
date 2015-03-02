@@ -27,7 +27,7 @@ DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
 
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);

@@ -147,7 +147,7 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
     std::vector<ip_port_t> ip_list;

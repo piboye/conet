@@ -101,7 +101,7 @@ int proc_send(void *arg)
 task_t *tasks = NULL;
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
     if (prepare_data(FLAGS_data_file.c_str())) {

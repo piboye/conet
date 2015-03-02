@@ -44,7 +44,7 @@ int proc_hello(void *arg, http_ctx_t *ctx,
 
 int main(int argc, char * argv[])
 {
-    google::ParseCommandLineFlags(&argc, &argv, false); 
+    gflags::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
 
     tcp_server_t tcp_server;
