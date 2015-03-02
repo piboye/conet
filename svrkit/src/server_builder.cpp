@@ -109,7 +109,13 @@ server_group_t * server_group_t::build(ServerGroup const &conf)
     server_group_t * server = new server_group_t();
     server->group_name = conf.group_name();
     server->conf_data.CopyFrom(conf);
-    server->thread_num = conf.thread_num();
+    int thread_num = conf.thread_num();
+    if (thread_num <=0) {
+        thread_num  = sysconf(_SC_NPROCESSORS_ONLN);
+        if (thread_num <=0) thread_num=1;
+    }
+    server->thread_num  = thread_num;
+    
     return server;
 }
 
