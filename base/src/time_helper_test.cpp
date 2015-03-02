@@ -30,7 +30,7 @@ DEFINE_bool(sys_ms, false, "use gettimeofday to get ms");
 int main(int argc, char * argv[])
 {
     
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   if (FLAGS_sys_ms)
   {
       for(uint64_t i = (uint64_t)FLAGS_num; i > 0; --i)

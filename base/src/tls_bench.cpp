@@ -29,7 +29,7 @@ CONET_DEF_TLS_VAR_HELP_DEF(g_i);
 int main(int argc, char * argv[])
 {
     
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   for(uint64_t i = (uint64_t)FLAGS_num; i > 0; --i)
   {
       ++*TLS_GET(g_i); 

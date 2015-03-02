@@ -53,7 +53,7 @@ int t(void *arg)
 
 int main(int argc, char * argv[])
 {
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   google::InitGoogleLogging(argv[0]);
 
   for (int i= 0; i< (int) FLAGS_task_num; ++i)

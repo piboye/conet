@@ -28,7 +28,7 @@
 int main(int argc, char * argv[])
 {
     
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  gflags::ParseCommandLineFlags(&argc, &argv, false); 
 
   conet::Pb2Sqlite db;
 

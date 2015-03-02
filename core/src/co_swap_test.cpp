@@ -55,7 +55,7 @@ DEFINE_int32(num, 1000000, "swap num");
 
 int main(int argc, char * argv[])
 {
-  google::ParseCommandLineFlags(&argc, &argv, false); 
+  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   g_co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
   resume(g_co, NULL);
   //conet::print_stacktrace(g_co, 2);
