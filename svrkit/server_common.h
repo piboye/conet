@@ -37,6 +37,8 @@ namespace conet
     int registry_server_fini_func(server_fini_func_t *func);
     int call_server_fini_func();
 
+    int get_listen_fd_from_pool(char const *ip, int port);
+
 #define REG_SERVER_FININSH(func) \
     static int CONET_MACRO_CONCAT(g_registry_fini_, __LINE__) = conet::registry_server_fini_func(func)
 }

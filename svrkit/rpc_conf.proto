@@ -4,17 +4,17 @@ message TcpServer
 {
     optional string ip = 1;
     optional int32 port = 2;
-    optional int32 max_conn_num=3;
-    optional int32 enable_http=4;
-    optional int32 max_pending_num=5;
+    optional int32 max_conn_num=3 [default=100000];
+    optional int32 enable_http=4 [default=1];
+    optional int32 max_pending_num=5 [default=10000];
 }
 
 message UdpServer
 {
     optional string ip = 1;
     optional int32 port = 2;
-    optional int32 max_conn_num=3;
-    optional int32 max_pending_num=4;
+    optional int32 max_conn_num=3 [default=100000];
+    optional int32 max_pending_num=4 [default=10000];
 }
 
 message RpcServer
@@ -23,14 +23,14 @@ message RpcServer
     repeated TcpServer tcp_server=2;
     repeated UdpServer udp_server=3;
     repeated TcpServer http_server=4;
-    optional int32 max_pending_num=5;
+    optional int32 max_pending_num=5 [default=100000];
 }
 
 message ServerGroup
 {
     optional string group_name=1;
     repeated RpcServer servers=2;
-    optional int32 thread_num=3; // 线程数
+    optional int32 thread_num=3 [default = 1]; // 线程数
 }
 
 message ServerConf

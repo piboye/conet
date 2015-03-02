@@ -145,12 +145,22 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
     }
     server->init(server_base);
 
+    int can_reuse_port_flag = conet::can_reuse_port();
     // tcp_server
     for(int i=0; i< conf.tcp_server_size(); ++i)
     {
         tcp_server_t * tcp_server = new tcp_server_t();
         TcpServer const &tcp_conf = conf.tcp_server(i);
-        ret = tcp_server->init(tcp_conf.ip().c_str(), tcp_conf.port());
+        if (can_reuse_port_flag) {
+            ret = tcp_server->init(tcp_conf.ip().c_str(), tcp_conf.port());
+        } else {
+            int fd = get_listen_fd_from_pool(tcp_conf.ip().c_str(), tcp_conf.port());
+            if (fd >=0) {
+                ret = tcp_server->init(tcp_conf.ip().c_str(), tcp_conf.port(), fd);
+            } else {
+                ret = -1;
+            }
+        }
         if (ret)  {
             delete tcp_server;
             LOG(FATAL)<<"listen ["<<tcp_conf.ip()<<":"<<tcp_conf.port()<<"failed!";

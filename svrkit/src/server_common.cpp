@@ -17,7 +17,10 @@
  */
 
 #include <stdlib.h>
+#include <string>
+#include <map>
 #include "server_common.h"
+#include <pthread.h>
 
 #include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
@@ -45,6 +48,29 @@ namespace conet
                 return listen_fd;
             }
         }
+    }
+
+    static std::map<ip_port_t, int> g_listen_fd_pool;
+    pthread_mutex_t g_listen_fd_pool_mutex=PTHREAD_MUTEX_INITIALIZER;
+
+    int get_listen_fd_from_pool(char const *ip, int port)
+    {
+        int fd = -1;
+        pthread_mutex_lock(&g_listen_fd_pool_mutex);
+        ip_port_t addr;
+        addr.ip = ip;
+        addr.port = port;
+        typeof(g_listen_fd_pool.begin()) it = g_listen_fd_pool.find(addr);
+        if (it == g_listen_fd_pool.end()) {
+           fd = create_listen_fd(addr); 
+           if (fd >= 0) {
+                g_listen_fd_pool.insert(std::make_pair(addr, fd));
+           }
+        } else {
+           fd =  dup(it->second); 
+        }
+        pthread_mutex_unlock(&g_listen_fd_pool_mutex);
+        return fd;
     }
 
     int create_listen_fd(ip_port_t const &ip_port)
