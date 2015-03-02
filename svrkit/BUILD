@@ -114,6 +114,7 @@ cc_library(
     srcs = [
         "src/rpc_pb_server.cpp",
         "src/rpc_pb_server_base.cpp",
+        "src/server_common.cpp",
     ],
     incs= [ 
         "./",
@@ -133,13 +134,9 @@ cc_library(
 );
 
 cc_library(
-    name = 'server_main',
+    name = 'rpc_pb_server_main',
     srcs = [
         "src/server_main.cpp",
-        "src/server_common.cpp",
-        #"src/server_controller.cpp",
-        #"src/server_worker.cpp",
-        #"src/server_task.cpp",
         "src/server_builder.cpp",
     ],
     incs= [ 
@@ -147,26 +144,10 @@ cc_library(
         "../base/",
         "../core/",
     ],
-    deps = [
+    deps =[
+        ":rpc_pb_server",
         "//base:base",
         ":rpc_conf_proto",
-    ],
-    link_all_symbols = True,
-);
-
-
-cc_library(
-    name = 'rpc_pb_server_main',
-    srcs = [
-    ],
-    incs= [ 
-        "./",
-        "../base/",
-        "../core/",
-    ],
-    deps =[
-        ":server_main",
-        ":rpc_pb_server",
     ],
     link_all_symbols = True,
 );
