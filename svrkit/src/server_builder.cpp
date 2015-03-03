@@ -216,6 +216,31 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
         tcp_server->conf.duplex = tcp_conf.duplex();
         ret = server->add_server(tcp_server);
     }
+
+    // udp_server
+    for(int i=0; i< conf.udp_server_size(); ++i)
+    {
+        udp_server_t * udp_server = new udp_server_t();
+        UdpServer const &udp_conf = conf.udp_server(i);
+        if (can_reuse_port_flag) {
+            ret = udp_server->init(udp_conf.ip().c_str(), udp_conf.port());
+        } else {
+            int fd = get_listen_fd_from_pool(udp_conf.ip().c_str(), udp_conf.port());
+            if (fd >=0) {
+                ret = udp_server->init(udp_conf.ip().c_str(), udp_conf.port(), fd);
+            } else {
+                ret = -1;
+            }
+        }
+        if (ret)  {
+            delete udp_server;
+            LOG(FATAL)<<"listen ["<<udp_conf.ip()<<":"<<udp_conf.port()<<"failed!";
+            return NULL;
+        }
+        udp_server->conf.max_conn_num = udp_conf.max_conn_num();
+        ret = server->add_server(udp_server);
+    }
+
     return server;
 }
 

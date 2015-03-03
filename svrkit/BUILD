@@ -124,6 +124,7 @@ cc_library(
     deps =[
         ":rpc_base_pb_proto",
         ":tcp_server",
+        ":udp_server",
         ":http_server",
         ":client_base",
         ':static_resource',

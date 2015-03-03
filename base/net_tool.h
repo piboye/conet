@@ -111,6 +111,7 @@ int set_nodelay(int fd, bool enable=true);
 void set_addr(struct sockaddr_in *addr, const char *ip_txt,const unsigned short port);
 
 int create_tcp_socket(int port = 0, const char *ip_txt  = "*", int reuse = false);
+int create_udp_socket(int port = 0, const char *ip_txt  = "*", int reuse = false);
 
 int connect_to(char const *ip_txt, int port, const char *client_ip=NULL, int client_port=0);
 

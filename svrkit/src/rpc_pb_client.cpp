@@ -149,6 +149,91 @@ int rpc_pb_call_impl(int fd,
     return 0;
 }
 
+int rpc_pb_call_udp_impl(int fd,
+        conet::cmd_base_t *req_base,
+        google::protobuf::Message const *req, ref_str_t * rsp, int *retcode, 
+        std::string *errmsg, int timeout, 
+        obj_pool_t *ps_pool,
+        PacketStream **ps2
+        )
+{
+
+    int ret = 0;
+    req_base->type = conet_rpc_pb::CmdBase::REQUEST_TYPE;
+    req_base->seq_id = ++g_rpc_client_seq_id;
+
+    PacketStream *stream = (PacketStream *) ps_pool->alloc();
+    size_t out_len = stream->max_size;
+    serialize_cmd_base(stream->buff, &out_len, req_base, req);
+    ret = send(fd, stream->buff+4, out_len-4, 0);
+    ps_pool->release(stream);
+
+    if (ret <=0) {
+        LOG(ERROR)<<"[rpc_pb_client] send request failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        return -4;
+    }
+
+    char * data = NULL;
+    int packet_len = 0;
+
+    struct pollfd pf = { fd : fd, events: ( POLLIN | POLLERR | POLLHUP ) };
+    ret =  poll(&pf, 1, timeout );
+    if (ret == 0) {
+        // timeout;
+        return -2;
+    }
+
+    if (ret <0) {
+        return -1;
+    }
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
+    if (!(pf.revents &POLLIN))
+    {
+        LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
+        return -1;
+    }
+
+    stream = (PacketStream *) ps_pool->alloc();
+    stream->init(fd);
+
+    *ps2 = stream;
+
+    ret = recv(fd, stream->buff, stream->max_size, 0);
+
+    if (ret <=0) {
+        LOG(ERROR)<<"[rpc_pb_client] recv response failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        return -5;
+    }
+    packet_len = ret;
+    data = stream->buff;
+
+    cmd_base_t rsp_base;
+    rsp_base.init();
+    ret =  rsp_base.parse(data, packet_len);
+
+    if (ret) 
+    {
+        LOG(ERROR)<<"[rpc_pb_client] parse response failed, [fd:"<<fd<<"][ret:"<<ret<<"]";
+        return -6;
+    }
+
+    *retcode = rsp_base.ret;
+    if (*retcode) {
+        if (errmsg && rsp_base.errmsg.len >0)
+        {
+            ref_str_to(&rsp_base.errmsg, errmsg);
+        }
+        return 0;
+    }
+
+    if (rsp) {
+        *rsp = rsp_base.body;
+    }
+    return 0;
+}
+
 }
 
 

@@ -181,7 +181,7 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
 }
 
 inline
-int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
+int serialize_cmd_base_impl(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
     uint32_t out_len = 0;
     int ret = 0;
@@ -196,7 +196,7 @@ int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::pro
 
     pb_buff_t pb_buff;
 
-    pb_init_buff(&pb_buff, (void *)(ptr+4), max_len -4);
+    pb_init_buff(&pb_buff, (void *)(ptr), max_len);
     
     cmd_base->serialize_common(pb_buff);
     if (msg) 
@@ -219,8 +219,25 @@ int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::pro
 
     out_len = pb_get_encoded_length(&pb_buff);
 
+    *len = out_len;
+    return 0;
+}
+
+inline
+int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
+{
+    if (*len <=4) {
+        return -1;
+    }
+    int ret = 0;
+    *len-=4;
+    ret = serialize_cmd_base_impl(out+4, len, cmd_base, msg);
+    if (ret) {
+        return ret;
+    }
      
-    *((uint32_t *)(ptr)) = htonl(out_len);
+    uint32_t out_len = *len;
+    *((uint32_t *)(out)) = htonl(out_len);
 
     *len = out_len+4;
     return 0;
@@ -229,7 +246,6 @@ int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::pro
 inline
 int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
-    uint32_t out_len = 0;
     int ret = 0;
     uint32_t max_len = 1000; // cmd base 预留
 
@@ -241,37 +257,17 @@ int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::pr
 
     out->resize(max_len);
 
-    char *ptr = &(*out)[0];
+    size_t len = out->size()-4;
 
-    pb_buff_t pb_buff;
-
-    pb_init_buff(&pb_buff, (void *)(ptr+4), max_len -4);
-    
-    cmd_base->serialize_common(pb_buff);
-    if (msg) 
-    {
-        ret = pb_add_string_head(&pb_buff, 5, msg_len);
-        if (ret) {
-            return -1;
-        }
-
-        if (pb_buff.left - msg_len<=0) 
-        {
-            return -2;
-        }
-
-        msg->SerializeWithCachedSizesToArray((uint8_t *)pb_buff.ptr);
-
-        pb_buff.ptr += msg_len;
-        pb_buff.left -= msg_len;
+    ret = serialize_cmd_base_impl(&(*out)[4], &len, cmd_base, msg);
+    if (ret) {
+        return ret;
     }
-
-    out_len = pb_get_encoded_length(&pb_buff);
-
      
-    *((uint32_t *)(ptr)) = htonl(out_len);
+    uint32_t out_len = len;
+    *((uint32_t *)(out)) = htonl(out_len);
 
-    out->resize(out_len + 4);
+    out->resize(out_len+4);
     return 0;
 }
 

@@ -34,6 +34,18 @@ cc_binary(
 )
 
 cc_binary(
+    name = "echo_rpc_cli_udp",
+    srcs = ["echo_rpc_cli_udp.cpp"],
+    deps = [
+            ":echo_rpc_proto", 
+            "//svrkit:client_base", 
+            #"//thirdparty/perftools:tcmalloc_debug",
+            "#dl", 
+            "#pthread",
+           ],
+)
+
+cc_binary(
     name = "echo_rpc_cli_duplex2",
     srcs = ["echo_rpc_cli_duplex2.cpp"],
     deps = [

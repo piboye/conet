@@ -290,6 +290,31 @@ int create_tcp_socket(int port, const char *ip_txt, int reuse)
     return fd;
 }
 
+int create_udp_socket(int port, const char *ip_txt, int reuse)
+{
+    int fd = socket(AF_INET,SOCK_DGRAM, IPPROTO_UDP);
+    if( fd >= 0 ) {
+        if(port != 0) {
+            if(reuse) {
+                int reuse_addr = 1;
+                if (g_can_reuse_port) {
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+                } else {
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
+                }
+            }
+            struct sockaddr_in addr ;
+            set_addr(&addr, ip_txt, port);
+            int ret = bind(fd,(struct sockaddr*)&addr,sizeof(addr));
+            if( ret != 0) {
+                close(fd);
+                return -1;
+            }
+        }
+    }
+    return fd;
+}
+
 int connect_to(char const *ip_txt, int port, 
         const char *client_ip, int client_port)
 {

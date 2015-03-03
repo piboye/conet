@@ -70,7 +70,7 @@ int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
         co = req->conn_info.co;
         --server->data.cur_conn_num;
         server->udp_req_pool.release(req);
-        server->buffer_pool.free(req->data);
+        server->buffer_pool.free(data);
         server->buffer_pool.free(obuffer);
 
         req = NULL;
@@ -161,7 +161,7 @@ int udp_server_t::main_proc()
 int udp_server_t::main_proc2()
 {
 
-    int  udp_socket = create_tcp_socket(this->port, this->ip.c_str(), true);
+    int  udp_socket = create_udp_socket(this->port, this->ip.c_str(), true);
     if (udp_socket <0) 
     {
         this->state = SERVER_STOPED;
@@ -213,6 +213,8 @@ int udp_server_t::main_proc2()
         req->conn_info.server = this;
 
         req->conn_info.fd = udp_socket;
+        req->data = buffer;
+        req->len = ret;
 
         proc_pool(this, req);
 
