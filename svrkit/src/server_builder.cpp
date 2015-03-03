@@ -22,6 +22,8 @@
 #include "server_builder.h"
 #include "server_common.h"
 #include <pthread.h>
+#include "base/cpu_affinity.h"
+#include <sched.h>
 
 namespace conet
 {
@@ -33,11 +35,24 @@ server_worker_t::server_worker_t()
     stop_flag = 0;
     exit_finsished = 0;
     exit_seconds = 0;
+    cpu_affinity = NULL;
 }
 
 void* server_worker_t::main(void * arg)
 {
     server_worker_t *self = (server_worker_t *)(arg);
+
+    if (self->cpu_affinity && CPU_COUNT(self->cpu_affinity) > 0) {
+        int ret = 0;
+        pthread_t tid = pthread_self();
+        ret = pthread_setaffinity_np(tid, sizeof(cpu_set_t), self->cpu_affinity);
+        if (ret) {
+            LOG(ERROR)<<"set tid:"<<tid<<" to  cpu:"<<" affinity failed, ret:"<<ret;
+        } else {
+            LOG(INFO)<<"set tid:"<<tid<<" to  cpu:"<<" affinity success";
+        }
+    }
+
     server_group_t * server_group = self->server_group;
     ServerGroup conf;
     conf.CopyFrom(server_group->conf_data);
@@ -109,13 +124,31 @@ server_group_t * server_group_t::build(ServerGroup const &conf)
     server_group_t * server = new server_group_t();
     server->group_name = conf.group_name();
     server->conf_data.CopyFrom(conf);
+
+    int cpu_num = sysconf(_SC_NPROCESSORS_ONLN);
     int thread_num = conf.thread_num();
     if (thread_num <=0) {
-        thread_num  = sysconf(_SC_NPROCESSORS_ONLN);
+        thread_num  = cpu_num; 
         if (thread_num <=0) thread_num=1;
     }
+
     server->thread_num  = thread_num;
-    
+    int ret =  0;
+
+    for(int i = 0; i<conf.cpu_affinitys_size(); ++i)
+    {
+        std::string txt = conf.cpu_affinitys(i);
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        ret = parse_affinity(txt.c_str(), &mask);
+        if (ret >= 0) { 
+            server->cpu_affinitys.push_back(mask);
+        } else {
+            // 格式有问题
+            LOG(FATAL)<<"cpu mask error format :"<<txt;
+            abort();
+        }
+    }
     return server;
 }
 
@@ -123,10 +156,17 @@ int server_group_t::start()
 {
     server_worker_t * worker = NULL;
     int num = thread_num;
+    int cpu_len = cpu_affinitys.size();
     for (int i = 0; i< num ; ++i)
     {
         worker = new server_worker_t();
         worker->server_group = this;
+
+        if (cpu_len >0)
+        {
+            worker->cpu_affinity = &cpu_affinitys[i%cpu_len];
+        }
+
         pthread_create(&worker->tid, NULL,
                 server_worker_t::main, worker);
         m_work_pool.push_back(worker);

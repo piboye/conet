@@ -31,7 +31,11 @@ message ServerGroup
 {
     optional string group_name=1;
     repeated RpcServer servers=2;
-    optional int32 thread_num=3 [default = 1]; // 线程数
+
+    // cpu 亲缘性,每个字符串对应一个线程的设置, 不够就回第1个开始重新开始
+    // ["1,2","3,4", "0"] 
+    repeated string cpu_affinitys=3; 
+    optional int32 thread_num=4 [default = 1]; // 线程数
 }
 
 message ServerConf

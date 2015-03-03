@@ -65,10 +65,11 @@ R (*get_func_wrap_helper( R (ClassT::*f)(T1) ))(T1)
 #define BindThis(obj, func) \
     ({ \
         FuncWrapData *d = get_func_wrap_data();  \
-        d->jump_func = (uint64_t)(get_func_wrap_helper(func)); \
+        d->jump_func = (uint64_t)(get_func_wrap_helper(&func)); \
         d->self = (uint64_t )(&obj); \
-        d->mem_func = reinterpret_cast<uint64_t>(reinterpret_cast<void *>(func)); \
-        (typeof(get_func_wrap_helper(func))) (&(d->code)); \
+        typeof(&func) pfn = &func; \
+        memcpy(&d->mem_func, (void const *)(&pfn), sizeof(uint64_t)); \
+        (typeof(get_func_wrap_helper(&func))) (&(d->code)); \
      })
 
 }

@@ -18,12 +18,14 @@
 #ifndef __CONET_CPU_AFFINITY_H__
 #define __CONET_CPU_AFFINITY_H__
 #include <vector>
+#include <sched.h>
 
 namespace conet
 {
     int parse_affinity(char const * txt, std::vector<int> *cpu_sets);
+    int parse_affinity(char const * txt, cpu_set_t *cpu_set);
     int set_cur_thread_cpu_affinity(int cpu_id);
-    int set_proccess_cpu_affinity(int cpu_id);
+    int set_proccess_cpu_affinity(int  cpu_id);
 }
 
 #endif /* end of include guard */

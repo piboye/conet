@@ -34,6 +34,8 @@ public:
     int stop_flag;
     int exit_finsished;
     int exit_seconds;
+    cpu_set_t *cpu_affinity;
+
     static void* main(void * arg);
     int stop(int seconds);
     int proc_server_exit();
@@ -43,11 +45,13 @@ class server_group_t
 {
 public:
     server_group_t();
+    ~server_group_t();
 
     int stop_flag;
     std::string group_name;
     ServerGroup conf_data;
     int thread_num;
+    std::vector<cpu_set_t> cpu_affinitys;
     std::vector<server_worker_t *> m_work_pool;
 
     static server_group_t * build(ServerGroup const &conf);

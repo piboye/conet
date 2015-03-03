@@ -888,8 +888,7 @@ HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *r
         return 0;
     } 
 
-    int ret = 0;
-    ret = conet::co_poll(NULL, 0, ms);
+    conet::co_poll(NULL, 0, ms);
     if (rem) {
         rem->tv_sec = 0;
         rem->tv_nsec = 0;

@@ -91,7 +91,7 @@ int backtrace(fcontext_t *ctx, void ** array, int num)
 
 int popen2(int *pipefd, char const *cmd, char * const argv[])
 {
-    pid_t pid = NULL;
+    pid_t pid = 0;
     int fds1[2]={-1, -1};
     int fds2[2]={-1, -1};
     pipe(fds1);
