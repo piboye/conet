@@ -218,6 +218,7 @@ int timewheel_task(void *arg)
           LOG(ERROR)<<" timewheel read failed, "
                "[ret:"<<ret<<"]"
                "[timerfd:"<<timerfd<<"]"
+               "[poll event:"<<pf.revents<<"]"
                "[errno:"<<errno<<"]"
                "[errmsg:"<<strerror(errno)<<"]"
                ;

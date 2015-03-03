@@ -40,6 +40,7 @@ public:
     int stop(int seconds);
     int proc_server_exit();
     ServerGroup conf;
+    rpc_pb_server_t *build_rpc_server(RpcServer const & conf);
 };
 
 class server_group_t
@@ -59,7 +60,6 @@ public:
 
     int start();
     int stop(int seconds);
-    rpc_pb_server_t *build_rpc_server(RpcServer const & conf);
 };
 
 class ServerContainer

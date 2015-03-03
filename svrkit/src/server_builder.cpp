@@ -58,7 +58,7 @@ void* server_worker_t::main(void * arg)
     for (int i=0; i<size; ++i)
     {
         RpcServer const & server_conf = self->conf.servers(i);
-        rpc_pb_server_t *rpc_server =  self->server_group->build_rpc_server(server_conf);
+        rpc_pb_server_t *rpc_server =  self->build_rpc_server(server_conf);
         if (rpc_server) {
             self->rpc_servers.push_back(rpc_server);
         }
@@ -174,7 +174,7 @@ int server_group_t::start()
 
 static pthread_mutex_t g_server_work_mutex=PTHREAD_MUTEX_INITIALIZER;
 
-rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
+rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
 {
     rpc_pb_server_t * server = new rpc_pb_server_t();
     std::string server_name = conf.server_name();
