@@ -144,8 +144,13 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
 
 int tcp_server_t::start()
 {
-    this->main_co = alloc_coroutine(conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), this);
-    conet::resume(this->main_co);
+    if (this->main_co == NULL)
+    {
+        this->main_co = alloc_coroutine(
+                conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
+                this);
+        conet::resume(this->main_co);
+    }
     return 0;
 }
 

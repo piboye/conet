@@ -228,7 +228,7 @@ int rpc_pb_server_t::stop(int wait)
     {
         ret = m_servers[i]->stop(wait);
     }
-    
+
     LOG(INFO)<<"stop rpc finished";
     return ret;
 }
@@ -291,6 +291,7 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
 
         PacketStream *stream = (PacketStream *) server->m_packet_stream_pool.alloc();
         stream->init(fd);
+        stream->is_http = 1;
         ret = stream->read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
             server->m_packet_stream_pool.release(stream);
@@ -300,7 +301,16 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         if (ret <0) 
         {
             if (ret == PacketStream::HTTP_PROTOCOL_DATA) {
-                conn->extend = stream;
+                if (tcp_server->extend)
+                {
+                    http_server_t * http_server = (http_server_t*)(tcp_server->extend);
+                    conn->extend = stream;
+                    ret = http_server->conn_proc(conn);
+                    return ret;
+                } else {
+                    return -1;
+                }
+                
                 //http_server->conn_proc(conn);
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;

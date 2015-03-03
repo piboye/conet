@@ -207,6 +207,7 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         conet::pb2json(rsp1, &body); 
         root["body"]=body; 
     }
+    root["ret"]= ret;
     conet::response_to(resp, 200, root.toStyledString()); 
 
     if (req1) self->req_pool.release(req1);
@@ -223,17 +224,26 @@ int http_get_rpc_req_default_value(void *arg, http_ctx_t *ctx, http_request_t * 
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
     Json::Value root(Json::objectValue); 
     Json::Value body(Json::objectValue);  
-    pb2json(self->req_msg->GetDescriptor(), &body);
     root["ret"]=0; 
-    root["req"]=body; 
+    if (self->req_msg) {
+        pb2json(self->req_msg->GetDescriptor(), &body);
+        root["req"]=body; 
+    } else {
+        //没有请求体
+        root["req"]="";
+    }
     conet::response_to(resp, 200, root.toStyledString()); 
     return 0;
 }
 
 int http_get_rpc_req_proto(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
-{ 
+{
     rpc_pb_cmd_t *self = (rpc_pb_cmd_t *) arg;
-    std::string proto = self->req_msg->GetDescriptor()->DebugString();
+    std::string proto="none request boyd";
+    if (self->req_msg) {
+        proto = self->req_msg->GetDescriptor()->DebugString();
+    }
+
     conet::response_to(resp, 200, proto);
     return 0;
 }

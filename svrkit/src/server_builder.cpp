@@ -53,15 +53,12 @@ void* server_worker_t::main(void * arg)
         }
     }
 
-    server_group_t * server_group = self->server_group;
-    ServerGroup conf;
-    conf.CopyFrom(server_group->conf_data);
-    int size = conf.servers_size();
+    int size = self->conf.servers_size();
 
     for (int i=0; i<size; ++i)
     {
-        RpcServer const & server_conf = conf.servers(i);
-        rpc_pb_server_t *rpc_server =  server_group->build_rpc_server(server_conf);
+        RpcServer const & server_conf = self->conf.servers(i);
+        rpc_pb_server_t *rpc_server =  self->server_group->build_rpc_server(server_conf);
         if (rpc_server) {
             self->rpc_servers.push_back(rpc_server);
         }
@@ -167,12 +164,15 @@ int server_group_t::start()
             worker->cpu_affinity = &cpu_affinitys[i%cpu_len];
         }
 
+        worker->conf.CopyFrom(this->conf_data);
         pthread_create(&worker->tid, NULL,
                 server_worker_t::main, worker);
         m_work_pool.push_back(worker);
     }
     return 0;
 }
+
+static pthread_mutex_t g_server_work_mutex=PTHREAD_MUTEX_INITIALIZER;
 
 rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
 {
@@ -181,7 +181,9 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
     rpc_pb_server_base_t * server_base = new rpc_pb_server_base_t();
 
     int ret = 0;
+    pthread_mutex_lock(&g_server_work_mutex);
     ret = server_base->get_global_server_cmd(server_name);
+    pthread_mutex_unlock(&g_server_work_mutex);
     if (ret<0)
     {
         LOG(ERROR)<<"find [server-name:"<<server_name<<"] failed!";
@@ -214,7 +216,15 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
         }
         tcp_server->conf.max_conn_num = tcp_conf.max_conn_num();
         tcp_server->conf.duplex = tcp_conf.duplex();
+
         ret = server->add_server(tcp_server);
+        // 开启http 接口
+        if (tcp_conf.enable_http()) {
+            http_server_t *http_server = new http_server_t();
+            http_server->tcp_server = tcp_server;
+            tcp_server->extend = http_server;
+            ret = server->add_server(http_server);
+        }
     }
 
     // udp_server
@@ -239,6 +249,34 @@ rpc_pb_server_t *server_group_t::build_rpc_server(RpcServer const & conf)
         }
         udp_server->conf.max_conn_num = udp_conf.max_conn_num();
         ret = server->add_server(udp_server);
+    }
+    // http_server
+    for(int i=0; i< conf.http_server_size(); ++i)
+    {
+        tcp_server_t * tcp_server = new tcp_server_t();
+        HttpServer const &http_conf = conf.http_server(i);
+        std::string ip = http_conf.ip();
+        int port = http_conf.port();
+        if (can_reuse_port_flag) {
+            ret = tcp_server->init(ip.c_str(), port);
+        } else {
+            int fd = get_listen_fd_from_pool(ip.c_str(), port);
+            if (fd >=0) {
+                ret = tcp_server->init(ip.c_str(), port, fd);
+            } else {
+                ret = -1;
+            }
+        }
+        if (ret)  {
+            delete tcp_server;
+            LOG(FATAL)<<"listen ["<<ip<<":"<<port<<"failed!";
+            return NULL;
+        }
+        tcp_server->conf.max_conn_num = http_conf.max_conn_num();
+
+        http_server_t *http_server = new http_server_t();
+        http_server->init(tcp_server);
+        ret = server->add_server(http_server);
     }
 
     return server;

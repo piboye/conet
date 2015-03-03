@@ -39,6 +39,7 @@ public:
     static void* main(void * arg);
     int stop(int seconds);
     int proc_server_exit();
+    ServerGroup conf;
 };
 
 class server_group_t

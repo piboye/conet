@@ -82,8 +82,7 @@ struct Task
         static int proc_server_exit(void *arg)
         {
             Task *self = (Task *)(arg);
-            int ret = 0;
-            ret = self->server.stop(FLAGS_server_stop_wait_seconds*1000);
+            self->server.stop(FLAGS_server_stop_wait_seconds*1000);
             self->exit_finsished = 1;
             return 0;
         }
@@ -98,6 +97,10 @@ struct Task
             }
 
             ret = self->server.init(self->ip_list[0].ip.c_str(), self->ip_list[0].port);
+            if (ret) {
+                LOG(ERROR)<<"init server faile! [ret:"<<ret<<"]";
+                return NULL;
+            }
             self->server.set_conn_cb(proc_echo, NULL);
             self->server.start();
             while (1) 
