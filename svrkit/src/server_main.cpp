@@ -138,7 +138,7 @@ int main(int argc, char * argv[])
 
     if (conet::can_reuse_port()) {
         LOG(INFO)<<"can reuse port, very_good";
-        fprintf(stderr, "can resue port, very good!\n");
+        //fprintf(stderr, "can resue port, very good!\n");
     }
 
     std::string data;

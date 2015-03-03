@@ -140,9 +140,9 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
         if (rsp) {
             cmd->rsp_pool.release(rsp);
         }
-        if (ret <=0) {
-            // send data failed;
-            LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+        if (ret <0) {
+            // serialize data failed;
+            LOG(ERROR)<<"serialize resp failed!, fd:"<<fd<<", ret:"<<ret;
             break;
         } 
     } while(0);
