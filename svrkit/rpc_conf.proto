@@ -23,6 +23,7 @@ message HttpServer
     optional string ip = 1;
     optional int32 port = 2;
     optional int32 max_conn_num=3 [default=100000];
+    optional int32 keepalive = 4 [default=1];
 }
 
 message RpcServer

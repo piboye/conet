@@ -253,6 +253,7 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         if (tcp_conf.enable_http()) {
             http_server_t *http_server = new http_server_t();
             http_server->tcp_server = tcp_server;
+            http_server->enable_keepalive = 1;
             tcp_server->extend = http_server;
             ret = server->add_server(http_server);
             this->servers.push_back(http_server);
@@ -309,7 +310,11 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         tcp_server->conf.max_conn_num = http_conf.max_conn_num();
 
         http_server_t *http_server = new http_server_t();
+
         http_server->init(tcp_server);
+
+        http_server->enable_keepalive = !!http_conf.keepalive();
+
         ret = server->add_server(http_server);
         this->servers.push_back(tcp_server);
         this->servers.push_back(http_server);
