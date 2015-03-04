@@ -103,6 +103,19 @@ int get_conf_data(std::string const & conf_file, std::string *data)
 
 static conet::ServerContainer * g_server_container=NULL;
 
+static 
+void fini_google_lib()
+{
+    // 清理protobuf 库的内存
+    google::protobuf::ShutdownProtobufLibrary();
+
+    // 清理glog 库内存
+    google::ShutdownGoogleLogging();
+
+    // 清理gflags 库内存
+    gflags::ShutDownCommandLineFlags();
+}
+
 static int call_delay_init()
 {
     // delay init
@@ -122,6 +135,9 @@ static int call_delay_init()
 int main(int argc, char * argv[])
 {
     int ret = 0;
+
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+
     signal(SIGINT, sig_exit);
 
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap
@@ -176,6 +192,10 @@ int main(int argc, char * argv[])
     g_server_container = NULL;
 
     conet::call_server_fini_func();
+
+    fini_google_lib();
     return 0;
 }
+
+
 

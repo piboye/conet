@@ -28,6 +28,9 @@ class server_worker_t
 {
 public:
     server_worker_t();
+    ~server_worker_t();
+
+    std::vector<server_base_t*> servers;
     server_group_t * server_group;
     pthread_t tid;
     std::vector<rpc_pb_server_t*> rpc_servers;
@@ -68,6 +71,7 @@ public:
     std::vector<server_group_t *> server_groups;
     int start();
     int stop(int seconds);
+    ~ServerContainer();
 };
 
 class ServerBuilder

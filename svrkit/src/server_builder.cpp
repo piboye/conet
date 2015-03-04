@@ -38,6 +38,10 @@ server_worker_t::server_worker_t()
     cpu_affinity = NULL;
 }
 
+server_worker_t::~server_worker_t()
+{
+}
+
 void* server_worker_t::main(void * arg)
 {
     server_worker_t *self = (server_worker_t *)(arg);
@@ -79,7 +83,7 @@ void* server_worker_t::main(void * arg)
 
       while (likely(!self->exit_finsished)) 
       {
-          if (unlikely(get_server_stop_flag() && exit_co == NULL)) 
+          if (unlikely(self->stop_flag && exit_co == NULL)) 
           {
               exit_co = conet::alloc_coroutine(
                       conet::ptr_cast<conet::co_main_func_t>(
@@ -107,6 +111,15 @@ int server_worker_t::proc_server_exit()
             LOG(ERROR)<<"stop rpc server failed! ";
         }
     }
+    for( size_t i = 0; i < rpc_servers.size(); ++i)
+    {
+        delete rpc_servers[i]->base_server;
+        delete rpc_servers[i];
+    }
+    for( size_t i = 0; i < servers.size(); ++i)
+    {
+        delete servers[i];
+    }
     exit_finsished = 1;
     return 0;
 }
@@ -115,6 +128,23 @@ server_group_t::server_group_t()
 {
     stop_flag = 0;
 }
+
+server_group_t::~server_group_t()
+{
+   for(size_t i=0; i<m_work_pool.size(); ++i) 
+   {
+       delete m_work_pool[i];
+   }
+}
+
+ServerContainer::~ServerContainer()
+{
+   for(size_t i=0; i<server_groups.size(); ++i) 
+   {
+       delete server_groups[i];
+   }
+}
+
 
 server_group_t * server_group_t::build(ServerGroup const &conf)
 {
@@ -218,12 +248,14 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         tcp_server->conf.duplex = tcp_conf.duplex();
 
         ret = server->add_server(tcp_server);
+        this->servers.push_back(tcp_server);
         // 开启http 接口
         if (tcp_conf.enable_http()) {
             http_server_t *http_server = new http_server_t();
             http_server->tcp_server = tcp_server;
             tcp_server->extend = http_server;
             ret = server->add_server(http_server);
+            this->servers.push_back(http_server);
         }
     }
 
@@ -249,7 +281,9 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         }
         udp_server->conf.max_conn_num = udp_conf.max_conn_num();
         ret = server->add_server(udp_server);
+        this->servers.push_back(udp_server);
     }
+
     // http_server
     for(int i=0; i< conf.http_server_size(); ++i)
     {
@@ -277,6 +311,8 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         http_server_t *http_server = new http_server_t();
         http_server->init(tcp_server);
         ret = server->add_server(http_server);
+        this->servers.push_back(tcp_server);
+        this->servers.push_back(http_server);
     }
 
     return server;

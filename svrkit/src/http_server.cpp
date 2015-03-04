@@ -102,7 +102,7 @@ http_cmd_t * http_server_t::get_http_cmd(std::string const &name)
     if (it == this->cmd_maps.end()) {
         return NULL;
     }
-    return &it->second;
+    return it->second;
 }
 
 int http_server_main(conn_info_t *conn, http_request_t *req,
@@ -157,7 +157,6 @@ int http_server_t::conn_proc(conn_info_t *conn)
     int fd  = conn->fd;
 
     http_request_t req;
-    http_request_init(&req);
 
     int len = 4*1024;
     char *buf = NULL;
@@ -210,6 +209,8 @@ int http_server_t::conn_proc(conn_info_t *conn)
 
         end = recved + nparsed;
 
+        //初始化 http req
+        http_request_init(&req);
         nparsed += http_request_parse(&req, buf, end, nparsed);
         ret = http_request_finish(&req); 
         switch(ret)
@@ -261,17 +262,39 @@ int http_server_t::stop(int wait)
     return ret;
 }
 
-int http_server_t::registry_cmd(std::string const & name,  http_callback proc, void *arg )
+int http_server_t::registry_cmd(std::string const & name,  
+        http_callback proc, 
+        void *arg, 
+        void (*free_arg)(void *arg)
+        )
 {
     if (this->cmd_maps.find(name) != this->cmd_maps.end()) {
         return -1;
     }
-    http_cmd_t item; 
-    item.name = name;
-    item.proc = proc;
-    item.arg = arg;
+    http_cmd_t *item = new http_cmd_t; 
+    item->name = name;
+    item->proc = proc;
+    item->arg = arg;
+    item->free_fn = free_arg;
     this->cmd_maps.insert(std::make_pair(name, item));
     return 0;
+}
+
+http_server_t::http_server_t()
+{
+    tcp_server = NULL;
+    extend = NULL;
+    enable_keepalive = 0;
+}
+
+http_server_t::~http_server_t()
+{
+    for(typeof(cmd_maps.begin()) it=cmd_maps.begin(), 
+                iend = cmd_maps.end();
+                it!=iend; ++it)
+    {
+        delete it->second;
+    }
 }
 
 }

@@ -61,14 +61,33 @@ struct http_cmd_t
    void *arg; 
    std::string name;
    void *extend;
+   void (*free_fn)(void *);
+
+   http_cmd_t()
+   {
+       proc = NULL;
+       free_fn = NULL;
+       arg = NULL;
+       extend = NULL;
+   }
+
+   ~http_cmd_t()
+   {
+        if (free_fn)
+        {
+            free_fn(this->arg);
+        }
+   }
 };
 
 
 struct http_server_t: public server_base_t
 {
+    http_server_t();
+    ~http_server_t();
     struct tcp_server_t *tcp_server;
 
-    std::map<std::string, http_cmd_t> cmd_maps;
+    std::map<std::string, http_cmd_t*> cmd_maps;
 
     struct {
         unsigned int enable_keepalive:1;
@@ -76,7 +95,9 @@ struct http_server_t: public server_base_t
 
     void *extend;
 
-    int registry_cmd(std::string const & name,  http_callback proc, void *arg );
+    int registry_cmd(std::string const & name,  http_callback proc, void *arg,
+        void (*free_arg)(void *) = NULL);
+
     http_cmd_t * get_http_cmd(std::string const &name);
 
     int init(tcp_server_t *tcp_server);

@@ -226,6 +226,7 @@ int http_get_rpc_req_default_value(void *arg, http_ctx_t *ctx, http_request_t * 
     Json::Value body(Json::objectValue);  
     root["ret"]=0; 
     if (self->req_msg) {
+
         pb2json(self->req_msg->GetDescriptor(), &body);
         root["req"]=body; 
     } else {
@@ -326,36 +327,19 @@ int rpc_pb_server_base_t::registry_rpc_cmd_http_api(
         rpc_pb_cmd_t *cmd, 
         std::string const & base_path)
 {
-    std::map<std::string, http_cmd_t> *maps = &http_server->cmd_maps;
+    //调用rpc命令
+    http_server->registry_cmd(base_path + "/rpc/call/" + method_name,
+            rpc_pb_http_call_cb, cmd, NULL);
 
-    {
-        http_cmd_t item; 
-        item.name = method_name;
-        item.proc = rpc_pb_http_call_cb;
-        item.arg = cmd;
+    //获取参数默认值
+    http_server->registry_cmd(base_path + "/rpc/req_def_val/" + method_name,
+            http_get_rpc_req_default_value, cmd, NULL);
 
-        maps->insert(std::make_pair(base_path + "/rpc/call/" + method_name, item));
-    }
+    //获取参数原型
+    http_server->registry_cmd(base_path + "/rpc/req_proto/" + method_name,
+            http_get_rpc_req_proto, cmd, NULL);
 
-    {
-        http_cmd_t item; 
-        item.name = method_name;
-        item.proc = http_get_rpc_req_default_value;
-        item.arg = cmd;
-
-        maps->insert(std::make_pair(base_path + "/rpc/req_def_val/" + method_name, item));
-    }
-
-    {
-        http_cmd_t item; 
-        item.name = method_name;
-        item.proc = http_get_rpc_req_proto;
-        item.arg = cmd;
-
-        maps->insert(std::make_pair(base_path + "/rpc/req_proto/" + method_name, item));
-    }
-        
-        return 0;
+    return 0;
 }
 
 int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp) 
@@ -365,27 +349,24 @@ int http_get_static_resource(void *arg, http_ctx_t *ctx, http_request_t * req, h
     return 0;
 }
 
+static void delete_string(void *arg)
+{
+   delete (std::string *)(arg);
+}
+
 #define REGISTRY_STATIC_RESOURCE(http_server, path, res) \
     { \
-        http_cmd_t item;  \
-        item.name = path; \
-        item.proc = http_get_static_resource; \
-        item.arg = new std::string(RESOURCE_svrkit_static_##res, sizeof(RESOURCE_svrkit_static_##res)); \
- \
-        http_server->cmd_maps.insert(std::make_pair(path, item)); \
+        std::string *arg = new std::string(RESOURCE_svrkit_static_##res, sizeof(RESOURCE_svrkit_static_##res)); \
+        int ret = http_server->registry_cmd(path, http_get_static_resource,  arg, \
+                &delete_string); \
+        if (ret) { \
+            delete_string(arg); \
+        } \
     } \
 
 int rpc_pb_server_base_t::registry_http_rpc_default_api(http_server_t *http_server, std::string const &base_path)
 {
-    {
-        std::string path = base_path + "/rpc/list"; 
-        http_cmd_t item; 
-        item.name = path;
-        item.proc = http_get_rpc_list;
-        item.arg = this;
-
-        http_server->cmd_maps.insert(std::make_pair(path, item));
-    }
+    http_server->registry_cmd(base_path + "/rpc/list", http_get_rpc_list, this, NULL);
 
     REGISTRY_STATIC_RESOURCE(http_server, base_path + "/", list_html);
     REGISTRY_STATIC_RESOURCE(http_server, base_path + "/rpc/list.html", list_html);

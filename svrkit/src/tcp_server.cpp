@@ -149,6 +149,7 @@ int tcp_server_t::start()
         this->main_co = alloc_coroutine(
                 conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
                 this);
+        conet::set_auto_delete(this->main_co);
         conet::resume(this->main_co);
     }
     return 0;
@@ -346,6 +347,7 @@ int tcp_server_t::stop(int wait_ms)
     }
 
     conet::wait(server->main_co, 20);
+    server->main_co = NULL;
     if (wait_ms >0) {
         for (int i=0; i< wait_ms; i+=1000) {
             if (server->data.cur_conn_num <= 0) break;

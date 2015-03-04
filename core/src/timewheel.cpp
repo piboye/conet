@@ -215,7 +215,7 @@ int timewheel_task(void *arg)
        cnt = 0;
        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
        if (ret != sizeof(cnt)) {
-          LOG(ERROR)<<" timewheel read failed, "
+          LOG(ERROR)<<" timewheel timerfd read failed, "
                "[ret:"<<ret<<"]"
                "[timerfd:"<<timerfd<<"]"
                "[poll event:"<<pf.revents<<"]"

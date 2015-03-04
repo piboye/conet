@@ -94,7 +94,6 @@ struct tcp_server_t: public server_base_t
 
     ~tcp_server_t()
     {
-
     }
 };
 

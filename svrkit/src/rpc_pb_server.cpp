@@ -260,8 +260,15 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
     ctx.to_close = 0;
     cmd_base_t & cmd_base = ctx.cmd_base;
 
+    PacketStream *stream = NULL;
+
     while(0 == tcp_server->to_stop)
     {
+
+        if (stream) {
+            server->m_packet_stream_pool.release(stream);
+            stream = NULL;
+        }
 
         struct pollfd pf = {
             fd: fd,
@@ -289,12 +296,11 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         char * data = NULL;
         int packet_len = 0;
 
-        PacketStream *stream = (PacketStream *) server->m_packet_stream_pool.alloc();
+        stream = (PacketStream *) server->m_packet_stream_pool.alloc();
         stream->init(fd);
         stream->is_http = 1;
         ret = stream->read_packet(&data, &packet_len, 100, 1); 
         if (ret == 0) {
-            server->m_packet_stream_pool.release(stream);
             break;
         }
 
@@ -306,12 +312,12 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                     http_server_t * http_server = (http_server_t*)(tcp_server->extend);
                     conn->extend = stream;
                     ret = http_server->conn_proc(conn);
+                    server->m_packet_stream_pool.release(stream);
                     return ret;
                 } else {
+                    server->m_packet_stream_pool.release(stream);
                     return -1;
                 }
-                
-                //http_server->conn_proc(conn);
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             }
@@ -405,7 +411,11 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         if (ctx.to_close) {
             break;
         }
-    } 
+    }
+    if (stream) {
+        server->m_packet_stream_pool.release(stream);
+        stream = NULL;
+    }
     return 0;
 }
 
@@ -806,6 +816,4 @@ int proc_tcp_rpc_pb_async(rpc_pb_server_t *server, conn_info_t *conn)
 
     return 0;
 }
-
-
 }

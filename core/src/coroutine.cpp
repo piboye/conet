@@ -164,6 +164,12 @@ int init_coroutine(coroutine_t * self)
 __thread fixed_mempool_t * g_default_stack_pool=NULL;
 
 
+void free_default_stack_pool(void *p)
+{
+    fixed_mempool_t *p1 = (fixed_mempool_t *)(p);
+    delete p1;
+}
+
 fixed_mempool_t *get_default_stack_pool()
 {
     if (NULL == g_default_stack_pool)
@@ -173,6 +179,7 @@ fixed_mempool_t *get_default_stack_pool()
         if (NULL == g_default_stack_pool)
         {
             g_default_stack_pool = pool;
+            conet::tls_onexit_add(g_default_stack_pool, free_default_stack_pool);
         } else {
             delete g_default_stack_pool;
         }
