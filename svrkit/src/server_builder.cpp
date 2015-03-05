@@ -105,7 +105,7 @@ int server_worker_t::proc_server_exit()
     int ret = 0;
     for(size_t i=0; i< rpc_servers.size(); ++i)
     {
-        ret = rpc_servers[i]->stop(exit_seconds);
+        ret = rpc_servers[i]->stop(exit_seconds * 1000);
         if (ret)
         {
             LOG(ERROR)<<"stop rpc server failed! ";

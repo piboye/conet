@@ -28,10 +28,11 @@ namespace conet
 
 #define comac_get_args_cnt( ... ) comac_arg_n( __VA_ARGS__ )
 #define comac_arg_n(_0, _1,_2,_3,_4,_5,_6,_7,N,...) N
-#define comac_args_seqs() 7,6,5,4,3,2,1,0
-#define comac_join_1( x,y ) x##y
+#define comac_args_seqs() 0,7,6,5,4,3,2,1,0
 
 #define comac_argc( ... ) comac_get_args_cnt(__VA_ARGS__, comac_args_seqs() )
+
+#define comac_join_1( x,y ) x##y
 #define comac_join( x,y) comac_join_1( x,y )
 
 //-- 1.2 repeat
@@ -43,7 +44,7 @@ namespace conet
 #define repeat_5( fun,a, ... ) fun( 5,a,__VA_ARGS__ ) repeat_4( fun,__VA_ARGS__ )
 #define repeat_6( fun,a, ... ) fun( 6,a,__VA_ARGS__ ) repeat_5( fun,__VA_ARGS__ )
 
-#define repeat( n,fun,... ) comac_join ( repeat_,n )( fun,__VA_ARGS__)
+#define repeat( n,fun,... ) comac_join (repeat_, n)( fun,__VA_ARGS__)
 
 //2.implement
 #define decl_typeof( i,a,... ) typedef typeof( a ) typeof_##a;
@@ -61,7 +62,7 @@ repeat( comac_argc(__VA_ARGS__) ,decl_typeof,__VA_ARGS__ )\
 class type_##name\
 {\
 public:\
-	repeat( comac_argc(__VA_ARGS__) ,impl_typeof,__VA_ARGS__ )\
+	repeat( comac_argc(__VA_ARGS__) ,impl_typeof, __VA_ARGS__ )\
 	int _member_cnt;\
 	type_##name( \
 		repeat( comac_argc(__VA_ARGS__),con_param_typeof,__VA_ARGS__ ) ... ): \
@@ -103,13 +104,14 @@ public:\
 
 
 #define DEFER(param, op)  \
+repeat( comac_argc param , decl_typeof , CONET_REMOVE_BRA_(param))\
 struct __Defer##__LINE__ \
 { \
-   repeat( comac_argc param ,impl_typeof, CONET_REMOVE_BRA_(param) )\
+    repeat( comac_argc param, impl_typeof, CONET_REMOVE_BRA_(param))\
 	int _member_cnt;\
 	__Defer##__LINE__( \
 		repeat( comac_argc param, con_param_typeof, CONET_REMOVE_BRA_(param) ) ... ): \
-		repeat( comac_argc param, param_init_typeof, CONET_REMOVE_BRA(param) ) _member_cnt(comac_argc param) \
+		repeat( comac_argc param, param_init_typeof, CONET_REMOVE_BRA_(param) ) _member_cnt(comac_argc param) \
 	{}\
     ~__Defer##__LINE__() \
     op  \

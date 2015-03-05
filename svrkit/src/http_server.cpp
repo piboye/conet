@@ -179,7 +179,6 @@ int http_server_t::conn_proc(conn_info_t *conn)
         }  else {
             buf = stream->buff;    
             len = stream->max_size;
-            //stream->buff = NULL;
         }
         conn->extend = NULL;
     }
@@ -196,11 +195,11 @@ int http_server_t::conn_proc(conn_info_t *conn)
                     break;
                 }
                 ret = -2;
-                LOG(ERROR)<<"recv failed";
+                LOG(INFO)<<"recv failed";
                 break;
             }
             if (recved < 0) {
-                LOG(ERROR)<<"recv failed [ret="<<ret<<"]";
+                LOG(INFO)<<"recv failed [ret="<<ret<<"]";
                 ret = -2;
                 break;
             }
@@ -236,7 +235,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
 
     if (malloc_buff == 1) free(buf);
 
-    return 0;
+    return ret;
 }
 
 int http_server_t::init(tcp_server_t *tcp_server)

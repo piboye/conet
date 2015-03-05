@@ -43,7 +43,7 @@
 namespace conet
 {
 
-DEFINE_int32(stop_wait_seconds, 2, "server stop wait seconds");
+DEFINE_int32(stop_wait_seconds, 10, "server stop wait seconds");
 DEFINE_string(conf, "", "server conf");
 DEFINE_string(ip, "0.0.0.0", "server ip");
 DEFINE_int32(port, 12314, "server port");
@@ -103,6 +103,10 @@ int get_conf_data(std::string const & conf_file, std::string *data)
 
 static conet::ServerContainer * g_server_container=NULL;
 
+__attribute__((destructor))
+static 
+void fini_google_lib();
+
 static 
 void fini_google_lib()
 {
@@ -136,15 +140,16 @@ int main(int argc, char * argv[])
 {
     int ret = 0;
 
+    ret = gflags::ParseCommandLineFlags(&argc, &argv, false);
+    google::InitGoogleLogging(argv[0]);
+
+
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     signal(SIGINT, sig_exit);
 
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap
     mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk
-
-    ret = gflags::ParseCommandLineFlags(&argc, &argv, false);
-    google::InitGoogleLogging(argv[0]);
 
     ret = call_delay_init();
     if (ret)
@@ -193,7 +198,6 @@ int main(int argc, char * argv[])
 
     conet::call_server_fini_func();
 
-    fini_google_lib();
     return 0;
 }
 

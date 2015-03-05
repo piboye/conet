@@ -23,25 +23,26 @@ using namespace conet;
 
 int main(int argc, char const* argv[])
 {
-    int c=1, b=2;
-    DEFER((c), {
-        printf("end\n");
+    int c=1, b=2, d=3;
+    DEFER((c, b, d), {
+        printf("c:%d, b:%d, d:%d\n", c, b, d);
     });
 
-    conet::Closure<int> *a = NewFunc(int,(), (c, b),
+    conet::Closure<int> *a = NewFunc(int, (), (c, b),
     {
             printf("hello \n");
             return 0;
     });
     a->Run();
 
-    conet::Closure<int> *a2 = NewFunc(int,(), ,
+    /*
+    conet::Closure<int> *a2 = NewFunc(int,(), (),
     {
             printf("hello \n");
             return 0;
     });
     a2->Run();
-    
+   */
     return 0;
 }
 

@@ -30,7 +30,6 @@
 #include "base/ptr_cast.h"
 #include "core/fd_ctx.h"
 
-
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
 DEFINE_int32(max_packet_size, 1*4096, "default max packet size");
@@ -106,7 +105,6 @@ static
 void * alloc_server_work_co(void *arg)
 {
     conet::coroutine_t * co = alloc_coroutine((int (*)(void *))conn_proc_co, NULL);
-    set_auto_delete(co);
     resume(co, NULL);
     return co;
 }
@@ -276,6 +274,7 @@ int tcp_server_t::main_proc2()
 
     std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
+
     int accept_num = FLAGS_accept_num;
     while (0==this->to_stop) 
     {
@@ -323,13 +322,15 @@ int tcp_server_t::main_proc2()
             conn_info->fd = fd;
 
             proc_pool(this, conn_info);
+            conn_info = NULL;
 
             conn_info = this->conn_info_pool.alloc();
         }
     }
 
     if (conn_info) {
-        delete conn_info;
+        this->conn_info_pool.release(conn_info);
+        conn_info = NULL;
     }
 
     close(listen_fd);
@@ -347,6 +348,7 @@ int tcp_server_t::stop(int wait_ms)
     }
 
     conet::wait(server->main_co, 20);
+    free_coroutine(server->main_co);
     server->main_co = NULL;
     if (wait_ms >0) {
         for (int i=0; i< wait_ms; i+=1000) {

@@ -312,23 +312,18 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                     http_server_t * http_server = (http_server_t*)(tcp_server->extend);
                     conn->extend = stream;
                     ret = http_server->conn_proc(conn);
-                    server->m_packet_stream_pool.release(stream);
-                    return ret;
-                } else {
-                    server->m_packet_stream_pool.release(stream);
-                    return -1;
-                }
+                    break;
+                } 
             } else {
                 LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
             }
-            server->m_packet_stream_pool.release(stream);
+            ret  = -1;
             break;
         }
 
-        server->m_packet_stream_pool.release(stream);
-
         if ((data == NULL) || (packet_len <=0)) {
             LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
+            ret = -2;
             break;        
         }
 
