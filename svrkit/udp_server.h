@@ -98,7 +98,7 @@ struct udp_server_t: public server_base_t
 
     ~udp_server_t()
     {
-
+        buffer_pool.fini();
     }
 };
 

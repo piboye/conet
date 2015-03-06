@@ -83,9 +83,9 @@ int conn_proc_co(conn_info_t *info)
             close(info->fd);
             info->fd = -1;
         }
-        --server->data.cur_conn_num;
         server->conn_info_pool.release(info);
         info = NULL;
+        --server->data.cur_conn_num;
     }
 
     return 0;
@@ -142,14 +142,16 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
 
 int tcp_server_t::start()
 {
-    if (this->main_co == NULL)
-    {
-        this->main_co = alloc_coroutine(
-                conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
-                this);
-        //conet::set_auto_delete(this->main_co);
-        conet::resume(this->main_co);
+    if (this->main_co) {
+        LOG(ERROR)<<"has been start";
+        return 0;
     }
+
+    this->main_co = alloc_coroutine(
+            conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
+            this);
+    //conet::set_auto_delete(this->main_co);
+    conet::resume(this->main_co);
     return 0;
 }
 
@@ -344,6 +346,10 @@ int tcp_server_t::stop(int wait_ms)
 
     server->to_stop = 1;
     if (server->state == SERVER_STOPED) {
+        return 0;
+    }
+    if (NULL == server->main_co) {
+        LOG(ERROR)<<"tcp server stop by multi time";
         return 0;
     }
 

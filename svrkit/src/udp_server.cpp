@@ -40,7 +40,9 @@ int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
     conet::coroutine_t *co = CO_SELF();
-    req = (udp_server_t::udp_req_ctx_t *)yield();
+    if (req == NULL) {
+        req = (udp_server_t::udp_req_ctx_t *)yield();
+    }
     if (req == NULL)
     {
         return 0;
@@ -62,16 +64,16 @@ int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
         size_t olen = max_packet_size;
         ret = conn_proc(cb_arg, &req->conn_info, data, len, obuffer,  &olen);
         
-        if ( ret== 0 && olen > 0) {
+        if ( ret == 0 && olen > 0) {
             ret = sendto(server->udp_socket, obuffer, olen, 0, 
                 (sockaddr *) &req->conn_info.addr, sizeof(req->conn_info.addr));
         }
 
         co = req->conn_info.co;
         --server->data.cur_conn_num;
-        server->udp_req_pool.release(req);
         server->buffer_pool.free(data);
         server->buffer_pool.free(obuffer);
+        server->udp_req_pool.release(req);
 
         req = NULL;
 
@@ -83,9 +85,12 @@ int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
     } while(req && !server->to_stop);
 
     if (req) {
-        --server->data.cur_conn_num;
+        if (req->data) {
+            server->buffer_pool.free(req->data);
+        }
         server->udp_req_pool.release(req);
         req = NULL;
+        --server->data.cur_conn_num;
     }
     return 0;
 }
@@ -141,6 +146,11 @@ int udp_server_t::init(const char *ip, int port, int fd)
 
 int udp_server_t::start()
 {
+    if (this->main_co) {
+        LOG(ERROR)<<"has been start";
+        return 0;
+    }
+
     this->main_co = alloc_coroutine(conet::ptr_cast<co_main_func_t>(&udp_server_t::main_proc), this);
     conet::resume(this->main_co);
     return 0;
@@ -239,7 +249,15 @@ int udp_server_t::stop(int wait_ms)
         return 0;
     }
 
-    conet::wait(server->main_co, 20);
+    if (NULL == server->main_co) {
+        LOG(ERROR)<<"udp server stop by multi time";
+        return 0;
+    }
+
+    conet::wait(server->main_co);
+    conet::free_coroutine(server->main_co);
+    server->main_co = NULL;
+
     if (wait_ms >0) {
         for (int i=0; i< wait_ms; i+=1000) {
             if (server->data.cur_conn_num <= 0) break;
