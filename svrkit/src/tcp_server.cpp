@@ -147,7 +147,7 @@ int tcp_server_t::start()
         this->main_co = alloc_coroutine(
                 conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
                 this);
-        conet::set_auto_delete(this->main_co);
+        //conet::set_auto_delete(this->main_co);
         conet::resume(this->main_co);
     }
     return 0;
@@ -347,7 +347,7 @@ int tcp_server_t::stop(int wait_ms)
         return 0;
     }
 
-    conet::wait(server->main_co, 20);
+    conet::wait(server->main_co);
     free_coroutine(server->main_co);
     server->main_co = NULL;
     if (wait_ms >0) {
