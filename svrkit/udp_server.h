@@ -27,6 +27,7 @@
 #include "../base/unix_socket_send_fd.h"
 #include "conn_info.h"
 #include "server_base.h"
+#include "../core/wait_queue.h"
 
 namespace conet
 {
@@ -37,10 +38,15 @@ struct udp_server_t: public server_base_t
 {
 
     int udp_socket;
+    int write_fd;
+
     std::string ip;
     int port;
 
     coroutine_t *main_co;
+    // 数据发送协程
+    coroutine_t *tx_co;
+
     int state;
     int to_stop;
     void *extend;
@@ -51,6 +57,29 @@ struct udp_server_t: public server_base_t
         char * data;
         size_t len;
     };
+
+    struct tx_data_t
+    {
+        list_head link_to;
+        void *data;
+        int len;
+        sockaddr dst_addr;
+        void init(void *data, int len, sockaddr const *addr)
+        {
+            INIT_LIST_HEAD(&link_to);
+            this->data = data;
+            this->len = len;
+            memcpy(&this->dst_addr, addr, sizeof(*addr));
+        }
+    };
+
+    // 发送数据等待通知
+    conet::WaitQueue rsp_wait;
+
+    ObjPool<tx_data_t> tx_data_pool;
+
+    list_head tx_queue;
+
 
     typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn, 
             char const * data, size_t len,

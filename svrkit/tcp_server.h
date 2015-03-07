@@ -35,14 +35,19 @@ struct coroutine_t;
 
 struct tcp_server_t: public server_base_t
 {
-    int listen_fd;
     std::string ip;
     int port;
+    int listen_fd;
 
+    //主逻辑
     coroutine_t *main_co;
+
+
     int state;
     int to_stop;
     void *extend;
+
+
 
     typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn);
 

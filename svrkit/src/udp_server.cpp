@@ -65,14 +65,15 @@ int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
         ret = conn_proc(cb_arg, &req->conn_info, data, len, obuffer,  &olen);
         
         if ( ret == 0 && olen > 0) {
-            ret = sendto(server->udp_socket, obuffer, olen, 0, 
-                (sockaddr *) &req->conn_info.addr, sizeof(req->conn_info.addr));
+            udp_server_t::tx_data_t * out_data = server->tx_data_pool.alloc();
+            out_data->init(obuffer, olen, (sockaddr *) &req->conn_info.addr);
+            list_add_tail(&out_data->link_to, &server->tx_queue);
+            server->rsp_wait.wakeup_all();
         }
 
         co = req->conn_info.co;
         --server->data.cur_conn_num;
         server->buffer_pool.free(data);
-        server->buffer_pool.free(obuffer);
         server->udp_req_pool.release(req);
 
         req = NULL;
@@ -135,6 +136,12 @@ int udp_server_t::init(const char *ip, int port, int fd)
     server->data.cur_conn_num = 0;
     server->to_stop = 0;
     server->udp_socket = fd;
+    server->write_fd = -1;
+
+    INIT_LIST_HEAD(&server->tx_queue);
+
+
+    server->tx_co = NULL;
     server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
     server->co_pool.set_free_obj_func(free_server_work_co, server);
 
@@ -168,6 +175,49 @@ int udp_server_t::main_proc()
 }
 
 
+static int do_send_data(void * arg)
+{
+    int ret =0;
+    udp_server_t *server = (udp_server_t *)(arg);
+    int write_fd = dup(server->udp_socket);
+    server->write_fd = write_fd;
+    while (server->to_stop == 0)
+    {
+        list_head queue;
+        INIT_LIST_HEAD(&queue);
+        list_swap(&queue, &server->tx_queue);
+
+        if (list_empty(&queue))
+        {
+            server->rsp_wait.wait_on();
+            continue;
+        }
+
+        udp_server_t::tx_data_t * out_data= NULL, *n = NULL;
+        list_for_each_entry_safe(out_data, n, &queue, udp_server_t::tx_data_t::link_to)
+        {
+            ret = sendto(write_fd, out_data->data, out_data->len, 0, 
+                (sockaddr *) &out_data->dst_addr, sizeof(out_data->dst_addr));
+            if (ret<0)
+            {
+                LOG(ERROR)<<"udp send data failed!"
+                        "[ip:"<<server->ip<<"]"
+                        "[port:"<<server->port<<"]"
+                        "[data len:"<<out_data->len<<"]"
+                        "[ret:"<<ret<<"]"
+                        ;
+            }
+            server->buffer_pool.free(out_data->data);
+            list_del(&out_data->link_to);
+            server->tx_data_pool.release(out_data);
+        }
+    }
+
+    close(write_fd);
+    server->write_fd = 0;
+    return 0;
+}
+
 int udp_server_t::main_proc2()
 {
 
@@ -184,6 +234,9 @@ int udp_server_t::main_proc2()
     this->udp_socket = udp_socket;
 
     set_none_block(udp_socket, true);
+
+    tx_co = alloc_coroutine((int (*)(void *))do_send_data, this);
+    conet::resume(tx_co, this);
 
     int ret = 0;
 
@@ -234,8 +287,12 @@ int udp_server_t::main_proc2()
     if (req) {
         delete req;
     }
-
     close(udp_socket);
+
+    this->rsp_wait.wakeup_all();
+    conet::wait(tx_co);
+    conet::free_coroutine(tx_co);
+    tx_co = NULL;
     this->state = SERVER_STOPED;
     return 0;
 }
