@@ -115,6 +115,7 @@ cc_library(
         "src/rpc_pb_server.cpp",
         "src/rpc_pb_server_base.cpp",
         "src/server_common.cpp",
+        "src/channel.cpp",
     ],
     incs= [ 
         "./",
