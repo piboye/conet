@@ -31,17 +31,18 @@
 #define CONET_DEFER_PARAM_INIT(r1, data, i, a) BOOST_PP_COMMA_IF(i) a(BOOST_PP_CAT(a,r))
 
 
-#define CONET_DEFER(param, op)  \
-BOOST_PP_SEQ_FOR_EACH(CONET_DEFER_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ param) \
+#define CONET_DEFER(param, op)  CONET_DEFER_IMPL(param, BOOST_PP_VARIADIC_TO_SEQ param, op) 
+#define CONET_DEFER_IMPL(param, param_seq , op) \
+BOOST_PP_SEQ_FOR_EACH(CONET_DEFER_DECL_TYPEOF, data, param_seq) \
 struct __conet_defer_t_##__LINE__ \
 { \
-    BOOST_PP_SEQ_FOR_EACH(CONET_DEFER_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ param) \
+    BOOST_PP_SEQ_FOR_EACH(CONET_DEFER_IMPL_REF_TYPE, data, param_seq) \
     explicit \
     __conet_defer_t_##__LINE__ \
     (\
-        BOOST_PP_SEQ_FOR_EACH_I(CONET_DEFER_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ param) \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_DEFER_PARAM_DEF, data, param_seq) \
     ) :\
-        BOOST_PP_SEQ_FOR_EACH_I(CONET_DEFER_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ param) \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_DEFER_PARAM_INIT, data, param_seq) \
 	{}\
     \
     ~__conet_defer_t_##__LINE__()\
