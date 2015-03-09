@@ -71,6 +71,17 @@ cc_test(
          ],
 );
 
+
+cc_test(
+    name='defer_test',
+    srcs=[
+        "src/defer_test.cpp",
+    ],
+    incs=[
+        "./",
+    ],
+);
+
 cc_binary(
     name = 'tls_bench',
     srcs = [
