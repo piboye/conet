@@ -15,14 +15,14 @@
  *
  * =====================================================================================
  */
-#include <stdlib.h>
+
 #include "defer.h"
+#include <stdlib.h>
 #include "thirdparty/gtest/gtest.h"
 
 void f(int *i)
 {
-    int j=0;
-    CONET_DEFER( (i, j), {
+    CONET_DEFER((i), {
         *i = 4;
     });
     *i=3;
