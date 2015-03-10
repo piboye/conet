@@ -15,16 +15,16 @@
  *
  * =====================================================================================
  */
-#include "functor.h"
+#include "closure.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "thirdparty/gtest/gtest.h"
 
 using namespace conet;
-TEST(functor, new_func)
+TEST(closure, new_)
 {
     int c=1, b=2;
-    Closure<int,int> *a = NewFunc(int, (int k), (c, b),
+    closure_t<int,int> *a = NewClosure(int, (int k), (c, b),
     {
             printf("hello k:%d, c:%d, d:%d\n", k,  c, b);
             return k+c+b;
@@ -32,7 +32,7 @@ TEST(functor, new_func)
     ASSERT_EQ(6, a->Run(3));
     delete a;
 
-    Closure<int> *a2 = NewFunc(int,(),
+    closure_t<int> *a2 = NewClosure(int,(),
     {
             printf("hello \n");
             return 4;

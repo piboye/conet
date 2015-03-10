@@ -154,9 +154,9 @@ cc_binary(
 ) 
 
 cc_test(
-    name = 'functor_test',
+    name = 'closure_test',
     srcs = [
-        'src/functor_test.cpp',
+        'src/closure_test.cpp',
     ],
 
     incs= [ 

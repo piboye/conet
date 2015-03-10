@@ -590,17 +590,17 @@ void cancel_interval(uint64_t id)
 template<typename T>
 T call_closure(void *arg)
 {
-    Closure<T> * cl = (Closure<T> *)(arg);
+    closure_t<T> * cl = (closure_t<T> *)(arg);
     return cl->Run();
 }
 
 
-uint64_t set_timeout(Closure<void> *cl, int ms, int stack_size)
+uint64_t set_timeout(closure_t<void> *cl, int ms, int stack_size)
 {
     return set_timeout(&call_closure<void>, cl, ms, stack_size);
 }
 
-uint64_t set_interval(Closure<void> *cl, int ms, int stack_size)
+uint64_t set_interval(closure_t<void> *cl, int ms, int stack_size)
 {
     return set_interval(&call_closure<void>, cl, ms, stack_size);
 }

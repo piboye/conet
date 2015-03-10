@@ -111,8 +111,8 @@ int wait(coroutine_t *co, uint32_t ms);
 uint64_t set_timeout(void (*fn)(void *), void *, int ms, int stack_size = 0);
 uint64_t set_interval(void (*fn)(void *), void *, int ms, int stack_size = 0);
 
-uint64_t set_timeout(Closure<void> *cl, int ms, int stack_size=0);
-uint64_t set_interval(Closure<void> *cl, int ms, int stack_size=0);
+uint64_t set_timeout(closure_t<void> *cl, int ms, int stack_size=0);
+uint64_t set_interval(closure_t<void> *cl, int ms, int stack_size=0);
 
 void cancel_timeout(uint64_t);
 void cancel_interval(uint64_t);
