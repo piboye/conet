@@ -15,34 +15,29 @@
  *
  * =====================================================================================
  */
+#include "functor.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "functor.h"
+#include "thirdparty/gtest/gtest.h"
 
 using namespace conet;
-
-int main(int argc, char const* argv[])
+TEST(functor, new_func)
 {
-    int c=1, b=2, d=3;
-    DEFER((c, b, d), {
-        printf("c:%d, b:%d, d:%d\n", c, b, d);
+    int c=1, b=2;
+    Closure<int,int> *a = NewFunc(int, (int k), (c, b),
+    {
+            printf("hello k:%d, c:%d, d:%d\n", k,  c, b);
+            return k+c+b;
     });
+    ASSERT_EQ(6, a->Run(3));
+    delete a;
 
-    conet::Closure<int> *a = NewFunc(int, (), (c, b),
+    Closure<int> *a2 = NewFunc(int,(),
     {
             printf("hello \n");
-            return 0;
+            return 4;
     });
-    a->Run();
-
-    /*
-    conet::Closure<int> *a2 = NewFunc(int,(), (),
-    {
-            printf("hello \n");
-            return 0;
-    });
-    a2->Run();
-   */
-    return 0;
+    ASSERT_EQ(4, a2->Run());
+    delete a2;
 }
 

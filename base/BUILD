@@ -153,7 +153,7 @@ cc_binary(
     ],
 ) 
 
-cc_binary(
+cc_test(
     name = 'functor_test',
     srcs = [
         'src/functor_test.cpp',

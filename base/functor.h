@@ -11,112 +11,94 @@
  *       Compiler:  gcc
  *
  *         Author:  piboye
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
 
 #ifndef __CONET_FUNCTOR_H__
 #define __CONET_FUNCTOR_H__
+
+#define BOOST_PP_VARIADICS 1
+#include "boost/preprocessor.hpp"
 #include "closure.h"
 
-namespace conet
-{
-
-//1.base 
-//-- 1.1 comac_argc
-
-#define comac_get_args_cnt( ... ) comac_arg_n( __VA_ARGS__ )
-#define comac_arg_n(_0, _1,_2,_3,_4,_5,_6,_7,N,...) N
-#define comac_args_seqs() 0,7,6,5,4,3,2,1,0
-
-#define comac_argc( ... ) comac_get_args_cnt(__VA_ARGS__, comac_args_seqs() )
-
-#define comac_join_1( x,y ) x##y
-#define comac_join( x,y) comac_join_1( x,y )
-
-//-- 1.2 repeat
-#define repeat_0( fun,a, ... ) 
-#define repeat_1( fun,a, ... ) fun( 1,a,__VA_ARGS__ ) repeat_0( fun,__VA_ARGS__ )
-#define repeat_2( fun,a, ... ) fun( 2,a,__VA_ARGS__ ) repeat_1( fun,__VA_ARGS__ )
-#define repeat_3( fun,a, ... ) fun( 3,a,__VA_ARGS__ ) repeat_2( fun,__VA_ARGS__ )
-#define repeat_4( fun,a, ... ) fun( 4,a,__VA_ARGS__ ) repeat_3( fun,__VA_ARGS__ )
-#define repeat_5( fun,a, ... ) fun( 5,a,__VA_ARGS__ ) repeat_4( fun,__VA_ARGS__ )
-#define repeat_6( fun,a, ... ) fun( 6,a,__VA_ARGS__ ) repeat_5( fun,__VA_ARGS__ )
-
-#define repeat( n,fun,... ) comac_join (repeat_, n)( fun,__VA_ARGS__)
-
-//2.implement
-#define decl_typeof( i,a,... ) typedef typeof( a ) typeof_##a;
-#define impl_typeof( i,a,... ) typeof_##a & a;
-#define impl_typeof_cpy( i,a,... ) typeof_##a a;
-#define con_param_typeof( i,a,... ) typeof_##a & a##r,
-#define cpy_param_typeof( i,a,... ) typeof_##a a##r,
-#define param_init_typeof( i,a,... ) a(a##r),
+#define CONET_REF_DECL_TYPEOF(r, data,  a) typedef typeof(a) BOOST_PP_CAT(typeof_, a) ;
+#define CONET_REF_IMPL_REF_TYPE(r, data, a) BOOST_PP_CAT(typeof_,a) &a;
+#define CONET_COPY_IMPL_REF_TYPE(r, data, a) BOOST_PP_CAT(typeof_,a) a;
+#define CONET_REF_PARAM_DEF(r1, data, i, a) BOOST_PP_COMMA_IF(i) BOOST_PP_CAT(typeof_,a) & BOOST_PP_CAT(a,r)
+#define CONET_COPY_PARAM_DEF(r1, data, i, a) BOOST_PP_COMMA_IF(i) BOOST_PP_CAT(typeof_,a) const & BOOST_PP_CAT(a,r)
+#define CONET_REF_PARAM_INIT(r1, data, i, a) BOOST_PP_COMMA_IF(i) a(BOOST_PP_CAT(a,r))
 
 
-//2.1 reference
+#define MAKE_REF_IMPL(name, list)\
+BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, list) \
+struct __ref_type_##name\
+{\
+    BOOST_PP_SEQ_FOR_EACH(CONET_REF_IMPL_REF_TYPE, data, list) \
+	__ref_type_##name ( \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_DEF, data, list) \
+    ): \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, list) \
+	{}\
+}
 
-#define co_ref( name,... )\
-repeat( comac_argc(__VA_ARGS__) ,decl_typeof,__VA_ARGS__ )\
-class type_##name\
+#define MAKE_REF(name, vars) MAKE_REF_IMPL(name, BOOST_PP_VARIADIC_TO_SEQ vars) name vars
+
+#define MAKE_COPY(name , vars ) MAKE_COPY_IMPL(name, BOOST_PP_VARIADIC_TO_SEQ vars) name vars
+
+#define MAKE_COPY_IMPL(name, list)\
+BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, list) \
+class __copy_type_##name\
 {\
 public:\
-	repeat( comac_argc(__VA_ARGS__) ,impl_typeof, __VA_ARGS__ )\
-	int _member_cnt;\
-	type_##name( \
-		repeat( comac_argc(__VA_ARGS__),con_param_typeof,__VA_ARGS__ ) ... ): \
-		repeat( comac_argc(__VA_ARGS__),param_init_typeof,__VA_ARGS__ ) _member_cnt(comac_argc(__VA_ARGS__)) \
+    BOOST_PP_SEQ_FOR_EACH(CONET_COPY_IMPL_REF_TYPE, data, list) \
+	__copy_type_##name( \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_DEF, data, list) \
+    ): \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, list) \
 	{}\
-} name( __VA_ARGS__ ) ;
+}
 
-#define CONET_REMOVE_BRA_2(...) __VA_ARGS__
 
-#define CONET_REMOVE_BRA_(a) CONET_REMOVE_BRA_2 a
+// 创建一个函数 , 返回是Closure
+#define NewFunc(return_type, param, ...) \
+    BOOST_PP_IF(BOOST_PP_GREATER(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__) , 1), \
+            NewFuncWithCopy, NewFuncRaw) \
+            (return_type, param, __VA_ARGS__)
 
-#define NewFunc(return_type, param, a_copy, body) \
+
+// 创建一个函数， 不拷贝局部变量
+#define NewFuncRaw(return_type, param, body) \
     ({ \
      typedef typeof(*NewClosure((return_type (*) param)(NULL))) cl_type; \
-      repeat(comac_argc(CONET_REMOVE_BRA_(a_copy)),  \
-          decl_typeof, \
-          CONET_REMOVE_BRA_(a_copy)) \
-      \
      struct  conet_functor_ :  \
         public cl_type \
      {  \
-      repeat(comac_argc(CONET_REMOVE_BRA_(a_copy)),  \
-          impl_typeof_cpy, \
-          CONET_REMOVE_BRA_(a_copy))  \
-      \
-       int __cpy_param_num; \
-         virtual bool IsSelfDelete() const { return false;} \
-         conet_functor_( \
-            repeat(comac_argc(CONET_REMOVE_BRA_(a_copy)), \
-                cpy_param_typeof, \
-                CONET_REMOVE_BRA_(a_copy))  ...) :\
-                  repeat(comac_argc(CONET_REMOVE_BRA_(a_copy)), param_init_typeof, CONET_REMOVE_BRA_(a_copy)) \
-                  __cpy_param_num(comac_argc(CONET_REMOVE_BRA_(a_copy)))  \
-             {}  \
-         virtual ~conet_functor_() { } \
-      virtual return_type Run param { \
+       bool IsSelfDelete() const { return false;} \
+       return_type Run param \
               body \
-     } };  new conet_functor_ a_copy;})
+     };  new conet_functor_();})
 
+// 创建一个函数， 并拷贝局部变量
+#define NewFuncWithCopy(return_type, param, a_copy, body) \
+    ({ \
+     typedef typeof(*NewClosure((return_type (*) param)(NULL))) cl_type; \
+     BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+     struct  conet_functor_ :  \
+        public cl_type \
+     {  \
+        BOOST_PP_SEQ_FOR_EACH(CONET_COPY_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+        conet_functor_( \
+            BOOST_PP_SEQ_FOR_EACH_I(CONET_COPY_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+            ): \
+            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+        { \
+        } \
+       bool IsSelfDelete() const { return false;} \
+       return_type Run param  \
+              body \
+      };  new conet_functor_ a_copy;})
 
-#define DEFER(param, op)  \
-repeat( comac_argc param , decl_typeof , CONET_REMOVE_BRA_(param))\
-struct __Defer##__LINE__ \
-{ \
-    repeat( comac_argc param, impl_typeof, CONET_REMOVE_BRA_(param))\
-	int _member_cnt;\
-	__Defer##__LINE__( \
-		repeat( comac_argc param, con_param_typeof, CONET_REMOVE_BRA_(param) ) ... ): \
-		repeat( comac_argc param, param_init_typeof, CONET_REMOVE_BRA_(param) ) _member_cnt(comac_argc param) \
-	{}\
-    ~__Defer##__LINE__() \
-    op  \
-} __defer_##__LINE__ param \
-
-}
 
 #endif /* end of include guard */
