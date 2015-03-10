@@ -45,6 +45,7 @@ struct closure_base_t
                 typename BOOST_PP_CAT(arg_type_,n) = void
 
 
+// closure 主模板
 template < BOOST_PP_REPEAT(BOOST_PP_INC(CONET_MAX_CLOSURE_PARAM_NUM), CONET_CLOSURE_TPL_TYPE_DEF, t)>
 struct closure_t : public closure_base_t
 {
@@ -56,6 +57,7 @@ struct closure_t : public closure_base_t
 
 #define CONET_DEFINE_CLOSURE_IMPL(z, n, t)  CONET_DEFINE_CLOSURE_IMPL2(BOOST_PP_INC(n)) \
 
+// 实现 不同参数的 clsoure 特化
 #define CONET_DEFINE_CLOSURE_IMPL2(n)  \
 template  \
     <  BOOST_PP_ENUM_PARAMS(n, typename arg_type_)  > \
@@ -71,8 +73,13 @@ struct closure_t \
 
 BOOST_PP_REPEAT(CONET_MAX_CLOSURE_PARAM_NUM, CONET_DEFINE_CLOSURE_IMPL, t)
 
+
+
+
 #define GET_CLOSURE_TYPE_BY_FUNC(z, n, t) GET_CLOSURE_TYPE_BY_FUNC2(BOOST_PP_INC(n))  \
 
+
+// 通过 函数原形 获取对应 closure 类型
 #define GET_CLOSURE_TYPE_BY_FUNC2(n)  \
 template  < \
     BOOST_PP_ENUM_PARAMS(n, typename arg_type_)   \
@@ -97,6 +104,7 @@ BOOST_PP_REPEAT(CONET_MAX_CLOSURE_PARAM_NUM, GET_CLOSURE_TYPE_BY_FUNC, t)
 #define CONET_REF_PARAM_INIT(r1, data, i, a) BOOST_PP_COMMA_IF(i) a(BOOST_PP_CAT(a,r))
 
 
+// 打包局部变量 到一起, 通过引用方式
 #define MAKE_REF_IMPL(name, list)\
 BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, list) \
 struct __ref_type_##name\
@@ -111,9 +119,11 @@ struct __ref_type_##name\
 
 #define MAKE_REF(name, vars) MAKE_REF_IMPL(name, BOOST_PP_VARIADIC_TO_SEQ vars) name vars
 
+
+// 打包局部变量 到一起, 通过拷贝方式
 #define MAKE_COPY(name , vars ) MAKE_COPY_IMPL(name, BOOST_PP_VARIADIC_TO_SEQ vars) name vars
 
-#define MAKE_COPY_IMPL(name, list)\
+#define MAKE_COPY_IMPL(name, list) \
 BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, list) \
 class __copy_type_##name\
 {\
@@ -136,53 +146,72 @@ public:\
 
 // 创建一个Closure， 不拷贝局部变量
 #define NewClosureRaw(return_type, param, body) \
-    ({ \
-     typedef typeof(*conet::get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
-     struct  conet_functor_ :  \
-        public cl_type \
-     {  \
-       bool IsSelfDelete() const { return false;} \
-       return_type Run param \
-              body \
-     };  new conet_functor_();})
+({ \
+ typedef typeof(*conet::get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
+ struct  conet_functor_##__LINE__:  \
+    public cl_type \
+ {  \
+   return_type Run param \
+          body \
+ };  \
+ new conet_functor_##__LINE__(); \
+})
 
 // 创建一个Closure， 并拷贝局部变量
 #define NewClosureWithCopy(return_type, param, a_copy, body) \
-    ({ \
-     typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
-     BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-     struct  conet_functor_ :  \
-        public cl_type \
-     {  \
-        BOOST_PP_SEQ_FOR_EACH(CONET_COPY_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-        conet_functor_( \
-            BOOST_PP_SEQ_FOR_EACH_I(CONET_COPY_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-            ): \
-            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-        { \
-        } \
-       return_type Run param  \
-              body \
-      };  new conet_functor_ a_copy;})
+({ \
+ typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
+ BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+ struct  conet_functor_ ## __LINE__:  \
+    public cl_type \
+ {  \
+    BOOST_PP_SEQ_FOR_EACH(CONET_COPY_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+    conet_functor_##__LINE__( \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_COPY_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+        ): \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+    { \
+    } \
+   return_type Run param  \
+          body \
+  };  \
+  new conet_functor_##__LINE__ a_copy; \
+})
 
 // 创建一个Closure， 并引用局部变量
 #define NewClosureWithRef(return_type, param, a_ref, body) \
-    ({ \
-     typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
-     BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-     struct  conet_functor_ :  \
-        public cl_type \
-     {  \
-        BOOST_PP_SEQ_FOR_EACH(CONET_REF_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-        conet_functor_( \
-            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-            ): \
-            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
-        { \
-        } \
-       return_type Run param  \
-              body \
-      };  new conet_functor_ a_copy;})
+({ \
+ typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
+ BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_ref) \
+ struct  conet_functor_##__LINE__ :  \
+    public cl_type \
+ {  \
+    BOOST_PP_SEQ_FOR_EACH(CONET_REF_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_ref) \
+    conet_functor_##__LINE__( \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_ref) \
+        ): \
+        BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_ref) \
+    { \
+    } \
+    return_type Run param  \
+          body \
+ };  \
+ new conet_functor_##__LINE__ a_ref; \
+})
+
+
+// 创建一个Function
+
+#define NewFunc(return_type, param, body) \
+({ \
+  struct  conet_functor_##__LINE__ \
+  {  \
+    static return_type Run param  \
+    body \
+  };\
+ &conet_functor_##__LINE__::Run; \
+})
+
 
 }
 
