@@ -127,15 +127,15 @@ public:\
 }
 
 
-// 创建一个函数 , 返回是Closure
+// 创建Closure
 #define NewClosure(return_type, param, ...) \
     BOOST_PP_IF(BOOST_PP_GREATER(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__) , 1), \
-            NewFuncWithCopy, NewFuncRaw) \
+            NewClosureWithCopy, NewClosureRaw) \
             (return_type, param, __VA_ARGS__)
 
 
-// 创建一个函数， 不拷贝局部变量
-#define NewFuncRaw(return_type, param, body) \
+// 创建一个Closure， 不拷贝局部变量
+#define NewClosureRaw(return_type, param, body) \
     ({ \
      typedef typeof(*conet::get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
      struct  conet_functor_ :  \
@@ -146,8 +146,8 @@ public:\
               body \
      };  new conet_functor_();})
 
-// 创建一个函数， 并拷贝局部变量
-#define NewFuncWithCopy(return_type, param, a_copy, body) \
+// 创建一个Closure， 并拷贝局部变量
+#define NewClosureWithCopy(return_type, param, a_copy, body) \
     ({ \
      typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
      BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
@@ -164,6 +164,26 @@ public:\
        return_type Run param  \
               body \
       };  new conet_functor_ a_copy;})
+
+// 创建一个Closure， 并引用局部变量
+#define NewClosureWithRef(return_type, param, a_ref, body) \
+    ({ \
+     typedef typeof(*get_closure_type_by_func((return_type (*) param)(NULL))) cl_type; \
+     BOOST_PP_SEQ_FOR_EACH(CONET_REF_DECL_TYPEOF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+     struct  conet_functor_ :  \
+        public cl_type \
+     {  \
+        BOOST_PP_SEQ_FOR_EACH(CONET_REF_IMPL_REF_TYPE, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+        conet_functor_( \
+            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_DEF, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+            ): \
+            BOOST_PP_SEQ_FOR_EACH_I(CONET_REF_PARAM_INIT, data, BOOST_PP_VARIADIC_TO_SEQ a_copy) \
+        { \
+        } \
+       return_type Run param  \
+              body \
+      };  new conet_functor_ a_copy;})
+
 }
 
 #endif /* end of include guard */ 
