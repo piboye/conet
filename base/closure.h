@@ -212,6 +212,12 @@ public:\
  &conet_functor_##__LINE__::Run; \
 })
 
+template<typename T>
+T call_closure(void *arg)
+{
+    closure_t<T> * cl = (closure_t<T> *)(arg);
+    return cl->Run();
+}
 
 }
 

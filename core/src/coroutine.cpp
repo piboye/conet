@@ -587,13 +587,6 @@ void cancel_interval(uint64_t id)
     return cancel_timeout(id);
 }
 
-template<typename T>
-T call_closure(void *arg)
-{
-    closure_t<T> * cl = (closure_t<T> *)(arg);
-    return cl->Run();
-}
-
 
 uint64_t set_timeout(closure_t<void> *cl, int ms, int stack_size)
 {
