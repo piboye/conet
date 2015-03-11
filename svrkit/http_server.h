@@ -103,7 +103,7 @@ struct http_server_t: public server_base_t
     int init(tcp_server_t *tcp_server);
     int start();
 
-    int stop(int wait=0);
+    int do_stop(int wait);
 
     int conn_proc(conn_info_t *conn);
 };

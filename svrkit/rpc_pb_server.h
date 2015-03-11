@@ -46,7 +46,6 @@ struct rpc_pb_server_t: public server_base_t
     obj_pool_t m_packet_stream_pool;
 
     int max_packet_size;
-    int to_stop;
 
     //异步业务处理协程池
     obj_pool_t worker_pool;
@@ -62,7 +61,7 @@ struct rpc_pb_server_t: public server_base_t
 
     int start();
 
-    int stop(int wait_ms);
+    virtual int do_stop(int wait_ms);
 
     virtual ~rpc_pb_server_t();
 

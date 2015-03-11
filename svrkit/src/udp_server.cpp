@@ -127,14 +127,12 @@ int udp_server_t::init(const char *ip, int port, int fd)
     udp_server_t *server = this;
     server->ip = ip;
     server->port = port;
-    server->state = SERVER_START;
     server->main_co = NULL;
     server->extend = NULL;
 
     server->conf.max_conn_num = 10000;
     server->conf.max_packet_size = 1472;
     server->data.cur_conn_num = 0;
-    server->to_stop = 0;
     server->udp_socket = fd;
     server->write_fd = -1;
 
@@ -297,14 +295,9 @@ int udp_server_t::main_proc2()
     return 0;
 }
 
-int udp_server_t::stop(int wait_ms)
+int udp_server_t::do_stop(int wait_ms)
 {
     udp_server_t *server = this;
-
-    server->to_stop = 1;
-    if (server->state == SERVER_STOPED) {
-        return 0;
-    }
 
     if (NULL == server->main_co) {
         LOG(ERROR)<<"udp server stop by multi time";

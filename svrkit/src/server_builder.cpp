@@ -24,6 +24,7 @@
 #include <pthread.h>
 #include "base/cpu_affinity.h"
 #include <sched.h>
+#include "core/parallel.h"
 
 namespace conet
 {
@@ -102,15 +103,22 @@ void* server_worker_t::main(void * arg)
 
 int server_worker_t::proc_server_exit()
 {
-    int ret = 0;
-    for(size_t i=0; i< rpc_servers.size(); ++i)
-    {
-        ret = rpc_servers[i]->stop(exit_seconds * 1000);
-        if (ret)
+    BEGIN_PARALLEL {
+        for(size_t i=0; i< rpc_servers.size(); ++i)
         {
-            LOG(ERROR)<<"stop rpc server failed! ";
+            rpc_pb_server_t *server = rpc_servers[i];
+            int wait_ms = exit_seconds *1000;
+            DO_PARALLEL((server, wait_ms), {
+                int ret = 0;
+                ret = server->stop(wait_ms);
+                if (ret)
+                {
+                    LOG(ERROR)<<"stop rpc server failed! ";
+                }
+            });
         }
-    }
+    } WAIT_ALL_PARALLEL();
+
     for( size_t i = 0; i < rpc_servers.size(); ++i)
     {
         delete rpc_servers[i]->base_server;

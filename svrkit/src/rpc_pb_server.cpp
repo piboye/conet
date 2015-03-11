@@ -33,6 +33,7 @@
 #include "cmd_base.h"
 
 #include "glog/logging.h"
+#include "core/parallel.h"
 
 using namespace conet_rpc_pb;
 
@@ -220,14 +221,23 @@ int rpc_pb_server_t::start()
     return ret;
 }
 
-int rpc_pb_server_t::stop(int wait)
+int rpc_pb_server_t::do_stop(int wait_ms)
 {
     int ret = 0;
-    to_stop = 1;
-    for (size_t i= 0; i< m_servers.size(); ++i)
-    {
-        ret = m_servers[i]->stop(wait);
-    }
+    BEGIN_PARALLEL {
+        for (size_t i= 0; i< m_servers.size(); ++i)
+        {
+            server_base_t *server = m_servers[i];
+            DO_PARALLEL((server, wait_ms), {
+                int ret = 0;
+                ret = server->stop(wait_ms);
+                if (ret)
+                {
+                    LOG(ERROR)<<"stop server failed! ";
+                }
+            });
+        }
+    } WAIT_ALL_PARALLEL();
 
     LOG(INFO)<<"stop rpc finished";
     return ret;

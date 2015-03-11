@@ -47,8 +47,6 @@ struct udp_server_t: public server_base_t
     // 数据发送协程
     coroutine_t *tx_co;
 
-    int state;
-    int to_stop;
     void *extend;
 
     struct udp_req_ctx_t
@@ -122,8 +120,7 @@ struct udp_server_t: public server_base_t
     virtual
     int start();
 
-    virtual
-    int stop(int wait_ms=0);
+    virtual int do_stop(int wait_ms);
 
     ~udp_server_t()
     {

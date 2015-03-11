@@ -28,14 +28,35 @@ namespace conet
         enum {
             SERVER_START=0,
             SERVER_RUNNING=1,
-            SERVER_STOPED=2,
+            SERVER_STOPING=2,
+            SERVER_STOPED=3,
         };
+        int to_stop;
+
+        int state;
 
         std::string m_server_name;
 
+        server_base_t()
+        {
+            state = SERVER_START; 
+            to_stop = 0;
+        }
+
         virtual int start()=0;
 
-        virtual int stop(int wait_ms)=0;
+        int stop(int wait_ms=0)
+        {
+            this->to_stop = 1;
+            if (this->state == SERVER_STOPED ||
+                    this->state == SERVER_STOPING) {
+                return 0;
+            }
+            this->state = SERVER_STOPING;
+            return this->do_stop(wait_ms);
+        }
+
+        virtual int do_stop(int wait_ms) = 0;
 
         virtual ~server_base_t() 
         {

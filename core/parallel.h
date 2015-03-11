@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  barrier.h
+ *       Filename:  parallel.h
  *
  *    Description:  
  *
@@ -15,10 +15,29 @@
  *
  * =====================================================================================
  */
-#ifndef __CONET_BARRIER_H__
-#define __CONET_BARRIER_H__
+
+/*
+ * usage :
+
+  BEGIN_PARALLEL
+  {
+    DO_PARALLEL((local_var1, local_var2), {
+        do_rpc_requst1();
+    });
+
+    DO_PARALLEL((local_var3), {
+        do_rpc_requst2();
+    });
+  }
+  WAIT_ALL_PARALLEL();
+
+*/
+
+#ifndef __CONET_PARALEL_H__
+#define __CONET_PARALEL_H__
 
 #include "base/closure.h"
+#include "base/list.h"
 
 
 namespace conet
@@ -28,12 +47,20 @@ namespace conet
     {
         list_head link_to;
         coroutine_t * co;
-        closure<int, void*> * proc;
+        closure_t<int> * proc;
         parallel_task_t()
         {
             INIT_LIST_HEAD(&link_to);
             co = NULL;
             proc = NULL;
+        }
+        ~parallel_task_t()
+        {
+            if (this->co) {
+                conet::wait(this->co);
+                conet::free_coroutine(this->co);
+            }
+            delete this->proc;
         }
     };
 
@@ -55,63 +82,46 @@ namespace conet
             ++this->task_num;
         }
 
-        int wait_all()
+        ~parallel_controll_t()
         {
             parallel_task_t * task=NULL, *n = NULL;
             list_for_each_entry_safe(task, n, &tasks, link_to)
             {
-                conet::wait(task->co);
-                conet::free_coroutine(task->co);
-                delete task->proc;
-                list_del(task->link_to);
+                list_del_init(&task->link_to);
+                delete task;
                 ++finished_num;
             }
         }
     };
 
 #define BEGIN_PARALLEL \
-    list_head __parallel_node;
+    do { \
+    conet::parallel_controll_t __parallel_node_##__LINE__;
+
 
 #define DO_PARALLEL(ref_vars, op)   \
     do { \
-        conet::parallel_task_t parallel_task_##__LINE__(__parallel_node); \
-        __parallel_task_##__LINE__.proc = (void *) NewClsureWithRef( \
-                int,  \
-                (void * __co_self__), ref_vars,  \
-                    { \
-                     op \
-                    return 0; \
-                    } \
-                ); \
-        __parallel_task_##__LINE__.co = alloc_coroutine( \
+        conet::parallel_task_t *__parallel_task_##__LINE__ = new conet::parallel_task_t(); \
+        __parallel_task_##__LINE__->proc =  NewClosureWithCopy( \
+            int, (), ref_vars,  \
+                { \
+                 op \
+                return 0; \
+                } \
+            ); \
+        __parallel_task_##__LINE__->co = conet::alloc_coroutine(\
                 conet::call_closure<int>, \
-                __parallel_task_##__LINE__.proc); \
-        __parallel_node.add(&__parallel_task_##__LINE__); \
-        conet::resume(__parallel_task_##__LINE__.co, __parallel_task_##__LINE__.proc) ;\
-    }while(0);
+                (void *)__parallel_task_##__LINE__->proc); \
+        __parallel_node_##__LINE__.add_task(__parallel_task_##__LINE__); \
+        conet::resume(__parallel_task_##__LINE__->co, __parallel_task_##__LINE__->proc) ;\
+    } while(0)
 
-#define END_PARALLEL   \
-    __parallel_node.wait_all()
+//__parallel_node_##__LINE__.wait_all(); 
 
-}
+#define WAIT_ALL_PARALLEL()\
+    } while(0)
 
 
-/*
- * usage : 
- 
-  BEGIN_PARALLEL
-  {
-    DO_PARALLEL((local_var1, local_var2), {
-        do_rpc_requst1();
-    });
-
-    DO_PARALLEL((local_var3), {
-        do_rpc_requst2();
-    });
-  }
-  END_PARALLEL;
-
-*/
 
 }
 

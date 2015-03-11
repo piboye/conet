@@ -254,7 +254,7 @@ int http_server_t::start()
     return this->tcp_server->start();
 }
 
-int http_server_t::stop(int wait)
+int http_server_t::do_stop(int wait)
 {
     int ret = 0;
     ret = tcp_server->stop(wait);

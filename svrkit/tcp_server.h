@@ -42,12 +42,7 @@ struct tcp_server_t: public server_base_t
     //主逻辑
     coroutine_t *main_co;
 
-
-    int state;
-    int to_stop;
     void *extend;
-
-
 
     typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn);
 
@@ -94,8 +89,7 @@ struct tcp_server_t: public server_base_t
     virtual
     int start();
 
-    virtual
-    int stop(int wait_ms=0);
+    virtual int do_stop(int wait_ms);
 
     ~tcp_server_t()
     {

@@ -121,7 +121,6 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
     tcp_server_t *server = this;
     server->ip = ip;
     server->port = port;
-    server->state = SERVER_START;
     server->main_co = NULL;
     server->extend = NULL;
     server->conf.listen_backlog = FLAGS_listen_backlog;
@@ -129,7 +128,6 @@ int tcp_server_t::init(const char *ip, int port, int listen_fd)
     server->conf.max_packet_size = FLAGS_max_packet_size;
     server->conf.duplex = 0; // 默认禁用多路复用
     server->data.cur_conn_num = 0;
-    server->to_stop = 0;
     server->listen_fd = listen_fd;
     server->co_pool.set_alloc_obj_func(alloc_server_work_co, server);
     server->co_pool.set_free_obj_func(free_server_work_co, server);
@@ -183,12 +181,12 @@ int tcp_server_t::main_proc_with_fd_queue()
 
     int accept_num = FLAGS_accept_num;
     std::vector<int> fds;
-    while (0==this->to_stop) 
+    while (0==this->to_stop)
     {
-        while (this->data.cur_conn_num >= this->conf.max_conn_num) 
+        while (this->data.cur_conn_num >= this->conf.max_conn_num)
         {
             usleep(10000); // block 10ms
-            if (this->to_stop) 
+            if (this->to_stop)
             {
                 break;
             }
@@ -340,14 +338,9 @@ int tcp_server_t::main_proc2()
     return 0;
 }
 
-int tcp_server_t::stop(int wait_ms)
+int tcp_server_t::do_stop(int wait_ms)
 {
     tcp_server_t *server = this;
-
-    server->to_stop = 1;
-    if (server->state == SERVER_STOPED) {
-        return 0;
-    }
     if (NULL == server->main_co) {
         LOG(ERROR)<<"tcp server stop by multi time";
         return 0;
