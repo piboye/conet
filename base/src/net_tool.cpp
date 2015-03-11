@@ -56,7 +56,7 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
 
     if (errno != EAGAIN) return ret;
 
-    struct pollfd pf = { fd : fd, events: ( POLLOUT | POLLERR | POLLHUP ) };
+    struct pollfd pf = { .fd = fd, .events =  ( POLLOUT | POLLERR | POLLHUP ) };
     ret =  poll( &pf, 1, timeout );
     if (ret == 0) {
         // timeout;

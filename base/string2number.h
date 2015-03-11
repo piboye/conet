@@ -19,6 +19,20 @@
 #ifndef STRING2NUMBER_H_INC
 #define STRING2NUMBER_H_INC
 
+#include <stdint.h>
+#include <inttypes.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#ifndef PRIi64
+#define PRIi64 "ld"
+#endif
+
+#ifndef PRIu64
+#define PRIu64 "lu"
+#endif
+
 namespace conet
 {
     template <typename IT>
