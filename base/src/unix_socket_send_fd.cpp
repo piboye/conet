@@ -100,7 +100,8 @@ namespace conet
                        cmsg->cmsg_level == SOL_SOCKET &&
                        cmsg->cmsg_type == SCM_RIGHTS) 
                    {
-                           fd = *(int *)CMSG_DATA(cmsg);
+                           int *pfd = (int *)CMSG_DATA(cmsg);
+                           fd = *pfd;
                            fds->push_back(fd);
                    }
            }
