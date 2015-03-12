@@ -174,9 +174,10 @@ namespace conet
                             init_ref_str(&cmd_base.cmd_name, req_ctx->m_cmd_name);
                         }
                         cmd_base.seq_id = req_ctx->m_seq_id;
-                        serialize_cmd_base(send_data, &cmd_base, req_ctx->m_req);
-                                
-                        send_datas.push_back(send_data);
+                        int ret = serialize_cmd_base(send_data, &cmd_base, req_ctx->m_req);
+                        if (0 == ret && !send_data->empty()) { 
+                            send_datas.push_back(send_data);
+                        }
                     }
 
                     ret = write_all(fd, send_datas);

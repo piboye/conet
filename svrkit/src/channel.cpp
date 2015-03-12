@@ -111,18 +111,18 @@ int channel_t::do_read_co(void *arg)
                 continue;
             }
             self->r_stop = 1;
-            LOG(ERROR)<<"pool error ret:"<<ret;
+            //LOG(ERROR)<<"pool error ret:"<<ret;
             break;
         }
         ret = recv(fd, read_buff, max_len, 0); 
         if (ret < 0)
         {
-            LOG(ERROR)<<"read data failed, ret:"<<ret;
+            //LOG(ERROR)<<"read data failed, ret:"<<ret;
             break;
         }
         if (ret == 0) 
         { // close by peer
-            LOG(ERROR)<<"close by peer";
+            //LOG(ERROR)<<"close by peer";
             break;
         }
 
@@ -231,6 +231,7 @@ int channel_t::stop()
 
     if (w_co)
     {
+        write_waiter.wakeup_all();
         conet::wait(w_co);
         conet::free_coroutine(w_co);
         w_co = NULL;

@@ -231,7 +231,7 @@ int rpc_pb_server_t::do_stop(int wait_ms)
     channel_t *ch = NULL, *n = NULL;
     list_for_each_entry_safe(ch, n, &channels, link_to)
     {
-        list_del_init(&ch->link_to);
+        list_del(&ch->link_to);
         ch->to_stop = 1;
     }
 
@@ -703,6 +703,7 @@ int proc_tcp_rpc_pb_async(rpc_pb_server_t *server, conn_info_t *conn)
     list_add_tail(&ch.link_to, &server->channels);
     ch.start();
     ch.exit_notify.wait_on();
+    list_del(&ch.link_to);
     ch.stop();
     return 0;
 }
