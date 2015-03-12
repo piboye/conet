@@ -120,15 +120,14 @@ namespace conet
                     m_read_stop = 0;
                     m_send_stop = 0;
 
+                    resume(m_send_co);
                     resume(m_read_co);
 
-                    resume(m_send_co);
-
-                    conet::wait(m_read_co);
                     conet::wait(m_send_co);
+                    conet::wait(m_read_co);
 
-                    conet::free_coroutine(m_read_co);
                     conet::free_coroutine(m_send_co);
+                    conet::free_coroutine(m_read_co);
 
                     close(m_fd);
 
@@ -180,9 +179,10 @@ namespace conet
                     }
 
                     if (!send_datas.empty()) {
-                        for (int i=0; i< send_datas.size(); ++i)
-                        {
-                            ret = write_all(fd, send_datas);
+                        ret = write_all(fd, send_datas);
+                        if (ret < 0) {
+                            // socket 有问题
+                            m_read_stop = 1;
                         }
                     }
 
@@ -191,10 +191,6 @@ namespace conet
                         delete send_datas[i];
                     }
                     send_datas.clear();
-
-                    if (ret) {
-                        break;
-                    }
                 }
                 m_send_stop = 1;
                 close(m_wfd);
@@ -284,15 +280,18 @@ namespace conet
                         if (errno == EINTR) {
                             continue;
                         }
+                        LOG(ERROR)<<"poll failed, ret:"<<ret;
                         break;
                     }
 
                     if ((pf.revents & POLLERR) || (pf.revents &POLLHUP)) {
+                        LOG(ERROR)<<"poll failed, ret:"<<ret;
                         break;
                     }
 
                     ret = read_rsp(stream);
                     if (ret) {
+                        LOG(ERROR)<<"read rsp failed, ret:"<<ret;
                         break;
                     }
                 }

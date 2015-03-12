@@ -69,6 +69,8 @@ int channel_t::init(conn_info_t *conn, server_base_t *server)
 {
     this->conn = conn;
     this->server = server;
+    this->max_pending = 100;
+    this->pending_tx_num = 0;
     return 0;
 }
 
@@ -80,7 +82,8 @@ int channel_t::send_msg(char const *data, int len,
     tx_data_t *tx_data = tx_data_pool.alloc();
     tx_data->init((void *)data, len, free_fn, free_arg); 
     list_add_tail(&tx_data->link_to, &tx_queue);
-    write_waiter.wakeup_all();
+    ++pending_tx_num;
+    write_notify.wakeup_all();
     return 0;
 }
 
@@ -105,6 +108,10 @@ int channel_t::do_read_co(void *arg)
 
     while ( 0 == self->to_stop && 0 == self->w_stop)
     {
+        if (self->pending_tx_num >= self->max_pending) {
+            self->read_notify.wait_on();
+            continue;
+        }
         struct pollfd pf = { 0 };
         pf.fd = fd;
         pf.events = (POLLIN|POLLERR|POLLHUP);
@@ -148,7 +155,7 @@ int channel_t::do_read_co(void *arg)
     }
 
     self->r_stop = 1;
-    self->write_waiter.wakeup_all();
+    self->write_notify.wakeup_all();
     return 0;
 }
 
@@ -166,7 +173,7 @@ int channel_t::do_write_co(void *arg)
 
         if (list_empty(&queue))
         {
-            self->write_waiter.wait_on();
+            self->write_notify.wait_on();
             continue;
         }
 
@@ -181,6 +188,8 @@ int channel_t::do_write_co(void *arg)
                 out_data->free_fn(out_data->free_arg, out_data->data, out_data->len);
             }
             self->tx_data_pool.release(out_data);
+            --self->pending_tx_num;
+            self->read_notify.wakeup_all();
 
             if (ret<=0)
             {
@@ -246,6 +255,7 @@ int channel_t::stop()
 
     if (r_co)
     {
+        read_notify.wakeup_all();
         conet::wait(r_co);
         conet::free_coroutine(r_co);
         r_co = NULL;
@@ -253,7 +263,7 @@ int channel_t::stop()
 
     if (w_co)
     {
-        write_waiter.wakeup_all();
+        write_notify.wakeup_all();
         conet::wait(w_co);
         conet::free_coroutine(w_co);
         w_co = NULL;

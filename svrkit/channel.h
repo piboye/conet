@@ -81,7 +81,11 @@ struct channel_t
     int w_stop;
 
     // 发送数据等待通知
-    conet::WaitQueue write_waiter;
+    conet::WaitQueue write_notify;
+
+    int max_pending;
+    int pending_tx_num;
+    conet::WaitQueue read_notify;
 
     conet::WaitQueue exit_notify;
 

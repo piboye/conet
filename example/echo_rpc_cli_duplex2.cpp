@@ -58,7 +58,8 @@ int proc_send(void *arg)
             LOG(ERROR)<<"ret:"<<ret<<", retcode:"<<retcode<<"";
             continue;
         }
-        LOG(ERROR)<<"success";
+        //if (i %100 == 99) usleep(10000);
+        //LOG(ERROR)<<"success";
     }
     ++g_finish_task_num;
     return 0;
