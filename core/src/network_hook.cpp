@@ -92,6 +92,13 @@ HOOK_SYS_FUNC_DEF(
             return -1;
         }
 
+        if (pf.revents & POLLERR) {
+            return -1;
+        }
+        if (pf.revents & POLLHUP) {
+            return -1;
+        }
+
         client_fd =  _(accept)(fd, addr, len);
     }
     if (client_fd >=0) {
@@ -131,6 +138,12 @@ HOOK_SYS_FUNC_DEF(
             return -1;
         }
         if (ret <0) {
+            return -1;
+        }
+        if (pf.revents & POLLERR) {
+            return -1;
+        }
+        if (pf.revents & POLLHUP) {
             return -1;
         }
         client_fd =  _(accept4)(fd, addr, len, flags);
@@ -191,6 +204,13 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
     if ( poll_ret <0) {
+        return -1;
+    }
+
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
+    if (pf.revents & POLLHUP) {
         return -1;
     }
 
@@ -292,6 +312,10 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
 
+    if (pf.revents & POLLHUP) {
+        return 0;
+    }
+
     ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
     //ret = _(read)(fd,(char*)buf , nbyte);
     return ret;
@@ -346,6 +370,9 @@ HOOK_SYS_FUNC_DEF(
     if (pf.revents & POLLERR) {
         return -1;
     }
+    if (pf.revents & POLLHUP) {
+        return 0;
+    }
     ret = _(write)(fd, (const char*)buf, nbyte);
     return ret;
 }
@@ -397,6 +424,12 @@ ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
     if (ret <= 0) {
         return -1;
     }
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
+    if (pf.revents & POLLHUP) {
+        return 0;
+    }
     ret = _(writev)(fd, iov, iovcnt);
     return ret;
 }
@@ -433,6 +466,14 @@ ssize_t , readv,(int fd, const struct iovec *iov, int iovcnt)
     ret = conet::co_poll( &pf, 1, timeout );
     if (ret <= 0) {
         return -1;
+    }
+
+    if (pf.revents & POLLERR) {
+        return -1;
+    }
+
+    if (pf.revents & POLLHUP) {
+        return 0;
     }
 
     ret = _(readv)( fd, iov, iovcnt);
@@ -476,6 +517,9 @@ HOOK_SYS_FUNC_DEF(
         if (pf.revents & POLLERR) {
             return -1;
         }
+        if (pf.revents & POLLHUP) {
+            return 0;
+        }
 
         ret = _(sendto)(fd, message, length, flags, dest_addr, dest_len);
     }
@@ -516,6 +560,10 @@ HOOK_SYS_FUNC_DEF(
     if (pf.revents & POLLERR) {
         return -1;
     }
+    if (pf.revents & POLLHUP) {
+        return 0;
+    }
+
     ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
     return ret;
 }
@@ -555,6 +603,9 @@ HOOK_SYS_FUNC_DEF(
 
         if (pf.revents & POLLERR) {
             return -1;
+        }
+        if (pf.revents & POLLHUP) {
+            return 0;
         }
 
         ret = _(send)(fd, (const char*)buffer, length, flags);
@@ -596,6 +647,10 @@ HOOK_SYS_FUNC_DEF(
 
     if (pf.revents & POLLERR) {
         return -1;
+    }
+
+    if (pf.revents & POLLHUP) {
+        return 0;
     }
 
     ret = _(recv)(fd, buffer, length, flags);

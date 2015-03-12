@@ -55,12 +55,10 @@ int proc_send(void *arg)
         int retcode=0;
         ret = task->client->rpc_call(3,  NULL, NULL, &retcode, NULL, 1000);
         if (ret || retcode) {
-            LOG(ERROR)<<"ret:"<<ret;
+            LOG(ERROR)<<"ret:"<<ret<<", retcode:"<<retcode<<"";
             continue;
         }
-
-        if (retcode)
-            LOG(ERROR)<<"ret_code:"<<retcode;
+        LOG(ERROR)<<"success";
     }
     ++g_finish_task_num;
     return 0;

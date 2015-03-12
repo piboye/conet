@@ -144,6 +144,7 @@ int main(int argc, char * argv[])
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     signal(SIGINT, sig_exit);
+    signal(SIGPIPE, SIG_IGN);
 
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap
     mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk

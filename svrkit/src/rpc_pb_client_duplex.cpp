@@ -183,7 +183,6 @@ namespace conet
                         for (int i=0; i< send_datas.size(); ++i)
                         {
                             ret = write_all(fd, send_datas);
-                            //ret =  write(fd, &*send_datas[i]->begin(), send_datas[i]->size());
                         }
                     }
 
@@ -428,7 +427,7 @@ namespace conet
         int ret = (int)(uint64_t)conet::yield(NULL, NULL);
 
         cancel_timeout(&req_ctx.m_th);
-        list_del(&req_ctx.m_link); 
+        list_del_init(&req_ctx.m_link); 
         m_in_queue.remove(&req_ctx.m_map_node); 
 
         if (ret == 1) {

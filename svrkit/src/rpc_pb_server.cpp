@@ -499,7 +499,7 @@ static int send_rpc_rsp(channel_t *ch, cmd_base_t *cmd_base,
 
     uint64_t seq_id = cmd_base->seq_id;
     cmd_base->init();
-    cmd_base->seq_id =  seq_id;
+    cmd_base->seq_id = seq_id;
 
     cmd_base->type = conet_rpc_pb::CmdBase::RESPONSE_TYPE;
     cmd_base->ret = retcode;

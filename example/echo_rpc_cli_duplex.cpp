@@ -77,12 +77,12 @@ int proc_send(void *arg)
         int retcode=0;
         ret = task->client->rpc_call(2, &req, &resp, &retcode, NULL, 1000);
         if (ret || retcode) {
-            LOG(ERROR)<<"ret:"<<ret;
+                LOG(ERROR)<<"ret:"<<ret;
+            if (retcode)
+            LOG(ERROR)<<"ret_code:"<<retcode<<" resposne:"<<resp.DebugString();;
             continue;
         }
-
-        if (retcode)
-            LOG(ERROR)<<"ret_code:"<<retcode<<" resposne:"<<resp.DebugString();;
+        LOG(ERROR)<<"success";
     }
     ++g_finish_task_num;
     return 0;
