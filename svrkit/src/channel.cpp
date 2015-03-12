@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 namespace conet
 {
@@ -38,6 +39,8 @@ channel_t::channel_t()
     new_data_arg = NULL;
     r_co = NULL;
     w_co = NULL;
+    r_fd = -1;
+    w_fd = -1;
 
     INIT_LIST_HEAD(&tx_queue);
     INIT_LIST_HEAD(&link_to);
@@ -93,6 +96,7 @@ int channel_t::do_read_co(void *arg)
     int ret = 0;
     channel_t *self = (channel_t *)(arg);
     int fd = dup(self->conn->fd);
+    self->r_fd = fd;
     char * read_buff = self->read_buff;
     int max_len = self->read_buff_len;
 
@@ -131,6 +135,7 @@ int channel_t::do_read_co(void *arg)
             ret = cb(cb_arg, read_buff, ret);
             if (ret < 0)
             {  // 出错了
+                LOG(ERROR)<<"call rpc callback failed! [ret:"<<ret<<"]";
                 self->to_stop = 1;
                 break;
             } 
@@ -144,7 +149,6 @@ int channel_t::do_read_co(void *arg)
 
     self->r_stop = 1;
     self->write_waiter.wakeup_all();
-    close(fd);
     return 0;
 }
 
@@ -153,6 +157,7 @@ int channel_t::do_write_co(void *arg)
     int ret = 0;
     channel_t *self = (channel_t *)(arg);
     int fd = dup(self->conn->fd);
+    self->w_fd = fd;
     while (self->to_stop == 0 && self->r_stop == 0)
     {
         list_head queue;
@@ -166,28 +171,44 @@ int channel_t::do_write_co(void *arg)
         }
 
         tx_data_t * out_data= NULL, *n = NULL;
+
         list_for_each_entry_safe(out_data, n, &queue, link_to)
         {
+            list_del_init(&out_data->link_to);
             ret = send(fd, out_data->data, out_data->len, 0);
             if (out_data->free_fn)
             {
                 out_data->free_fn(out_data->free_arg, out_data->data, out_data->len);
             }
-            list_del(&out_data->link_to);
             self->tx_data_pool.release(out_data);
 
-            if (ret<0)
+            if (ret<=0)
             {
                 LOG(ERROR)<<"channel send data failed!"
                         "[fd:"<<fd<<"]"
                         "[data len:"<<out_data->len<<"]"
                         "[ret:"<<ret<<"]"
+                        "[errorno:"<<errno<<"]"
+                        "[strerr:"<<strerror(errno)<<"]"
                         ;
+                break ;
             }
+        }
+        if (ret <= 0)  {
+            out_data = NULL, n = NULL;
+            list_for_each_entry_safe(out_data, n, &queue, link_to)
+            {
+                list_del_init(&out_data->link_to);
+                if (out_data->free_fn)
+                {
+                    out_data->free_fn(out_data->free_arg, out_data->data, out_data->len);
+                }
+                self->tx_data_pool.release(out_data);
+            }
+            break;
         }
     }
 
-    close(fd);
     self->w_stop = 1;
     self->exit_notify.wakeup_all();
     return 0;
@@ -214,6 +235,7 @@ int channel_t::start()
         conet::resume(w_co, this);
     }
 
+
     return 0;
 }
 
@@ -235,6 +257,17 @@ int channel_t::stop()
         conet::wait(w_co);
         conet::free_coroutine(w_co);
         w_co = NULL;
+    }
+
+    if (r_fd >=0)
+    {
+        close(r_fd);
+        r_fd = -1;
+    }
+    if (w_fd >=0)
+    {
+        close(w_fd);
+        w_fd = -1;
     }
 
     return 0;

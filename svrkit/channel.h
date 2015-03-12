@@ -34,6 +34,8 @@ struct channel_t
     list_head link_to;
     conn_info_t *conn;
     server_base_t *server;
+    int r_fd;
+    int w_fd;
 
     struct tx_data_t
     {

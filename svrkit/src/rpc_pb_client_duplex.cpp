@@ -159,8 +159,7 @@ namespace conet
                     
                     ReqCtx *req_ctx = NULL, *n=NULL;
                     LIST_HEAD(queue);
-                    list_add(&queue, &m_client->m_req_queue);
-                    list_del_init(&m_client->m_req_queue);
+                    list_swap(&queue, &m_client->m_req_queue);
                     m_client->m_req_num = 0;
 
                     list_for_each_entry_safe(req_ctx, n, &queue, m_link) 
@@ -180,7 +179,13 @@ namespace conet
                         }
                     }
 
-                    ret = write_all(fd, send_datas);
+                    if (!send_datas.empty()) {
+                        for (int i=0; i< send_datas.size(); ++i)
+                        {
+                            ret = write_all(fd, send_datas);
+                            //ret =  write(fd, &*send_datas[i]->begin(), send_datas[i]->size());
+                        }
+                    }
 
                     for (size_t i=0; i< send_datas.size(); ++i)
                     {

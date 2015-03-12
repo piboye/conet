@@ -265,7 +265,7 @@ int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::pr
     }
      
     uint32_t out_len = len;
-    *((uint32_t *)(out)) = htonl(out_len);
+    *((uint32_t *)(&(*out)[0])) = htonl(out_len);
 
     out->resize(out_len+4);
     return 0;
