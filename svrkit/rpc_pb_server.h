@@ -47,7 +47,10 @@ struct rpc_pb_server_t: public server_base_t
 
     int max_packet_size;
 
+    list_head channels;
+
     //异步业务处理协程池
+    
     obj_pool_t worker_pool;
     uint64_t async_req_num;
 

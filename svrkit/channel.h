@@ -31,6 +31,7 @@ namespace conet
 struct channel_t
 {
 // data
+    list_head link_to;
     conn_info_t *conn;
     server_base_t *server;
 
@@ -79,6 +80,8 @@ struct channel_t
 
     // 发送数据等待通知
     conet::WaitQueue write_waiter;
+
+    conet::WaitQueue exit_notify;
 
     coroutine_t * r_co;
     coroutine_t * w_co;

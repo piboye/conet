@@ -103,9 +103,6 @@ int get_conf_data(std::string const & conf_file, std::string *data)
 
 static conet::ServerContainer * g_server_container=NULL;
 
-__attribute__((destructor))
-static 
-void fini_google_lib();
 
 static 
 void fini_google_lib()
@@ -197,6 +194,8 @@ int main(int argc, char * argv[])
     g_server_container = NULL;
 
     conet::call_server_fini_func();
+
+    fini_google_lib();
 
     return 0;
 }

@@ -36,9 +36,11 @@ channel_t::channel_t()
     w_stop = 0;
     new_data_cb = NULL;
     new_data_arg = NULL;
-    INIT_LIST_HEAD(&tx_queue);
     r_co = NULL;
     w_co = NULL;
+
+    INIT_LIST_HEAD(&tx_queue);
+    INIT_LIST_HEAD(&link_to);
 }
 
 channel_t::~channel_t()
@@ -109,15 +111,18 @@ int channel_t::do_read_co(void *arg)
                 continue;
             }
             self->r_stop = 1;
+            LOG(ERROR)<<"pool error ret:"<<ret;
             break;
         }
         ret = recv(fd, read_buff, max_len, 0); 
         if (ret < 0)
         {
+            LOG(ERROR)<<"read data failed, ret:"<<ret;
             break;
         }
         if (ret == 0) 
         { // close by peer
+            LOG(ERROR)<<"close by peer";
             break;
         }
 
@@ -128,12 +133,18 @@ int channel_t::do_read_co(void *arg)
             {  // 出错了
                 self->to_stop = 1;
                 break;
+            } 
+            else if (ret == 0)
+            { // 关闭连接
+                self->to_stop = 1;
+                break;
             }
         }
     }
 
+    self->r_stop = 1;
+    self->write_waiter.wakeup_all();
     close(fd);
-
     return 0;
 }
 
@@ -178,6 +189,7 @@ int channel_t::do_write_co(void *arg)
 
     close(fd);
     self->w_stop = 1;
+    self->exit_notify.wakeup_all();
     return 0;
 }
 
@@ -190,13 +202,13 @@ int channel_t::start()
 
     read_buff = new char[read_buff_len];
 
-    if (r_co)
+    if (NULL == r_co)
     {
         r_co = conet::alloc_coroutine(do_read_co, this);
         conet::resume(r_co, this);
     }
 
-    if (w_co)
+    if (NULL == w_co)
     {
         w_co = conet::alloc_coroutine(do_write_co, this);
         conet::resume(w_co, this);

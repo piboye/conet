@@ -51,7 +51,7 @@ namespace conet
                 return m_ptr;
             }
 
-            value_type * release() const
+            value_type * release() 
             {
                 T * p = m_ptr;
                 m_ptr = NULL;
@@ -71,7 +71,7 @@ namespace conet
         private:
             //disable copy and assignment
             ScopedPtr(ScopedPtr<T> const &right);
-            ScopedPtr &operator=(ScopedPtr<T> &left, ScopedPtr<T> const &right);
+            ScopedPtr<T> &operator=(ScopedPtr<T> const &right);
     };
 
     template <typename T>
