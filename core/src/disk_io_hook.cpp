@@ -235,6 +235,10 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
 
     off64_t off = 0;
     off = lseek64(fd,  0, SEEK_CUR);
+    if (-1 == lseek64(fd, nbytes, SEEK_CUR))
+    {
+        return -1;
+    }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
@@ -266,7 +270,6 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
     if (res2 != 0) {
         return -1; 
     }
-    lseek64(fd, res, SEEK_CUR);
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -285,7 +288,15 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
 
     off64_t off = 0;
     if (!(ctx->user_flag & O_APPEND)) {
+        //非追加模式
+        //获取偏移量
         off = lseek64(fd,  0, SEEK_CUR);
+        //需要设置新的偏移量
+        
+        if (-1 == lseek64(fd, nbyte, SEEK_CUR))
+        { // 设置出错
+            return -1;
+        }
     }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
@@ -305,6 +316,7 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
         return  -1;
     }
 
+
     conet::yield();
     
     unsigned long res = 0;
@@ -315,7 +327,6 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte)
     if (res2 != 0) {
         return -1; 
     }
-    lseek64(fd, res, SEEK_CUR);
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -386,6 +397,17 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
     int ret = 0;
     off64_t off = 0;
     off = lseek64(fd,  0, SEEK_CUR);
+    
+    uint64_t total_len = 0;
+    for (int i=0; i< iovcnt; ++i)
+    {
+        total_len += iov.iov_len;
+    }
+
+    if (-1 == lseek64(fd, total_len, SEEK_CUR))
+    {
+        return -1;
+    }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
     struct iocb cb;
@@ -414,8 +436,6 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
         return -1; 
     }
 
-    lseek64(fd, res, SEEK_CUR);
-
     if (res != cb.u.c.nbytes) {
         return res;
     }
@@ -430,6 +450,16 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
     off64_t off = 0;
     if (!(ctx->user_flag & O_APPEND)) {
         off = lseek64(fd,  0, SEEK_CUR);
+        uint64_t total_len = 0;
+        for (int i=0; i< iovcnt; ++i)
+        {
+            total_len += iov.iov_len;
+        }
+
+        if (-1 == lseek64(fd, total_len, SEEK_CUR))
+        {
+            return -1;
+        }
     }
 
     struct disk_io_ctx_t * disk_ctx =   get_disk_ctx();
@@ -459,7 +489,6 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
         return -1; 
     }
 
-    lseek64(fd, res, SEEK_CUR);
 
     if (res != cb.u.c.nbytes) {
         return res;
@@ -692,6 +721,7 @@ int ,fdatasync, (int fd)
     return 0;
 }
 
+/*
 
 // FILE STREAM HOOK
 //
@@ -711,30 +741,30 @@ int __sflags(const char *mode, int *optr)
 
     switch (*mode++) {
 
-    case 'r':   /* open for reading */
+    case 'r':   /// open for reading 
         ret = __SRD;
         m = O_RDONLY;
         o = 0;
         break;
 
-    case 'w':   /* open for writing */
+    case 'w':   // open for writing 
         ret = __SWR;
         m = O_WRONLY;
         o = O_CREAT | O_TRUNC;
         break;
 
-    case 'a':   /* open for appending */
+    case 'a':   // open for appending 
         ret = __SWR;
         m = O_WRONLY;
         o = O_CREAT | O_APPEND;
         break;
 
-    default:    /* illegal mode */
+    default:    // illegal mode 
         errno = EINVAL;
         return (0);
     }
 
-    /* [rwa]\+ or [rwa]b\+ means read and write */
+    // [rwa]\+ or [rwa]b\+ means read and write 
     if (*mode == '+' || (*mode == 'b' && mode[1] == '+')) {
         ret = __SRW;
         m = O_RDWR;
@@ -955,7 +985,6 @@ HOOK_SYS_FUNC_DEF(
     return ret/size;
 }
 
-/*
 // read operator, carefull, because has other read function no hook, buff would error
 HOOK_SYS_FUNC_DEF(
  size_t ,fread,(void *ptr, size_t size, size_t nmemb,
