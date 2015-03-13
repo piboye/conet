@@ -18,10 +18,10 @@
 
 #ifndef __CONET_CMD_BASE_H__
 #define __CONET_CMD_BASE_H__
-#include "../../base/pbc.h"
-#include "../../base/ref_str.h"
+#include "base/pbc.h"
+#include "base/ref_str.h"
 #include <string.h>
-#include "../../base/net_tool.h"
+#include "base/net_tool.h"
 #include "google/protobuf/message.h"
 #include "glog/logging.h"
 

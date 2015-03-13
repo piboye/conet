@@ -25,8 +25,8 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include "../../base/list.h"
-#include "../../base/time_helper.h"
+#include "base/list.h"
+#include "base/time_helper.h"
 #include "dispatch.h"
 namespace conet 
 {
