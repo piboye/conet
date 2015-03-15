@@ -237,11 +237,9 @@ namespace conet
 
                     int retcode = resp_base.ret();
                     if (retcode) {
-                        if (resp_base.has_errmsg()) {
                             if (req_ctx->m_errmsg) {
                                 *req_ctx->m_errmsg = resp_base.errmsg();
                             }
-                        }
                     }
 
                     if (req_ctx->m_rsp) {

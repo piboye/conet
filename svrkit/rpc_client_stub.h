@@ -169,9 +169,7 @@ public:
 
         ctx->retcode = resp_base.ret();
         if (ctx->retcode) {
-            if ((resp_base.has_errmsg())) {
                 ctx->errmsg = resp_base.errmsg();
-            }
             return 0;
         }
 

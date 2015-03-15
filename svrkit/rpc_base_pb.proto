@@ -1,15 +1,18 @@
+syntax = "proto3";
 package conet_rpc_pb;
 
 message CmdBase
 {
     enum TYPE 
     {
+        UNKOWN_TYPE=0;
         REQUEST_TYPE=1;
         RESPONSE_TYPE=2;
     };
 
     enum ERROR 
     {
+        SUCCESS = 0;
         ERR_UNSUPPORED_CMD = 1;
         ERR_PARSE_REQ_BODY = 2;
     };

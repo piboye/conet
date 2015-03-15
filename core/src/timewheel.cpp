@@ -34,8 +34,8 @@
 #include "coroutine.h"
 #include "coroutine_impl.h"
 
-#include "../../base/tls.h"
-#include "../../base/time_helper.h"
+#include "base/tls.h"
+#include "base/time_helper.h"
 
 
 namespace conet
@@ -69,24 +69,6 @@ using namespace conet;
 
 DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
 
-
-/*
-HOOK_CPP_FUNC_DEF(int , gettimeofday,(struct timeval *tv, struct timezone *tz))
-{
-    HOOK_SYS_FUNC(gettimeofday);
-    if (tz != NULL || NULL == g_tw) return _(gettimeofday)(tv, tz);
-
-    int ret = 0;
-    if (g_tw->update_timeofday_flag == 0) {
-         ret = _(gettimeofday)(tv, NULL);
-         return ret;
-    }
-
-    tv->tv_sec = g_tw->prev_tv.tv_sec;
-    tv->tv_usec = g_tw->prev_tv.tv_usec;
-    return ret;
-}
-*/
 
 void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
 {
