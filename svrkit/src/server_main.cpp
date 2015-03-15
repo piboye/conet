@@ -49,6 +49,8 @@ DEFINE_string(ip, "0.0.0.0", "server ip");
 DEFINE_int32(port, 12314, "server port");
 DEFINE_int32(thread_num, 0, "thread num");
 DEFINE_bool(duplex, false, "duplex in tcp");
+DEFINE_bool(gettimeofday, true, "enable gettimeofday improve");
+
 }
 
 
@@ -155,6 +157,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+
     if (conet::can_reuse_port()) {
         LOG(INFO)<<"can reuse port, very_good";
         //fprintf(stderr, "can resue port, very good!\n");
@@ -182,11 +185,17 @@ int main(int argc, char * argv[])
         return 3;
     }
 
+    if (FLAGS_gettimeofday)
+        conet::start_gettimeofday_improve();
+
     g_server_container->start();
     while(!get_server_stop_flag())
     {
        sleep(1); 
     }
+
+    if (FLAGS_gettimeofday)
+        conet::stop_gettimeofday_improve();
 
     LOG(INFO)<<"server ready exit!";
     ret = g_server_container->stop(FLAGS_stop_wait_seconds);

@@ -26,11 +26,6 @@
 #include <unistd.h>
 #include "glog/logging.h"
 
-namespace conet
-{
-    DEFINE_bool(gettimeofday, false, "enable gettimeofday improve");
-}
-
 static
 struct timeval * g_sys_tv = NULL;
 
