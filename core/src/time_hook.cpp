@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "glog/logging.h"
+#include "network_hook.h"
 
 static
 struct timeval * g_sys_tv = NULL;
@@ -96,6 +97,9 @@ HOOK_CPP_FUNC_DEF(int , gettimeofday, (struct timeval *tv, struct timezone *tz))
 {
     HOOK_SYS_FUNC(gettimeofday);
     if (tz != NULL || NULL == g_sys_tv)  {
+        return _(gettimeofday)(tv, tz);
+    }
+    if (!conet::is_enable_sys_hook()) {
         return _(gettimeofday)(tv, tz);
     }
 
