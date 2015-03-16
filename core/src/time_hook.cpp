@@ -20,18 +20,20 @@
 #include "hook_helper.h"
 #include "gflags/gflags.h"
 #include <pthread.h>
-#include "base/defer.h"
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include "glog/logging.h"
 #include "network_hook.h"
+#include "base/defer.h"
 
 static
 struct timeval * g_sys_tv = NULL;
 
 static
 int32_t g_stop_gettimeoday_flag = 0;
+
+static int32_t g_time_resolution = 0;
 
 static
 void * gettimeofday_main_proc(void *)
@@ -46,7 +48,7 @@ void * gettimeofday_main_proc(void *)
         gettimeofday(tvs+pos, NULL);
         g_sys_tv = tvs+pos;
         pos = (pos+1)%100;
-        usleep(1000);
+        usleep(g_time_resolution * 1000);
     }
 
     delete tvs;
@@ -59,8 +61,12 @@ pthread_mutex_t g_gtd_mutex = PTHREAD_MUTEX_INITIALIZER;
 namespace conet
 {
 
-int start_gettimeofday_improve() 
+int start_gettimeofday_improve(int ms) 
 {
+
+    if (ms <=0) return -1;
+    g_time_resolution = ms;
+
     pthread_mutex_lock(&g_gtd_mutex);
     CONET_DEFER((g_gtd_mutex), {
         pthread_mutex_unlock(&g_gtd_mutex);
@@ -74,16 +80,18 @@ int start_gettimeofday_improve()
     return 0;
 }
 
-int stop_gettimeofday_improve()
+int stop_gettimeofday_improve(int ms)
 {
     pthread_mutex_lock(&g_gtd_mutex);
     CONET_DEFER((g_gtd_mutex), {
         pthread_mutex_unlock(&g_gtd_mutex);
     });
+
     if (NULL == g_gtd_pid) {
         LOG(ERROR)<<"gettimeofday thread not started!";
         return -1;
     }
+
     g_stop_gettimeoday_flag = 1;
     pthread_join(*g_gtd_pid, NULL);
     delete g_gtd_pid;
@@ -107,4 +115,18 @@ HOOK_CPP_FUNC_DEF(int , gettimeofday, (struct timeval *tv, struct timezone *tz))
     tv->tv_sec = g_sys_tv->tv_sec;
     tv->tv_usec = g_sys_tv->tv_usec;
     return ret;
+}
+
+HOOK_CPP_FUNC_DEF(time_t, time, (time_t *out))
+{
+    HOOK_SYS_FUNC(time);
+    if (NULL == g_sys_tv)
+    {
+        return _(time)(out);
+    }
+
+    if (out) {
+        *out =  g_sys_tv->tv_sec;
+    }
+    return g_sys_tv->tv_sec;
 }

@@ -153,8 +153,8 @@ public:
     virtual int run()=0;
 };
 
+int start_gettimeofday_improve(int ms);
 int stop_gettimeofday_improve();
-int start_gettimeofday_improve();
 
 }
 
