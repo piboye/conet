@@ -68,7 +68,7 @@ int start_gettimeofday_improve(int ms)
     g_time_resolution = ms;
 
     pthread_mutex_lock(&g_gtd_mutex);
-    CONET_DEFER((g_gtd_mutex), {
+    CONET_DEFER({
         pthread_mutex_unlock(&g_gtd_mutex);
     });
     if (g_gtd_pid) {
@@ -83,7 +83,7 @@ int start_gettimeofday_improve(int ms)
 int stop_gettimeofday_improve(int ms)
 {
     pthread_mutex_lock(&g_gtd_mutex);
-    CONET_DEFER((g_gtd_mutex), {
+    CONET_DEFER({
         pthread_mutex_unlock(&g_gtd_mutex);
     });
 

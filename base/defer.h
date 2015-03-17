@@ -31,8 +31,14 @@
 #define CONET_DEFER_PARAM_INIT(r1, data, i, a) BOOST_PP_COMMA_IF(i) a(BOOST_PP_CAT(a,r))
 
 
-#define CONET_DEFER(param, op)  CONET_DEFER_IMPL(param, BOOST_PP_VARIADIC_TO_SEQ param, op) 
-#define CONET_DEFER_IMPL(param, param_seq , op) \
+#define CONET_DEFER(...)  \
+        BOOST_PP_IF(BOOST_PP_GREATER(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 1), \
+                CONET_DEFER_IMPL, CONET_DEFER_EMPTY_PARAM_IMPL) \
+            (__VA_ARGS__)
+
+#define CONET_DEFER_IMPL(param, op) CONET_DEFER_IMPL2(param, BOOST_PP_VARIADIC_TO_SEQ param, op)
+
+#define CONET_DEFER_IMPL2(param, param_seq , op) \
 BOOST_PP_SEQ_FOR_EACH(CONET_DEFER_DECL_TYPEOF, data, param_seq) \
 struct __conet_defer_t_##__LINE__ \
 { \
@@ -49,6 +55,14 @@ struct __conet_defer_t_##__LINE__ \
     op  \
 }  \
 __conet_defer_var_##__LINE__ param \
+
+#define CONET_DEFER_EMPTY_PARAM_IMPL(op)  \
+struct __conet_defer_t_##__LINE__  \
+{ \
+    ~__conet_defer_t_##__LINE__() \
+    op \
+} __conet_defer_var_##__LINE__
+
 
 
 #endif /* end of include guard */
