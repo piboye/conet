@@ -1,8 +1,8 @@
 .text
-.globl jump_to_real_func
-.type jump_to_real_func, @function
+.globl conet_bind_this_jump_help
+.type conet_bind_this_jump_help, @function
 .align 16
-jump_to_real_func:
+conet_bind_this_jump_help:
     leaq -0x27(%rip), %rbx # this instruction has 7 bytes 
     movq (%rbx), %r12  #function address
     movq 0x8(%rbx), %r13 # this point

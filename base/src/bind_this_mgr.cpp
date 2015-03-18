@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  func_wrap_mgr.cpp
+ *       Filename:  bind_this_mgr.cpp
  *
  *    Description
  *
@@ -15,20 +15,21 @@
  *
  * =====================================================================================
  */
-#include <stdlib.h>
 #include "list.h"
-#include "func_wrap.h"
-#include <sys/mman.h>
+#include "bind_this_mgr.h"
 #include "tls.h"
-#include <string.h>
 
-extern "C" void jump_to_real_func(void);
+#include <sys/mman.h>
+#include <string.h>
+#include <stdlib.h>
+
+extern "C" void conet_bind_this_jump_help(void);
 namespace conet
 {
 
-struct FuncWrapMgr
+struct BindThisMgr
 {
-    FuncWrapMgr()
+    BindThisMgr()
     {
         INIT_LIST_HEAD(&m_free_list);
     }
@@ -43,24 +44,24 @@ struct FuncWrapMgr
         for(size_t i= 0; i< sz; i+=64)
         {
             n = (list_head *)((char *)p+i);
-            memcpy((void *)&(((FuncWrapData*)((char *)p+i))->code),
-                (void *)(&jump_to_real_func), 32);
+            memcpy((void *)&(((BindThisData*)((char *)p+i))->code),
+                (void *)(&conet_bind_this_jump_help), 32);
             INIT_LIST_HEAD(n);
             list_add_tail(n, &m_free_list);
         }
     }
 
-    FuncWrapData *get_obj()
+    BindThisData *get_obj()
     {
        if (list_empty(&m_free_list))
        {
             expand();
        }
        list_head *n =list_pop_head(&m_free_list);
-       return (FuncWrapData *)(n);
+       return (BindThisData *)(n);
     }
 
-    void free_obj(FuncWrapData *d)
+    void free_obj(BindThisData *d)
     {
         list_head  *n = (list_head *)(d);
         INIT_LIST_HEAD(n);
@@ -71,17 +72,18 @@ struct FuncWrapMgr
 };
 
 
-static FuncWrapMgr * g_func_wrap_mgr=NULL;
-CONET_DEF_TLS_VAR_HELP_DEF(g_func_wrap_mgr);
+static __thread BindThisMgr * g_bind_this_mgr=NULL;
 
-FuncWrapData * get_func_wrap_data()
+CONET_DEF_TLS_VAR_HELP_DEF(g_bind_this_mgr);
+
+BindThisData * get_bind_this_data()
 {
-    return TLS_GET(g_func_wrap_mgr)->get_obj();
+    return TLS_GET(g_bind_this_mgr)->get_obj();
 }
 
-void free_func_wrap_data(FuncWrapData *d)
+void free_bind_this_data(BindThisData *d)
 {
-    return TLS_GET(g_func_wrap_mgr)->free_obj(d);
+    return TLS_GET(g_bind_this_mgr)->free_obj(d);
 }
 
 }

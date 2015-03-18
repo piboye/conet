@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  func_wrap_mgr.h
+ *       Filename:  bind_this_mgr.h
  *
  *    Description:
  *
@@ -16,13 +16,16 @@
  * =====================================================================================
  */
 
-#ifndef __CONET_FUNC_WRAP_MGR_H__
-#define __CONET_FUNC_WRAP_MGR_H__
+#ifndef __CONET_BIND_THIS_MGR_H__
+#define __CONET_BIND_THIS_MGR_H__
+
+#include <stdint.h>
+#include <unistd.h>
 
 namespace conet
 {
 
-struct FuncWrapData
+struct BindThisData
 {
     uint64_t jump_func;
     uint64_t self;
@@ -31,14 +34,14 @@ struct FuncWrapData
     char code[32];
 };
 
-FuncWrapData * get_func_wrap_data();
-void free_func_wrap_data(FuncWrapData *d);
+BindThisData * get_bind_this_data();
+void free_bind_this_data(BindThisData *d);
 
 inline
-void free_func_wrap(void *f)
+void free_bind_this_func(void *f)
 {
-    free_func_wrap_data(
-            (FuncWrapData *)((char*)f - ((size_t)&((FuncWrapData *)0)->code)));
+    free_bind_this_func(
+            (BindThisData *)((char*)f - ((size_t)&((BindThisData *)0)->code)));
 }
 
 }

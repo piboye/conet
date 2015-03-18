@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  func_wrap_test.cpp
+ *       Filename:  bind_this_test.cpp
  *
  *    Description:  
  *
@@ -10,13 +10,15 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  piboye
  *   Organization:  
  *
  * =====================================================================================
  */
+
+#include "bind_this.h"
+
 #include <stdlib.h>
-#include "func_wrap.h"
 #include <stdio.h>
 #include <sys/mman.h>
 #include <string.h>
@@ -24,8 +26,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-extern "C" void jump_to_real_func(void);
 
 class A
 {

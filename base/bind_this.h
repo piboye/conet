@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  func_wrap.h
+ *       Filename:  bind_this.h
  *
  *    Description:  
  *
@@ -15,12 +15,12 @@
  *
  * =====================================================================================
  */
-#ifndef __CONET_FUNC_WRAP_H__
-#define __CONET_FUNC_WRAP_H__
+#ifndef __CONET_BIND_THIS_H__
+#define __CONET_BIND_THIS_H__
+#include "bind_this_mgr.h"
+#include "list.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include "func_wrap_mgr.h"
-#include "list.h"
 
 #define BOOST_PP_VARIADICS 1
 
@@ -31,7 +31,7 @@ namespace conet
 
 template<typename ClassT, typename R>
 inline
-R (*get_func_wrap_helper( R (ClassT::*f)() ))()
+R (*get_bind_this_wrap_helper( R (ClassT::*f)() ))()
 {
     struct  Wrap
     {
@@ -47,15 +47,15 @@ R (*get_func_wrap_helper( R (ClassT::*f)() ))()
     return &Wrap::run;
 }
 
-#define CONET_MAX_FUNC_WRAP_PARAM_NUM 20 
+#define CONET_MAX_BIND_THIS_PARAM_NUM 20
 
 #define CONET_ARG_DEF(z, n, t) \
             BOOST_PP_COMMA_IF(n) BOOST_PP_CAT(arg_type_,n) BOOST_PP_CAT(arg, n)
 
-#define CONET_GET_FUNC_WRAP_HELPER_IMPL(z,n, t) \
+#define CONET_GET_BIND_THIS_WRAP_HELPER_IMPL(z, n, t) \
 template<typename ClassT, typename R,  BOOST_PP_ENUM_PARAMS(n, typename arg_type_) > \
 inline \
-R (*get_func_wrap_helper(R (ClassT::*f)(BOOST_PP_ENUM_PARAMS(n, arg_type_)))) \
+R (*get_bind_this_wrap_helper(R (ClassT::*f)(BOOST_PP_ENUM_PARAMS(n, arg_type_)))) \
         (BOOST_PP_ENUM_PARAMS(n, arg_type_)) \
 { \
     struct  Wrap \
@@ -73,17 +73,17 @@ R (*get_func_wrap_helper(R (ClassT::*f)(BOOST_PP_ENUM_PARAMS(n, arg_type_)))) \
 }
 
 
-BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_INC(CONET_MAX_FUNC_WRAP_PARAM_NUM), CONET_GET_FUNC_WRAP_HELPER_IMPL, t)
+BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_INC(CONET_MAX_BIND_THIS_PARAM_NUM), CONET_GET_BIND_THIS_WRAP_HELPER_IMPL, t)
 
 
 #define BindThis(obj, func) \
     ({ \
-        FuncWrapData *d = get_func_wrap_data();  \
-        d->jump_func = (uint64_t)(get_func_wrap_helper(&func)); \
+        conet::BindThisData *d = conet::get_bind_this_data();  \
+        d->jump_func = (uint64_t)(conet::get_bind_this_wrap_helper(&func)); \
         d->self = (uint64_t )(&obj); \
         typeof(&func) pfn = &func; \
         memcpy(&d->mem_func, (void const *)(&pfn), sizeof(uint64_t)); \
-        (typeof(get_func_wrap_helper(&func))) (&(d->code)); \
+        (typeof(conet::get_bind_this_wrap_helper(&func))) (&(d->code)); \
      })
 
 }

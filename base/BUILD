@@ -32,8 +32,8 @@ cc_library(
         'src/cpu_affinity.cpp',
         'src/fixed_mempool.cpp',
         'src/unix_socket_send_fd.cpp',
-        'src/func_wrap_mgr.cpp',
-        'src/thumb.s',
+        'src/bind_this_mgr.cpp',
+        'src/bind_this_jump.s',
         'src/fd_queue.cpp',
     ],
 
@@ -165,9 +165,9 @@ cc_test(
 )
 
 cc_binary(
-    name = 'func_wrap_test',
+    name = 'bind_this_test',
     srcs = [
-        'src/func_wrap_test.cpp',
+        'src/bind_this_test.cpp',
     ],
 
     incs= [ 
