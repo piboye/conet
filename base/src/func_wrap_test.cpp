@@ -30,14 +30,10 @@ extern "C" void jump_to_real_func(void);
 class A
 {
     public: 
-        int f(int i)
+        int f(int i, int j)
         {
-            printf("hello\n");
+            printf("hello, %d, %d\n", i, j);
             return 0;
-        }
-        static int f2(void *self, int i)
-        {
-            return ((A*)(self))->f(i);
         }
 };
 
@@ -46,8 +42,8 @@ using namespace conet;
 int main(int argc, char const* argv[])
 {
     A a;
-    int (*f)(int) = BindThis(a, A::f);
-    f(1);
+    int (*f)(int, int) = BindThis(a, A::f);
+    f(1, 2);
     return 0;
 }
 
