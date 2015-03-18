@@ -17,6 +17,9 @@
  */
 #include "ares_wrap.h"
 #include <stdlib.h>
+#include "gflags/gflags.h"
+
+DEFINE_int32(dns_cache, 10, "dns cache time by seconds");
 
 namespace conet
 {
@@ -106,21 +109,21 @@ namespace conet
 
     int AresWrap::gethostbyname2_cache(char const *name, int af, cb_ctx_t &ctx)
     {
-
         std::string host_name(name);
         host_name.append((char *)&af, sizeof(af));
         AUTO_VAR(it, =, m_hostent_cache.find(host_name));
         if (it != m_hostent_cache.end()) {
             uint64_t now = conet::get_tick_ms() / 1000;
             HostEnt &data = it->second;
-            if ((data.data_time + 5 < now) && ((data.data_time + 10)<=now)) 
+            if ((data.data_time + FLAGS_dns_cache/2 < now) && 
+                    ((data.data_time + FLAGS_dns_cache)<=now)) 
             {
                 list_del_init(&data.link);
                 list_add(&data.link, &m_prefetch_queue);
                 m_prefetch_wait.wakeup_all();
             }
-            if (data.data_time + 10 > now) {
-                // 缓存 10 秒
+            if (data.data_time + FLAGS_dns_cache > now) {
+                // 缓存
                 hostent_copy(&data.host, &ctx.host, &ctx.host_buff);
                 ctx.status = ARES_SUCCESS;
                 return 0;
