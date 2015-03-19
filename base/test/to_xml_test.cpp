@@ -40,6 +40,8 @@ TEST(to_xml, serialize)
     A a;
     a.i=3;
     a.j=4;
+    a.b.k= 5;
+    a.b.m= 6;
     std::string out;
     to_xml_value(out, a);
     printf("%s", out.c_str());

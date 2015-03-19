@@ -51,8 +51,7 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 		if(!ref)return -3;
         
 		const char *name = field->name().c_str();
-
-		if(!field->is_repeated() && ref->HasField(*msg, field))
+		if(ref->HasField(*msg, field))
 		{
 			switch (field->cpp_type())
 			{
@@ -64,9 +63,9 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 	                    size_t count = ref->FieldSize(*msg,field); \
                         for(size_t i = 0; i != count ; ++i) { \
                             t2 val  =  ref->GetRepeated##f(*msg, field, i); \
-                            childs.append(Json::Value(val)); \
+                            childs[childs.size()]=Json::Value(val); \
                         } \
-                        root[name] = childs; \
+                        root[name].swap(childs); \
                     } else {  \
                         t2 val  =  ref->Get##f(*msg, field); \
                         root[name] = val; \
@@ -90,23 +89,29 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
                         Json::Value childs(Json::arrayValue);  
 	                    size_t count = ref->FieldSize(*msg,field); 
                         for(size_t i = 0 ; i != count ; ++i) { 
-                            std::string val  =  ref->GetRepeatedString(*msg, field, i); 
+                            std::string const & val  =  ref->GetRepeatedString(*msg, field, i); 
                             if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-                                url_encode(ref->GetString(*msg, field), &val);
+                                std::string val2;
+                                url_encode(val, &val2);
+                                Json::Value v2(val2);
+                                childs[childs.size()].swap(v2);
                             } else {
-                                val = ref->GetString(*msg,field);
+                                Json::Value v1(val);
+                                childs[childs.size()].swap(v1);
                             }
-                            childs.append(Json::Value(val)); 
-                        } 
-                        root[name] = childs; 
-                    } else {  
-                        std::string val;
-                        if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-                            url_encode(ref->GetString(*msg, field), &val);
-                        } else {
-                            val = ref->GetString(*msg,field);
                         }
-                        root[name] = val;
+                        root[name].swap(childs); 
+                    } else {  
+                        if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+                            std::string val;
+                            url_encode(ref->GetString(*msg, field), &val);
+                            Json::Value v2(val);
+                            root[name].swap(v2);
+                        } else {
+                            std::string const &val = ref->GetString(*msg,field);
+                            Json::Value v2(val);
+                            root[name].swap(v2);
+                        }
                     }
 					break;
                 }
@@ -119,14 +124,14 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
                             Json::Value child2(Json::objectValue);
                             AUTO_VAR(val, =,  &ref->GetRepeatedMessage(*msg, field, i)); 
                             pb2json(val, &child2);
-                            childs.append(child2);
+                            childs[childs.size()].swap(child2);
                         } 
-                        root[name] = childs; 
+                        root[name].swap(childs); 
                      } else {  
                           Json::Value child(Json::objectValue);
                           AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
                           pb2json(val,  &child);
-                          root[name] = child;
+                          root[name].swap(child);
                      }
                      break;
                  }
@@ -137,12 +142,12 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
                         size_t count = ref->FieldSize(*msg,field); 
                         for(size_t i = 0 ; i != count ; ++i) { 
                             AUTO_VAR(val, =, ref->GetRepeatedEnum(*msg,field, i));
-                            childs.append(val->number());
+                            childs[childs.size()]=val->number();
                         } 
-                        root[name] = childs; 
+                        root[name].swap(childs); 
                      } else {  
                         AUTO_VAR(val, =, ref->GetEnum(*msg,field));
-                        root[name] = val->number();
+                        root[name]= val->number();
                      }
 					 break;
                 }
@@ -204,7 +209,7 @@ int json2pb(
 
     for (size_t i = 0; i < fields.size(); i++) {
         const FieldDescriptor* field = fields[i];
-        Json::Value value = json_value[field->name()];
+        Json::Value & value = json_value[field->name()];
 
         if (value.isNull()) {
             if (field->is_required()) {
@@ -235,7 +240,7 @@ int json2pb(
                     for (int index = 0;                                     \
                         index < static_cast<int>(value.size());             \
                         index++) {                                          \
-                        Json::Value item = value[Json::Value::ArrayIndex(index)];  \
+                        Json::Value & item = value[Json::Value::ArrayIndex(index)];  \
                         VALUE_TYPE_CHECK(item, jsontype);                   \
                         reflection->Add##method(message, field,             \
                             item.as##jsontype());                           \
@@ -261,7 +266,7 @@ int json2pb(
                     for (int index = 0;                                     \
                         index < static_cast<int>(value.size());             \
                         index++) {                                          \
-                        Json::Value item = value[Json::Value::ArrayIndex(index)];  \
+                        Json::Value &item = value[Json::Value::ArrayIndex(index)];  \
                             valuetype number_value;                         \
                             std::string txt = item.asString();   \
                             char *p = (char *) (txt.c_str()+txt.size());  \
@@ -289,26 +294,27 @@ int json2pb(
                     for (int index = 0;
                         index < static_cast<int>(value.size());
                         index++) {
-                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        Json::Value &item = value[Json::Value::ArrayIndex(index)];
                         VALUE_TYPE_CHECK(item, String);
-                        string str = item.asString();
+                        string const &str = item.asString();
                         if ((field->type() == FieldDescriptor::TYPE_BYTES || urlencoded)) {
                             std::string out;
                             url_decode(str, &out);
-                            str = out;
+                            reflection->AddString(message, field, out);
+                        } else {
+                            reflection->AddString(message, field, str);
                         }
-                        reflection->AddString(message, field, str);
                     }
                 } else {
                     VALUE_TYPE_CHECK(value, String);
-                    string str = value.asString();
+                    string const &str = value.asString();
                     if ((field->type() == FieldDescriptor::TYPE_BYTES || urlencoded)) {
                             std::string out;
                             url_decode(str, &out);
-                            str = out;
+                            reflection->SetString(message, field, out);
+                    } else {
+                        reflection->SetString(message, field, str);
                     }
-                    reflection->SetString(
-                        message, field, str);
                 }
                 break;
             }
@@ -318,7 +324,7 @@ int json2pb(
                     for (int index = 0;
                         index < static_cast<int>(value.size());
                         index++) {
-                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        Json::Value & item = value[Json::Value::ArrayIndex(index)];
                         if (!item.isInt()) {
                             SET_ERROR_INFO(error,
                                     "invalid type for field " + field->full_name() + ".");
@@ -331,9 +337,7 @@ int json2pb(
                                     "invalid value for enum field " + field->full_name() + ".");
                             return -21;
                         }
-                        reflection->AddEnum(
-                            message, field,
-                            enum_value_descriptor);
+                        reflection->AddEnum(message, field, enum_value_descriptor);
                     }
                 } else {
                     if (!value.isInt()) {
@@ -348,9 +352,7 @@ int json2pb(
                                 "invalid value for enum field " + field->full_name() + ".");
                         return -23;
                     }
-                    reflection->SetEnum(
-                        message, field,
-                        enum_value_descriptor);
+                    reflection->SetEnum( message, field, enum_value_descriptor);
                 }
                 break;
             }
@@ -360,11 +362,9 @@ int json2pb(
                     for (int index = 0;
                         index < static_cast<int>(value.size());
                         index++) {
-                        Json::Value item = value[Json::Value::ArrayIndex(index)];
+                        Json::Value & item = value[Json::Value::ArrayIndex(index)];
                         if (item.isObject()) {
-                            ret = json2pb(item,
-                                    reflection->AddMessage(message, field),
-                                    error, urlencoded); 
+                            ret = json2pb(item, reflection->AddMessage(message, field), error, urlencoded); 
                             if (ret)
                             {
                                  SET_ERROR_INFO(error,
@@ -372,7 +372,6 @@ int json2pb(
                                  return ret;
                                 return -24;
                             }
-
                         } else {
                             SET_ERROR_INFO(error,
                                     "invalid type for field 2 " + field->full_name() + ".");
@@ -380,9 +379,7 @@ int json2pb(
                         }
                     }
                 } else {
-                    if (json2pb(value,
-                            reflection->MutableMessage(message, field),
-                            error, urlencoded))
+                    if (json2pb(value, reflection->MutableMessage(message, field), error, urlencoded))
                     {
                         SET_ERROR_INFO(error,
                                 "invalid type for field 3 " + field->full_name() + ".");
@@ -437,9 +434,6 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
 		if(!field) return -2;
 
 		const char *name = field->name().c_str();
-
-		if(!field->is_repeated())
-		{
 			switch (field->cpp_type())
 			{
 
@@ -449,7 +443,7 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
                         Json::Value childs(Json::arrayValue); \
                         t2 val  =  field->default_value_##f(); \
                         childs.append(val); \
-                        root[name] = childs; \
+                        root[name].swap(childs); \
                     } else { \
                         t2 val  =  field->default_value_##f(); \
                         root[name] = val; \
@@ -468,13 +462,14 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
 
 				case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
                 {
-                    if (field->is_repeated()) {            
+                    if (field->is_repeated()) {
                         Json::Value childs(Json::arrayValue); 
                         Json::Value child(Json::objectValue);
                         AUTO_VAR(val,  =,  field->message_type());
                         pb2json(val, &child);
-                        childs.append(child);
-                        root[name] = child;
+                        childs.append(Json::Value());
+                        childs[childs.size()-1].swap(child);
+                        root[name].swap(childs);
                     } else {
                         Json::Value child(Json::objectValue);
                         AUTO_VAR(val,  =,  field->message_type());
@@ -485,7 +480,7 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
                 }
 				case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
                 {
-                    if (field->is_repeated()) {            
+                    if (field->is_repeated()) {
                         Json::Value childs(Json::arrayValue); 
                         AUTO_VAR(val, =, field->default_value_enum());
                         childs.append(Json::Value(val->number()));
@@ -500,9 +495,6 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
                     assert(!"error filed type");
 					break;
 			}
-
-		}
-
 	}
 	return 0; 
 }

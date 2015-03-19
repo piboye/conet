@@ -49,8 +49,9 @@ void xml_escape(std::string &sString)
 
 #define DEF_BASETYPE_TO_XML_VALUE(fmt, type) \
 inline \
-void to_xml_value(std::string &out, type value) { \
-    char buffer[40]; \
+void to_xml_value(std::string &out, type value) \
+{ \
+    char buffer[40]={0}; \
     snprintf(buffer, sizeof(buffer), fmt, value); \
     out.append(buffer); \
 } \
@@ -206,15 +207,23 @@ void to_xml_value(std::string & out, type const & v, const char * tag_name=BOOST
     out.append("</"); out.append(tag_name); out.append(">"); \
 } \
 
-#define DEF_TO_XML_WITH_ATTR(type , attrs,  param) DEF_TO_XML_WITH_ATTR_IMPL(type, BOOST_PP_VARIADIC_TO_SEQ attrs, BOOST_PP_VARIADIC_TO_SEQ param)
-#define DEF_TO_XML_WITH_ATTR_IMPL(type, seq_attr, seq_param) \
+#define DEF_TO_XML_WITH_ATTR(type , attrs,  ...)  \
+    BOOST_PP_IF(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__),  \
+        DEF_TO_XML_WITH_ATTR_IMPL(type, BOOST_PP_VARIADIC_TO_SEQ attrs,  \
+            BOOST_PP_VARIADIC_TO_SEQ __VA_ARGS__, 1), \
+        DEF_TO_XML_WITH_ATTR_IMPL(type, BOOST_PP_VARIADIC_TO_SEQ attrs,  \
+            BOOST_PP_VARIADIC_TO_SEQ __VA_ARGS__, 0))
+
+#define DEF_TO_XML_WITH_ATTR_IMPL(type, seq_attr, seq_param, param_num) \
 inline \
 void to_xml_value(std::string & out, type const & v, const char * tag_name=BOOST_PP_STRINGIZE(type)) \
 { \
     out.append("<"); out.append(tag_name); \
         BOOST_PP_SEQ_FOR_EACH(CONET_XML_ATTR_OUT, out, seq_attr)  \
     out.append(">"); \
-        BOOST_PP_SEQ_FOR_EACH(CONET_XML_ELEMENT_OUT, out, seq_param)  \
+    BOOST_PP_EXPR_IF(BOOST_PP_GREATER(param_num, 0), \
+        BOOST_PP_EXPAND( \
+            BOOST_PP_SEQ_FOR_EACH(CONET_XML_ELEMENT_OUT, out, seq_param) )) \
     out.append("</"); out.append(tag_name); out.append(">"); \
 } \
 

@@ -40,6 +40,8 @@ TEST(to_json, test)
     A a;
     a.i=3;
     a.j=4;
+    a.b.k = 5;
+    a.b.m = 6;
     std::string out;
     to_json_value(out, a);
     printf("%s", out.c_str());
