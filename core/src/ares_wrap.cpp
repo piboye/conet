@@ -18,6 +18,8 @@
 #include "ares_wrap.h"
 #include <stdlib.h>
 #include "gflags/gflags.h"
+#include "gc.h"
+#include "static_var.h"
 
 DEFINE_int32(dns_cache, 10, "dns cache time by seconds");
 
@@ -145,7 +147,7 @@ namespace conet
     int AresWrap::gethostbyname2_r(const char *name, int af, struct hostent *ret, char *buf, size_t buflen,
             struct hostent **result, int *h_errnop)
     {
-        CO_DEF_STATIC_VAR0(cb_ctx_t, ctx);
+        CO_DEF_STATIC_VAR(cb_ctx_t, ctx);
 
         ctx.host_name = name;
 
@@ -326,7 +328,7 @@ namespace conet
     hostent* AresWrap::gethostbyname2(char const *name, int af)
     {
 
-        CO_DEF_STATIC_VAR0(cb_ctx_t, ctx);
+        CO_DEF_STATIC_VAR(cb_ctx_t, ctx);
 
         ctx.host_name = name;
 

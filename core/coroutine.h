@@ -47,31 +47,6 @@ void * get_yield_value(coroutine_t *co);
 
 void print_stacktrace(coroutine_t *co, int fd=2);
 
-// coroutine gc memory alloctor
-gc_mgr_t *get_gc_mgr();
-
-// like new ClassA();
-
-void * get_static_var(void *key);
-void * set_static_var(void * key, void *val);
-
-#define CO_DEF_STATIC_VAR0(type, name) \
-    static int co_static_var_ct_ ## name = 0; \
-    type * co_static_var_p_ ## name =  (type *) get_static_var(& co_static_var_ct_ ## name); \
-    if (co_static_var_p_ ## name == NULL) { \
-        co_static_var_p_ ## name = gc_new<type>(1, conet::get_gc_mgr()); \
-        set_static_var(&co_static_var_ct_ ## name, co_static_var_p_ ## name); \
-    } \
-    type & name = * co_static_var_p_ ## name
-
-#define CO_DEF_STATIC_PTR(type, name, init_val) \
-    static int co_static_var_ct_ ## name = 0; \
-    type * name =  (type *) get_static_var(& co_static_var_ct_ ## name); \
-    if (name == NULL) { \
-        name = init_val; \
-        set_static_var(&co_static_var_ct_ ## name, name); \
-    } \
- 
 // 协程的spec 变量， 最好用 CO_NEW 来创建, 这样可以自动回收
 void * get_spec(uint64_t key);
 int set_spec(uint64_t key, void * val);
@@ -94,22 +69,19 @@ uint64_t set_interval(closure_t<void> *cl, int ms, int stack_size=0);
 void cancel_timeout(uint64_t);
 void cancel_interval(uint64_t);
 
-//
-template<typename T>
-int co_mem_fun_helper(void * arg)
-{
-    T *self = (T *) arg;
-    return self->run();
-}
-
 class Coroutine
 {
 public:
     coroutine_t *m_co;
 
+    static int CallRun(void * arg)
+    {
+        return ((Coroutine *)(arg))->run();
+    }
+
     Coroutine()
     {
-        m_co = alloc_coroutine(&co_mem_fun_helper<Coroutine>, this);
+        m_co = alloc_coroutine(&CallRun, this);
     }
 
     void resume()

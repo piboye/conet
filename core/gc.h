@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  piboyeliu
+ *         Author:  piboye
  *   Organization:
  *
  * =====================================================================================
@@ -74,13 +74,11 @@ T*  gc_alloc(int num, gc_mgr_t *mgr, bool add_to_tail=true)
     conet::gc_block_t * p = (conet::gc_block_t *) malloc(len); \
     p-> destructor = &conet::destructor_proxy<T>; \
     p-> num  = 1; \
-    ::new (p->data) T(__VA_ARGS__); \
+    ::new (p->data) T ##__VA_ARGS__; \
     INIT_LIST_HEAD(&p->link); \
     list_add_tail(&p->link, &mgr->alloc_list); \
     (T*)(p->data); \
 })
-
-
 
 template <typename T>
 T*  gc_new(int num, gc_mgr_t *mgr, bool add_to_tail = true)
@@ -109,6 +107,7 @@ void init_gc_mgr(gc_mgr_t *mgr);
 void gc_free_all(gc_mgr_t *mgr);
 void gc_free(void *p);
 
+gc_mgr_t *get_gc_mgr();
 
 class ScopeGC
 {
