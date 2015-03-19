@@ -80,7 +80,7 @@ int start_gettimeofday_improve(int ms)
     return 0;
 }
 
-int stop_gettimeofday_improve(int ms)
+int stop_gettimeofday_improve()
 {
     pthread_mutex_lock(&g_gtd_mutex);
     CONET_DEFER({

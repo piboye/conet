@@ -41,7 +41,7 @@ int proc_echo(void *arg, conn_info_t *conn)
     conet::enable_sys_hook();
     tcp_server_t * server= (tcp_server_t *)conn->server;
     int size = server->conf.max_packet_size;
-    char * buff = CO_ALLOC_ARRAY(char, size);
+    char * buff = GC_ALLOC_ARRAY(char, size);
     int ret = 0;
     do
     {

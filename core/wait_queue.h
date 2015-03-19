@@ -19,7 +19,7 @@
 #define WAIT_QUEUE_H_INCL
 
 
-#include "../base/list.h"
+#include "base/list.h"
 #include "timewheel.h"
 
 namespace conet
