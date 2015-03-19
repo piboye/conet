@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "delay_init.h"
-#include "repeat_macro.h"
+#include "macro_help.h"
 
 #ifndef LOG
 #define ENABLE_DELAY_INIT_CPP_LOG
@@ -13,10 +13,12 @@ int failed_cnt = 0;
 int success_cnt = 0;
 int total_cnt = 0;
 int called_cnt = 0;
-#define INIT_LIST_HEAD_IMPL(s, index, name) COMMA_IF(index) LIST_HEAD_INIT(name[index])
-#define LIST_HEAD_ARRAY_INIT(name, n) { EXPR(0)(REPEAT(0, n, INIT_LIST_HEAD_IMPL, name)) }
-#define LIST_HEAD_ARRAY(name, n) list_head name[n] =  LIST_HEAD_ARRAY_INIT(name, n)
-LIST_HEAD_ARRAY(g_delay_init_list_head, INIT_LEVEL_NUM);
+
+#define INIT_LIST_HEAD_IMPL(s, index, name) BOOST_PP_COMMA_IF(index) LIST_HEAD_INIT(name[index])
+
+list_head g_delay_init_list_head[INIT_LEVEL_NUM] = {
+    BOOST_PP_REPEAT(INIT_LEVEL_NUM, INIT_LIST_HEAD_IMPL, g_delay_init_list_head)
+};
 
 static int call_file_list(file_node *file_list) {
     if (file_list->called) {

@@ -21,10 +21,7 @@
 #include "list.h"
 #include <stdint.h>
 #include <stdlib.h>
-
-#define BOOST_PP_VARIADICS 1
-
-#include "boost/preprocessor.hpp"
+#include "macro_help.h"
 
 namespace conet
 {
@@ -48,9 +45,6 @@ R (*get_bind_this_wrap_helper( R (ClassT::*f)() ))()
 }
 
 #define CONET_MAX_BIND_THIS_PARAM_NUM 20
-
-#define CONET_ARG_DEF(z, n, t) \
-            BOOST_PP_COMMA_IF(n) BOOST_PP_CAT(arg_type_,n) BOOST_PP_CAT(arg, n)
 
 #define CONET_GET_BIND_THIS_WRAP_HELPER_IMPL(z, n, t) \
 template<typename ClassT, typename R,  BOOST_PP_ENUM_PARAMS(n, typename arg_type_) > \

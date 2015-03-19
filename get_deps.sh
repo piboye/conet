@@ -11,6 +11,7 @@ if (( $? != 0 ))
 then
     git clone https://github.com/chen3feng/typhoon-blade.git blade/
     (cd blade; ./install)
+    . ~/bin/bladefunctions
 fi
 
 cp -r tools/* ~/bin/

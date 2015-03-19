@@ -17,12 +17,7 @@
  */
 #ifndef __CONET_DEFER_H__
 #define __CONET_DEFER_H__
-
-//  gcc 必须定义这个， 不然会定义为 0, 导致 BOOST_PP_VARIADIC_TO_SEQ 用不了
-#define BOOST_PP_VARIADICS 1
-
-#include "boost/preprocessor.hpp"
-
+#include "macro_help.h"
 
 #define CONET_DEFER_DECL_TYPEOF(r, data,  a) typedef typeof(a) BOOST_PP_CAT(typeof_, a) ;
 #define CONET_DEFER_IMPL_REF_TYPE(r, data, a) BOOST_PP_CAT(typeof_,a) &a;

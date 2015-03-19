@@ -19,9 +19,7 @@
 #ifndef __CONET_CLOSURE_H__
 #define __CONET_CLOSURE_H__
 
-#define BOOST_PP_VARIADICS 1
-
-#include "boost/preprocessor.hpp"
+#include "macro_help.h"
 
 namespace conet
 {
