@@ -53,11 +53,18 @@ cc_library(
     ],
 );
 
+
+
 cc_test(
     name='base_test',
     srcs =[
-        'src/http_parser_test.cpp',
-        'src/query_string_test.cpp',
+        'test/bind_this_test.cpp',
+        'test/http_parser_test.cpp',
+        'test/query_string_test.cpp',
+        "test/defer_test.cpp",
+        'test/to_json_test.cpp',
+        'test/ptr_cast_test.cpp',
+        'test/closure_test.cpp',
     ],
 
     incs= [ 
@@ -72,20 +79,11 @@ cc_test(
 );
 
 
-cc_test(
-    name='defer_test',
-    srcs=[
-        "src/defer_test.cpp",
-    ],
-    incs=[
-        "./",
-    ],
-);
 
 cc_binary(
     name = 'tls_bench',
     srcs = [
-        'src/tls_bench.cpp',
+        'test/tls_bench.cpp',
     ],
 
     incs= [ 
@@ -95,43 +93,13 @@ cc_binary(
     deps = [
         ":base",
         "//thirdparty/gflags:gflags",
-    ],
-) 
-
-cc_binary(
-    name = 'time_helper_test',
-    srcs = [
-        'src/time_helper_test.cpp',
-    ],
-
-    incs= [ 
-        "./",
-    ],
-
-    deps = [
-        ":base",
-        "//thirdparty/gflags:gflags",
-    ],
-) 
-
-cc_binary(
-    name = 'ptr_cast_test',
-    srcs = [
-        'src/ptr_cast_test.cpp',
-    ],
-
-    incs= [ 
-        "./",
-    ],
-
-    deps = [
     ],
 ) 
 
 proto_library(
     name = 'test_proto',
     srcs = [
-        'src/test.proto',
+        'test/test.proto',
     ],
 )
 
@@ -139,7 +107,7 @@ cc_binary(
     name = 'pb2sqlite_test',
 
     srcs = [
-        'src/pb2sqlite_test.cpp',
+        'test/pb2sqlite_test.cpp',
     ],
 
     incs= [ 
@@ -153,25 +121,19 @@ cc_binary(
     ],
 ) 
 
-cc_test(
-    name = 'closure_test',
-    srcs = [
-        'src/closure_test.cpp',
-    ],
-
-    incs= [ 
-        "./",
-    ],
-)
-
 cc_binary(
-    name = 'bind_this_test',
+    name = 'time_helper_test',
     srcs = [
-        'src/bind_this_test.cpp',
+        'test/time_helper_test.cpp',
     ],
 
     incs= [ 
         "./",
     ],
-    deps=[":base"],
+
+    deps = [
+        ':base',
+        '#dl',
+    ],
 )
+

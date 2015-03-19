@@ -37,12 +37,11 @@ struct BindThisData
 BindThisData * get_bind_this_data();
 void free_bind_this_data(BindThisData *d);
 
-inline
-void free_bind_this_func(void *f)
-{
-    free_bind_this_func(
-            (BindThisData *)((char*)f - ((size_t)&((BindThisData *)0)->code)));
-}
+#define free_bind_this_func(f) \
+({ \
+    free_bind_this_data( \
+            (BindThisData *)((char*)f - ((size_t)&((BindThisData *)0)->code))); \
+})
 
 }
 

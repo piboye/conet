@@ -27,23 +27,29 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "thirdparty/gtest/gtest.h"
+
 class A
 {
     public: 
+        int m_i;
         int f(int i, int j)
         {
-            printf("hello, %d, %d\n", i, j);
-            return 0;
+            printf("m_i:%d hello, %d, %d\n", m_i, i, j);
+            return i+j;
         }
 };
 
 using namespace conet;
 
-int main(int argc, char const* argv[])
+TEST(bind_this, test)
 {
     A a;
+    a.m_i = 100;
     int (*f)(int, int) = BindThis(a, A::f);
-    f(1, 2);
-    return 0;
+    int k = f(1, 2);
+    printf("j:%d\n", k);
+    ASSERT_EQ(3, k);
+    free_bind_this_func(f);
 }
 

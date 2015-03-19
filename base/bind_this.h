@@ -36,8 +36,8 @@ R (*get_bind_this_wrap_helper( R (ClassT::*f)() ))()
         {
             void * self=NULL;
             R (* func)(void *)=NULL;
-            asm("movq %%r13, %0" :"=r"(self)::);
-            asm("movq %%r14, %0" :"=r"(func)::);
+            asm("movq %%r10, %0" :"=r"(self)::);
+            asm("movq %%r11, %0" :"=r"(func)::);
             return func(self);
         }
     };
@@ -58,8 +58,8 @@ R (*get_bind_this_wrap_helper(R (ClassT::*f)(BOOST_PP_ENUM_PARAMS(n, arg_type_))
         { \
             void * self=NULL; \
             R (* func)(void *, BOOST_PP_ENUM_PARAMS(n, arg_type_)) = NULL; \
-            asm("movq %%r13, %0" :"=r"(self)::); \
-            asm("movq %%r14, %0" :"=r"(func)::); \
+            asm("movq %%r10, %0" :"=r"(self)::); \
+            asm("movq %%r11, %0" :"=r"(func)::); \
             return func(self, BOOST_PP_ENUM_PARAMS(n, arg)); \
         } \
     }; \

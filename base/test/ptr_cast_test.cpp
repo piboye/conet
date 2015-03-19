@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "ptr_cast.h"
 #include <stdio.h>
+#include "thirdparty/gtest/gtest.h"
 
 class A
 {
@@ -30,8 +31,7 @@ public:
 
 typedef int (*f_t)(void *arg, int);
 
-
-int main(int argc, char const* argv[])
+TEST(ptr_cast, test)
 {
     f_t f;
 
@@ -40,7 +40,5 @@ int main(int argc, char const* argv[])
 
     int b = f(&a, 100);
 
-    printf("b:%d\n", b);
-    
-    return 0;
+    ASSERT_EQ(b, 100); 
 }
