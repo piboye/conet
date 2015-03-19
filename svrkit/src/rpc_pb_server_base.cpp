@@ -201,11 +201,12 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     Json::Value root(Json::objectValue); 
     Json::Value body(Json::objectValue);  
     if (!errmsg.empty()) {
-        root["errmsg"] = errmsg;
+        Json::Value err_v(errmsg);
+        root["errmsg"].swap(err_v);
     }
     if (rsp1) {
         conet::pb2json(rsp1, &body); 
-        root["body"]=body; 
+        root["body"].swap(body); 
     }
     root["ret"]= ret;
     conet::response_to(resp, 200, root.toStyledString()); 
@@ -226,9 +227,8 @@ int http_get_rpc_req_default_value(void *arg, http_ctx_t *ctx, http_request_t * 
     Json::Value body(Json::objectValue);  
     root["ret"]=0; 
     if (self->req_msg) {
-
         pb2json(self->req_msg->GetDescriptor(), &body);
-        root["req"]=body; 
+        root["req"].swap(body); 
     } else {
         //没有请求体
         root["req"]="";
@@ -256,17 +256,17 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
     Json::Value root(Json::objectValue); 
     Json::Value list(Json::arrayValue);  
 
-
     StrMap::node_type * pn = NULL;
     list_for_each_entry(pn, &self->cmd_maps.m_list, link_to)
     {
         rpc_pb_cmd_t *cmd = container_of(pn, rpc_pb_cmd_t, cmd_map_node);
-        list.append(Json::Value(cmd->method_name));
+        Json::Value cmd_val(cmd->method_name);
+        list[list.size()].swap(cmd_val);
     }
 
     root["ret"]=0; 
-    root["list"]=list; 
-    conet::response_to(resp, 200, root.toStyledString()); 
+    root["list"].swap(list);
+    conet::response_to(resp, 200, root.toStyledString());
     return 0;
 }
 
