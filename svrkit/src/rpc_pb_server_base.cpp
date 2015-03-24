@@ -209,7 +209,10 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         root["body"].swap(body); 
     }
     root["ret"]= ret;
-    conet::response_to(resp, 200, root.toStyledString()); 
+
+    //Json::FastWriter writer;
+    //conet::response_to(resp, 200, writer.write(root));
+    conet::response_to(resp, 200, root.toStyledString());
 
     if (req1) self->req_pool.release(req1);
     if (rsp1) self->rsp_pool.release(rsp1);
@@ -233,7 +236,10 @@ int http_get_rpc_req_default_value(void *arg, http_ctx_t *ctx, http_request_t * 
         //没有请求体
         root["req"]="";
     }
-    conet::response_to(resp, 200, root.toStyledString()); 
+
+    //Json::FastWriter writer;
+    //conet::response_to(resp, 200, writer.write(root));
+    conet::response_to(resp, 200, root.toStyledString());
     return 0;
 }
 
@@ -266,6 +272,8 @@ int http_get_rpc_list(void *arg, http_ctx_t *ctx, http_request_t * req, http_res
 
     root["ret"]=0; 
     root["list"].swap(list);
+    //Json::FastWriter writer;
+    //conet::response_to(resp, 200, writer.write(root));
     conet::response_to(resp, 200, root.toStyledString());
     return 0;
 }
