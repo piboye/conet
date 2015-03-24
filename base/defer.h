@@ -49,14 +49,15 @@ struct __conet_defer_t_##__LINE__ \
     ~__conet_defer_t_##__LINE__()\
     op  \
 }  \
-__conet_defer_var_##__LINE__ param \
+__conet_defer_var_##__LINE__ param  __attribute__((unused))\
+
 
 #define CONET_DEFER_EMPTY_PARAM_IMPL(op)  \
 struct __conet_defer_t_##__LINE__  \
 { \
     ~__conet_defer_t_##__LINE__() \
     op \
-} __conet_defer_var_##__LINE__
+} __conet_defer_var_##__LINE__ __attribute__((unused)) \
 
 
 
