@@ -41,7 +41,7 @@
 namespace conet
 {
 
-DEFINE_bool(improve_tw, true, "use thread improve timewheel");
+DEFINE_bool(improve_tw, false, "use thread improve timewheel");
 
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
@@ -65,6 +65,7 @@ uint64_t get_tick_ms2()
 //uint64_t get_tick_ms() __attribute__((strong));
 uint64_t get_tick_ms() 
 {
+    
     return get_tick_ms3();
 }
 
@@ -89,9 +90,6 @@ static
 inline
 uint64_t get_cur_ms(timewheel_t *tw)
 {
-    if (tw) {
-        return tw->now_ms;
-    }
     return get_tick_ms2();
 }
 
@@ -142,6 +140,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
     if (FLAGS_improve_tw) {
         self->notify = time_mgr_t::instance().alloc_timeout_notify();
         self->enable_notify = 1;
+	self->latest_ms = 0;
     } else {
         self->notify = NULL;
         self->enable_notify = 0;
@@ -154,6 +153,10 @@ void init_timewheel(timewheel_t *self, int slot_num)
 
 void fini_timewheel(timewheel_t *self)
 {
+    if (self->enable_notify && self->notify) {
+    	time_mgr_t::instance().free(self->notify);
+	self->notify = NULL;
+    }
     unregistry_task(&self->delay_task);
     delete [] self->slots;
 }
@@ -227,16 +230,21 @@ int timewheel_task2(void *arg)
        }
 
        tw->now_ms = get_tick_ms3(); 
-
        cnt = check_timewheel(tw, tw->now_ms);
-       if (cnt > 0 && tw->enable_notify) {
-           tw->notify->latest_ms = get_latest_ms(tw);
+       if (tw->enable_notify) {
+	    if (tw->now_ms < tw->latest_ms)
+	    {
+	      tw->notify->latest_ms = tw->latest_ms;
+	    } else {
+	      tw->latest_ms = get_latest_ms(tw);
+              tw->notify->latest_ms = tw->latest_ms;
+            }
        }
+
     }
 
     time_mgr_t::instance().free(tw->notify);
 
-    close(evfd);
     return 0;
 }
 
@@ -252,8 +260,6 @@ int timewheel_task(void *arg)
     uint64_t cnt = 0;
     int ret = 0;
 
-    //ret = _(gettimeofday)(&tw->prev_tv, NULL);
-    //tw->update_timeofday_flag = 1;
     tw->now_ms = get_tick_ms2(); 
 
     while (!tw->stop) {
@@ -273,13 +279,9 @@ int timewheel_task(void *arg)
            continue;
        }
 
-       //ret = _(gettimeofday)(&tw->prev_tv, NULL);
-       
        tw->now_ms = get_tick_ms2(); 
-       //tw->now_ms += cnt; 
 
        check_timewheel(tw, tw->now_ms);
-       //registry_delay_task(&tw->delay_task);
     }
     return 0;
 }
@@ -336,7 +338,7 @@ timewheel_t *get_timewheel()
 
 void cancel_timeout(timeout_handle_t *obj) {
     if (!list_empty(&obj->link_to)) 
-    { // timeout must check empty
+    { 
 
         list_del_init(&obj->link_to);
         timewheel_t * tw = obj->tw;
@@ -369,9 +371,9 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     obj->interval = interval;
     if (tw->enable_notify)
     {
-        uint64_t t_last = tw->notify->latest_ms;
+        uint64_t t_last = tw->latest_ms;
         if (t_last == 0 || t < t_last) {
-            tw->notify->latest_ms = t;
+            tw->latest_ms = t;
         }
     }
     return true;
@@ -396,8 +398,8 @@ uint64_t get_latest_ms(timewheel_t *tw)
     int slot_num = tw->slot_num;
     list_head *slots = tw->slots;
     
-    uint64_t min = now_ms + 100;
-    for(int i=0; i<100; ++i)
+    uint64_t min = now_ms + 10;
+    for(int i=0; i<10; ++i)
     {
         pos = (pos +i) %slot_num;
         if (list_empty(&slots[pos])) {

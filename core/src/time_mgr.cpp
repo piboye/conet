@@ -73,6 +73,7 @@ void time_mgr_t::add_to_queue(timeout_notify_t *t)
 {
     t->status = 1;
     SCOPE_LOCK(this_mutex);
+    list_del_init(&t->link_to);
     list_add_tail(&t->link_to, &timeout_notify_inqueue);
     ++in_queue_num;
 }
@@ -145,6 +146,7 @@ void * time_mgr_t::main_proc()
         update_gettimeofday_cache();
         do_in_queue();
         check_timeout();
+        do_dequeue();
     }
 
     close(timerfd);
@@ -158,6 +160,7 @@ void time_mgr_t::update_gettimeofday_cache()
     this->gettimeofday_cache = tvs+tvs_pos;
     tvs_pos = (tvs_pos+1)%100;
     cur_ms = gettimeofday_cache->tv_sec * 1000 + gettimeofday_cache->tv_usec/1000;
+    //LOG(ERROR)<<"cur_ms:"<<cur_ms<<" tv_sec:"<<gettimeofday_cache->tv_sec<<" tv_usec:"<<gettimeofday_cache->tv_usec;
 }
 
 void time_mgr_t::do_in_queue()
@@ -166,18 +169,11 @@ void time_mgr_t::do_in_queue()
     {
         return ;
     }
-
-    LIST_HEAD(queue); 
-
+   
     {
         SCOPE_LOCK(this_mutex);
-        list_swap(&queue, &timeout_notify_inqueue);
+        list_splice_tail_init(&timeout_notify_inqueue, &timeout_notify_queue);
         in_queue_num = 0;
-    }
-
-    {
-        list_add_tail(&queue, &timeout_notify_queue);
-        list_del_init(&queue);
     }
 }
 
@@ -187,7 +183,7 @@ void time_mgr_t::check_timeout()
     uint64_t val = 1;
 
     int ret = 0;
-
+    int cnt = 0;
     list_for_each_entry_safe(t, next, &timeout_notify_queue, link_to)
     {
         if (t->status == 3) 
@@ -197,6 +193,7 @@ void time_mgr_t::check_timeout()
         }
 
         if (t->status == 1) t->status = 2; 
+	++cnt;
 
         if (t->latest_ms <= cur_ms && t->event_fd >= 0)
         {

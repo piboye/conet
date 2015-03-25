@@ -63,6 +63,7 @@ struct timewheel_t
 
     timeout_notify_t *notify;
     int event_fd;
+    uint64_t latest_ms;
 
     int task_num;
     int slot_num;
