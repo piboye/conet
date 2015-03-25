@@ -41,7 +41,7 @@
 namespace conet
 {
 
-DEFINE_bool(improve_tw, false, "use thread improve timewheel");
+DEFINE_bool(improve_tw, true, "use thread improve timewheel");
 
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
@@ -153,10 +153,6 @@ void init_timewheel(timewheel_t *self, int slot_num)
 
 void fini_timewheel(timewheel_t *self)
 {
-    if (self->enable_notify && self->notify) {
-    	time_mgr_t::instance().free(self->notify);
-	self->notify = NULL;
-    }
     unregistry_task(&self->delay_task);
     delete [] self->slots;
 }
@@ -213,6 +209,14 @@ int timewheel_task2(void *arg)
     uint64_t cnt = 0;
     while (!tw->stop)
     {
+	    if (tw->now_ms < tw->latest_ms)
+	    {
+		    tw->notify->latest_ms = tw->latest_ms;
+	    } else {
+		    tw->latest_ms = get_latest_ms(tw);
+		    tw->notify->latest_ms = tw->latest_ms;
+	    }
+
        struct pollfd pf = { fd: evfd, events: POLLIN | POLLERR | POLLHUP };
        ret = conet::co_poll(&pf, 1, -1);
 
@@ -231,15 +235,6 @@ int timewheel_task2(void *arg)
 
        tw->now_ms = get_tick_ms3(); 
        cnt = check_timewheel(tw, tw->now_ms);
-       if (tw->enable_notify) {
-	    if (tw->now_ms < tw->latest_ms)
-	    {
-	      tw->notify->latest_ms = tw->latest_ms;
-	    } else {
-	      tw->latest_ms = get_latest_ms(tw);
-              tw->notify->latest_ms = tw->latest_ms;
-            }
-       }
 
     }
 
