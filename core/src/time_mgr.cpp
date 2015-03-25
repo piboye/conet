@@ -192,7 +192,7 @@ void time_mgr_t::check_timeout()
     {
         if (t->status == 3) 
         {
-            do_remove_queue(t);
+            list_move(&t->link_to, &timeout_notify_dequeue);
             continue;
         }
 
@@ -208,18 +208,23 @@ void time_mgr_t::check_timeout()
                     "[errno:"<<errno<<"]"
                     "[errmsg:"<<strerror(errno)<<"]"
                     ;
-                do_remove_queue(t);
+                list_move(&t->link_to, &timeout_notify_dequeue);
                 continue;
             }
         }
     }
 }
 
-void time_mgr_t::do_remove_queue(timeout_notify_t *t)
+void time_mgr_t::do_dequeue()
 {
-    list_del_init(&t->link_to);
-    t->status = 4; 
-    notify_pool.release(t);
+    timeout_notify_t *t=NULL, *next=NULL;
+    list_for_each_entry_safe(t, next, &timeout_notify_dequeue, link_to)
+    {
+        SCOPE_LOCK(this_mutex);
+        list_del_init(&t->link_to);
+        t->status = 4; 
+        notify_pool.release(t);
+    }
 }
 
 int time_mgr_t::start()

@@ -60,6 +60,7 @@ struct time_mgr_t
     list_head timeout_notify_queue; // 超时通知队列
     uint64_t in_queue_num;
     list_head timeout_notify_inqueue; // 入队队列
+    list_head timeout_notify_dequeue; // 出队队列
 
     time_mgr_t()
     {
@@ -72,7 +73,7 @@ struct time_mgr_t
         pthread_mutex_init(&this_mutex, NULL);
         INIT_LIST_HEAD(&timeout_notify_queue);
         INIT_LIST_HEAD(&timeout_notify_inqueue);
-
+        INIT_LIST_HEAD(&timeout_notify_dequeue);
     }
 
     static time_mgr_t &instance();
@@ -96,7 +97,7 @@ struct time_mgr_t
     void update_gettimeofday_cache();
     void do_in_queue();
     void check_timeout();
-    void do_remove_queue(timeout_notify_t *t);
+    void do_dequeue();
 };
 
 }
