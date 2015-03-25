@@ -41,7 +41,7 @@
 namespace conet
 {
 
-DEFINE_bool(improve_tw, true, "use thread improve timewheel");
+DEFINE_bool(improve_tw, false, "use thread improve timewheel");
 
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
