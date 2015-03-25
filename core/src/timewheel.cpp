@@ -363,6 +363,13 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     list_add_tail(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
     obj->interval = interval;
+    if (tw->enable_notify)
+    {
+        uint64_t t_last = tw->notify->latest_ms;
+        if (t_last == 0 || t < t_last) {
+            tw->notify->latest_ms = t;
+        }
+    }
     return true;
 }
 
@@ -376,6 +383,28 @@ bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval)
     return set_timeout_impl(tw, obj, interval, interval);
 }
 
+
+uint64_t get_latest_ms(timewheel_t *tw)
+{
+
+    uint64_t now_ms = tw->prev_ms;
+    int pos = tw->pos;
+    int slot_num = tw->slot_num;
+    list_head *slots = tw->slots;
+    
+    for(int i=0; i<100; ++i)
+    {
+        pos +=i;
+        if (list_empty(&slots[pos])) {
+            continue;
+        }
+        timeout_handle_t *t1=NULL;
+        list_for_each_entry(t1,  &slots[pos], link_to)
+        {
+
+        }
+    }
+}
 
 
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
