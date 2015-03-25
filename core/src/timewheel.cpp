@@ -141,7 +141,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
 
     if (FLAGS_improve_tw) {
         self->notify = time_mgr_t::instance().alloc_timeout_notify();
-        self->enable_notify = 0;
+        self->enable_notify = 1;
     } else {
         self->notify = NULL;
         self->enable_notify = 0;
@@ -187,6 +187,7 @@ int create_timer_fd()
     return timerfd;
 }
 
+uint64_t get_latest_ms(timewheel_t *tw);
 static
 int timewheel_task2(void *arg)
 {
@@ -227,7 +228,10 @@ int timewheel_task2(void *arg)
 
        tw->now_ms = get_tick_ms3(); 
 
-       check_timewheel(tw, tw->now_ms);
+       cnt = check_timewheel(tw, tw->now_ms);
+       if (cnt > 0 && tw->enable_notify) {
+           tw->notify->latest_ms = get_latest_ms(tw);
+       }
     }
 
     time_mgr_t::instance().free(tw->notify);
@@ -392,18 +396,25 @@ uint64_t get_latest_ms(timewheel_t *tw)
     int slot_num = tw->slot_num;
     list_head *slots = tw->slots;
     
+    uint64_t min = now_ms + 100;
     for(int i=0; i<100; ++i)
     {
-        pos +=i;
+        pos = (pos +i) %slot_num;
         if (list_empty(&slots[pos])) {
             continue;
         }
-        timeout_handle_t *t1=NULL;
-        list_for_each_entry(t1,  &slots[pos], link_to)
+        timeout_handle_t *t=NULL;
+        list_for_each_entry(t,  &slots[pos], link_to)
         {
-
+            uint64_t v = t->timeout;
+            if ( v < min)
+            {
+                min = v;
+            }
         }
     }
+
+    return min;
 }
 
 
