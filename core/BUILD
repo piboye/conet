@@ -21,6 +21,8 @@ cc_library(
         "src/make_x86_64_sysv_elf_gas.s",
         "src/time_hook.cpp",
         "src/ares_wrap.cpp",
+        "src/time_mgr.cpp",
+        "src/common.cpp",
     ],
 
     incs= [ 

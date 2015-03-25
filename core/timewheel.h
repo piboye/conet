@@ -28,6 +28,8 @@
 #include "base/list.h"
 #include "base/time_helper.h"
 #include "dispatch.h"
+#include "time_mgr.h"
+
 namespace conet 
 {
 
@@ -54,6 +56,14 @@ struct timewheel_t
 {
     uint64_t pos;
     uint64_t prev_ms;
+
+    struct {
+       unsigned int  enable_notify:1;
+    };
+
+    timeout_notify_t *notify;
+    int event_fd;
+
     int task_num;
     int slot_num;
     void * co;

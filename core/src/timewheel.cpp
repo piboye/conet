@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/eventfd.h>
 
 #include "gflags/gflags.h"
 #include "hook_helper.h"
@@ -37,30 +38,34 @@
 #include "base/tls.h"
 #include "base/time_helper.h"
 
-
 namespace conet
 {
 
-void close_fd_notify_poll(int fd);
+DEFINE_bool(improve_tw, true, "use thread improve timewheel");
 
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
+
+static inline
+uint64_t get_tick_ms3()
+{
+    return time_mgr_t::instance().cur_ms;
+}
 
 static uint64_t g_khz = get_cpu_khz();
 inline
 uint64_t get_tick_ms2() 
 {
 
-    return rdtscp() / g_khz;
+    //return rdtscp() / g_khz;
+    return get_tick_ms3();
 }
+
 
 //uint64_t get_tick_ms() __attribute__((strong));
 uint64_t get_tick_ms() 
 {
-    if (g_tw) {
-        return g_tw->now_ms;
-    }
-    return get_tick_ms2();
+    return get_tick_ms3();
 }
 
 
@@ -134,6 +139,14 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->prev_tv.tv_sec = 0;
     self->prev_tv.tv_usec = 0;
 
+    if (FLAGS_improve_tw) {
+        self->notify = time_mgr_t::instance().alloc_timeout_notify();
+        self->enable_notify = 0;
+    } else {
+        self->notify = NULL;
+        self->enable_notify = 0;
+    }
+
     INIT_LIST_HEAD(&self->now_list);
     init_task(&self->delay_task, &do_now_task, self);
     registry_task(&self->delay_task);
@@ -151,7 +164,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 static 
 int create_timer_fd()
 {
-    int timerfd = 0;
+    int timerfd = -1;
     timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
         LOG_SYS_CALL(timerfd_create, timerfd); 
@@ -172,6 +185,55 @@ int create_timer_fd()
     }
 
     return timerfd;
+}
+
+static
+int timewheel_task2(void *arg)
+{
+    conet::enable_sys_hook(); 
+    timewheel_t *tw = (timewheel_t *)arg;
+    int evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (evfd < 0) {
+        LOG(FATAL)<<"create eventfd failed! [ret:"<<evfd<<"]"
+            ;
+        return -1;
+    }
+
+    tw->event_fd = evfd;
+    tw->notify->event_fd = evfd;
+
+    time_mgr_t::instance().add_to_queue(tw->notify);
+
+    tw->now_ms = get_tick_ms3(); 
+    int ret = 0;
+    uint64_t cnt = 0;
+    while (!tw->stop)
+    {
+       struct pollfd pf = { fd: evfd, events: POLLIN | POLLERR | POLLHUP };
+       ret = conet::co_poll(&pf, 1, -1);
+
+       cnt = 0;
+       ret = syscall(SYS_read, evfd, &cnt, sizeof(cnt)); 
+       if (ret != sizeof(cnt)) {
+          LOG(ERROR)<<" timewheel eventfd read failed, "
+               "[ret:"<<ret<<"]"
+               "[timerfd:"<<evfd<<"]"
+               "[poll event:"<<pf.revents<<"]"
+               "[errno:"<<errno<<"]"
+               "[errmsg:"<<strerror(errno)<<"]"
+               ;
+           continue;
+       }
+
+       tw->now_ms = get_tick_ms3(); 
+
+       check_timewheel(tw, tw->now_ms);
+    }
+
+    time_mgr_t::instance().free(tw->notify);
+
+    close(evfd);
+    return 0;
 }
 
 static
@@ -250,7 +312,12 @@ timewheel_t *get_timewheel()
         timewheel_t *tw = alloc_timewheel();
         if (NULL == g_tw) {
             g_tw = tw;
-            coroutine_t *co = alloc_coroutine(timewheel_task, tw, 128*4096);
+            coroutine_t *co =  NULL;
+            if (tw->enable_notify) {
+                co  = alloc_coroutine(timewheel_task2, tw, 128*4096);
+            } else {
+                co = alloc_coroutine(timewheel_task, tw, 128*4096);
+            }
             tw->co = co;
             // 这个必须在 alloc_coroutine 下面
             tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
@@ -378,4 +445,5 @@ void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
     timewheel_t *tw = get_timewheel();
     set_interval(tw, obj, timeout);
 }
+
 }

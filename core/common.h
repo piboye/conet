@@ -1,28 +1,27 @@
 /*
  * =====================================================================================
  *
- *       Filename:  all.h
+ *       Filename:  common.h
  *
- *    Description:
+ *    Description:  
  *
  *        Version:  1.0
- *        Created:  2014年05月21日 16时35分20秒
+ *        Created:  03/24/2015 02:39:58 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
  *         Author:  piboye
- *   Organization:
+ *   Organization:  
  *
  * =====================================================================================
  */
-#ifndef __CONET_ALL_H__
-#define __CONET_ALL_H__
+#ifndef __CONET_COMMON_H__
+#define __CONET_COMMON_H__
+#include "base/list.h"
 
-#include "coroutine.h"
-#include "network_hook.h"
-#include "pthread_hook.h"
-#include "dispatch.h"
-#include "common.h"
-
+namespace conet
+{
+    int init_conet_global_env();
+    int free_conet_global_env();
+}
 #endif /* end of include guard */
-

@@ -38,6 +38,7 @@
 #include "svrkit/rpc_conf.pb.h"
 #include "svrkit/static_resource.h"
 #include "base/pb2json.h"
+#include "base/defer.h"
 
 
 namespace conet
@@ -50,7 +51,6 @@ DEFINE_int32(port, 12314, "server port");
 DEFINE_int32(thread_num, 0, "thread num");
 DEFINE_bool(duplex, false, "duplex in tcp");
 
-DEFINE_int32(time_resolution, 0, "set time resolution by micosencond");
 
 }
 
@@ -179,6 +179,12 @@ int main(int argc, char * argv[])
         return 2;
     }
 
+    conet::init_conet_global_env();
+    CONET_DEFER({
+        conet::free_conet_global_env();
+    });
+
+
     g_server_container = ServerBuilder::build(conf);
     if (NULL == g_server_container)
     {
@@ -186,18 +192,10 @@ int main(int argc, char * argv[])
         return 3;
     }
 
-    if (FLAGS_time_resolution > 0) {
-        conet::start_gettimeofday_improve(FLAGS_time_resolution);
-    }
-
     g_server_container->start();
     while(!get_server_stop_flag())
     {
        sleep(1); 
-    }
-
-    if (FLAGS_time_resolution > 0) {
-        conet::stop_gettimeofday_improve();
     }
 
     LOG(INFO)<<"server ready exit!";
@@ -212,6 +210,3 @@ int main(int argc, char * argv[])
 
     return 0;
 }
-
-
-
