@@ -41,7 +41,7 @@
 namespace conet
 {
 
-DEFINE_bool(improve_tw, false, "use thread improve timewheel");
+DEFINE_bool(improve_tw, true, "use thread improve timewheel");
 
 static __thread timewheel_t * g_tw = NULL;
  epoll_ctx_t * get_epoll_ctx();
@@ -209,13 +209,7 @@ int timewheel_task2(void *arg)
     uint64_t cnt = 0;
     while (!tw->stop)
     {
-	    if (tw->now_ms < tw->latest_ms)
-	    {
-		    tw->notify->latest_ms = tw->latest_ms;
-	    } else {
-		    tw->latest_ms = get_latest_ms(tw);
-		    tw->notify->latest_ms = tw->latest_ms;
-	    }
+       tw->notify->latest_ms = get_latest_ms(tw);
 
        struct pollfd pf = { fd: evfd, events: POLLIN | POLLERR | POLLHUP };
        ret = conet::co_poll(&pf, 1, -1);
@@ -364,13 +358,6 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     list_add_tail(&obj->link_to, &tw->slots[pos]);
     obj->tw = tw;
     obj->interval = interval;
-    if (tw->enable_notify)
-    {
-        uint64_t t_last = tw->latest_ms;
-        if (t_last == 0 || t < t_last) {
-            tw->latest_ms = t;
-        }
-    }
     return true;
 }
 
@@ -397,17 +384,9 @@ uint64_t get_latest_ms(timewheel_t *tw)
     for(int i=0; i<10; ++i)
     {
         pos = (pos +i) %slot_num;
-        if (list_empty(&slots[pos])) {
-            continue;
-        }
-        timeout_handle_t *t=NULL;
-        list_for_each_entry(t,  &slots[pos], link_to)
-        {
-            uint64_t v = t->timeout;
-            if ( v < min)
-            {
-                min = v;
-            }
+        if (!list_empty(&slots[pos])) {
+            min  = now_ms + i;
+            break;
         }
     }
 
