@@ -26,6 +26,7 @@
 #include "core/conet_all.h"
 
 #include "base/net_tool.h"
+#include "base/defer.h"
 
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
@@ -78,6 +79,11 @@ int main(int argc, char * argv[])
 
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);
+
+    conet::init_conet_global_env();
+    CONET_DEFER({
+        conet::free_conet_global_env();
+    });
 
     tasks = new task_t[FLAGS_task_num];
     for (int i=0; i<FLAGS_task_num; ++i) {

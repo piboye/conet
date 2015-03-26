@@ -173,9 +173,8 @@ static int timewheel_task(void *arg)
        }
 
        tw->now_ms = get_cur_ms();
-       //LOG(ERROR)<<"cur_ms:"<<tw->now_ms;
        cnt = check_timewheel(tw, tw->now_ms);
-       tw->notify->latest_ms = 0;//get_latest_ms(tw);
+       tw->notify->latest_ms = get_latest_ms(tw);
     }
 
     time_mgr_t::instance().free(tw->notify);
@@ -246,12 +245,11 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     list_del_init(&obj->link_to);
     obj->interval = interval;
     obj->tw = tw;
-    if (timeout <=0)
+    if (timeout <=0 && interval == 0)
     {
        list_add_tail(&obj->link_to, &tw->now_list);
        return true;
     }
-
     uint64_t cur_ms = get_cur_ms();
     uint64_t t = cur_ms + timeout;
     if (t < tw->prev_ms)  t = tw->prev_ms;
