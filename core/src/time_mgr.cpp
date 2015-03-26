@@ -29,6 +29,8 @@
 HOOK_DECLARE( int , gettimeofday, (struct timeval *tv, struct timezone *tz));
 HOOK_DECLARE( int , read, (int fd, void *buf, size_t len));
 
+HOOK_DECLARE(int, pthread_mutex_lock,(pthread_mutex_t *mutex));
+
 namespace conet
 {
     DEFINE_int32(time_resolution, 1, "set time resolution by micosencond");
@@ -41,7 +43,7 @@ public:
     pthread_mutex_t & mutex;
     ScopeLock(pthread_mutex_t & m): mutex(m) 
     {
-        pthread_mutex_lock(&mutex);
+        _(pthread_mutex_lock)(&mutex);
     }
     ~ScopeLock()
     {

@@ -299,11 +299,13 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         cur_ms = get_cur_ms();
     }
 
+    /*
     if (tw->task_num <=0) {
         tw->pos = cur_ms % tw->slot_num;;
         tw->prev_ms = cur_ms;
         return 0;
     }
+    */
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
 
