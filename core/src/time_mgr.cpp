@@ -27,17 +27,13 @@
 #include "base/ptr_cast.h"
 
 HOOK_DECLARE( int , gettimeofday, (struct timeval *tv, struct timezone *tz));
+HOOK_DECLARE( int , read, (int fd, void *buf, size_t len));
 
 namespace conet
 {
     DEFINE_int32(time_resolution, 1, "set time resolution by micosencond");
 
-static time_mgr_t g_time_mgr;
-
-time_mgr_t & time_mgr_t::instance()
-{
-    return g_time_mgr;
-}
+time_mgr_t g_time_mgr;
 
 class ScopeLock
 {
@@ -131,7 +127,7 @@ void * time_mgr_t::main_proc()
     while (stop_flag == 0)
     {
         uint64_t cnt = 0;
-        ret = read(timerfd, &cnt, sizeof(cnt));
+        ret = _(read)(timerfd, &cnt, sizeof(cnt));
         if (ret != sizeof(cnt))
         {
           LOG(ERROR)<<"read timerfd failed."
@@ -158,9 +154,8 @@ void time_mgr_t::update_gettimeofday_cache()
     // 更新 gettimeofday cache
     _(gettimeofday)(tvs+tvs_pos, NULL);
     this->gettimeofday_cache = tvs+tvs_pos;
-    tvs_pos = (tvs_pos+1)%100;
-    cur_ms = gettimeofday_cache->tv_sec * 1000 + gettimeofday_cache->tv_usec/1000;
-    //LOG(ERROR)<<"cur_ms:"<<cur_ms<<" tv_sec:"<<gettimeofday_cache->tv_sec<<" tv_usec:"<<gettimeofday_cache->tv_usec;
+    this->tvs_pos = (tvs_pos+1)%100;
+    this->cur_ms = gettimeofday_cache->tv_sec * 1000 + gettimeofday_cache->tv_usec/1000;
 }
 
 void time_mgr_t::do_in_queue()
@@ -169,7 +164,6 @@ void time_mgr_t::do_in_queue()
     {
         return ;
     }
-   
     {
         SCOPE_LOCK(this_mutex);
         list_splice_tail_init(&timeout_notify_inqueue, &timeout_notify_queue);
@@ -183,7 +177,6 @@ void time_mgr_t::check_timeout()
     uint64_t val = 1;
 
     int ret = 0;
-    int cnt = 0;
     list_for_each_entry_safe(t, next, &timeout_notify_queue, link_to)
     {
         if (t->status == 3) 
@@ -193,7 +186,6 @@ void time_mgr_t::check_timeout()
         }
 
         if (t->status == 1) t->status = 2; 
-	++cnt;
 
         if (t->latest_ms <= cur_ms && t->event_fd >= 0)
         {

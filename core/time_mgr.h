@@ -29,9 +29,10 @@ namespace conet
 struct timeout_notify_t
 {
     list_head link_to;
-    uint64_t latest_ms; // 最近的超时时间
+    uint64_t __attribute__((aligned(8))) latest_ms; // 最近的超时时间
+    int __attribute__((aligned(8))) status; // 1 准备入队列, 2 已经入队列, 3准备离队列, 4 离队成功
     int event_fd;
-    int status; // 1 准备入队列, 2 已经入队列, 3准备离队列, 4 离队成功
+
     timeout_notify_t()
     {
         init();
@@ -52,13 +53,16 @@ struct time_mgr_t
     int timerfd;
     pthread_t *tid;
     pthread_mutex_t this_mutex;
-    timeval * gettimeofday_cache;
-    uint64_t cur_ms;
+
+    timeval * __attribute__((aligned(8))) gettimeofday_cache;
+    uint64_t __attribute__((aligned(8))) cur_ms;
     
     ObjPool<timeout_notify_t> notify_pool;
 
     list_head timeout_notify_queue; // 超时通知队列
-    uint64_t in_queue_num;
+
+    uint64_t __attribute__((aligned(8))) in_queue_num;
+
     list_head timeout_notify_inqueue; // 入队队列
     list_head timeout_notify_dequeue; // 出队队列
 
@@ -87,7 +91,6 @@ struct time_mgr_t
 
     int start();
     int stop();
-    
 
     //private
     timeval tvs[100];
@@ -100,6 +103,13 @@ struct time_mgr_t
     void do_dequeue();
 };
 
+extern time_mgr_t g_time_mgr;
+
+inline
+time_mgr_t & time_mgr_t::instance()
+{
+    return g_time_mgr;
+}
 }
 
 #endif /* end of include guard */

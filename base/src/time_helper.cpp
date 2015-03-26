@@ -46,15 +46,14 @@ uint64_t get_cpu_khz()
     return u;
 }
 
-uint64_t get_tick_ms() __attribute__((weak));
-uint64_t get_tick_ms() 
+uint64_t __attribute__((weak)) get_tick_ms()
 {
     static uint64_t khz = get_cpu_khz();
     return rdtscp() / khz;
 }
 
 
-uint64_t get_sys_ms()
+uint64_t __attribute__((weak)) get_sys_ms()
 {
     struct timeval te;
     gettimeofday(&te, NULL);

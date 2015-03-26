@@ -41,37 +41,27 @@
 namespace conet
 {
 
-DEFINE_bool(improve_tw, true, "use thread improve timewheel");
-
 static __thread timewheel_t * g_tw = NULL;
- epoll_ctx_t * get_epoll_ctx();
+epoll_ctx_t * get_epoll_ctx();
 
-static inline
-uint64_t get_tick_ms3()
+static inline uint64_t get_cur_ms()
 {
     return time_mgr_t::instance().cur_ms;
 }
 
-static uint64_t g_khz = get_cpu_khz();
-inline
-uint64_t get_tick_ms2() 
+uint64_t get_tick_ms()
 {
-
-    //return rdtscp() / g_khz;
-    return get_tick_ms3();
+    return time_mgr_t::instance().cur_ms;
 }
 
-
-//uint64_t get_tick_ms() __attribute__((strong));
-uint64_t get_tick_ms() 
+uint64_t get_sys_ms()
 {
-    
-    return get_tick_ms3();
+    return time_mgr_t::instance().cur_ms;
 }
-
 
 using namespace conet;
 
+bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval);
 
 DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
 
@@ -86,12 +76,6 @@ void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
     self->interval = 0;
 }
 
-static 
-inline
-uint64_t get_cur_ms(timewheel_t *tw)
-{
-    return get_tick_ms2();
-}
 
 int check_timewheel(void * arg)
 {
@@ -105,12 +89,12 @@ int do_now_task(void *arg)
     timeout_handle_t *it=NULL, *next=NULL;
     list_for_each_entry_safe(it, next, &tw->now_list, link_to)
     {
-       if(0 == it->interval) 
-       {
-          list_del_init(&it->link_to);
-       }
-
-       it->fn(it->arg);
+      list_del_init(&it->link_to);
+      it->fn(it->arg);
+      if ( it->interval)
+      {
+          set_timeout_impl(tw, it, it->interval, it->interval);
+      }
     }
     return 0;
 }
@@ -126,25 +110,14 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->slot_num = slot_num;
     self->task_num = 0;
 
-    uint64_t cur_ms = get_tick_ms2();
+    uint64_t cur_ms = get_cur_ms();
     self->now_ms = cur_ms;
     self->pos = cur_ms % slot_num;
     self->prev_ms = cur_ms;
     self->stop = 0;
     self->co = NULL;
-    self->timerfd = -1;
-    self->update_timeofday_flag = 0;
-    self->prev_tv.tv_sec = 0;
-    self->prev_tv.tv_usec = 0;
-
-    if (FLAGS_improve_tw) {
-        self->notify = time_mgr_t::instance().alloc_timeout_notify();
-        self->enable_notify = 1;
-	self->latest_ms = 0;
-    } else {
-        self->notify = NULL;
-        self->enable_notify = 0;
-    }
+    self->notify = time_mgr_t::instance().alloc_timeout_notify();
+    self->enable_notify = 1;
 
     INIT_LIST_HEAD(&self->now_list);
     init_task(&self->delay_task, &do_now_task, self);
@@ -160,35 +133,9 @@ void fini_timewheel(timewheel_t *self)
 int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
 
-static 
-int create_timer_fd()
-{
-    int timerfd = -1;
-    timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-    if (timerfd < 0) {
-        LOG_SYS_CALL(timerfd_create, timerfd); 
-        return -1;
-    }
-    int ret = 0; 
-
-    struct itimerspec ts;
-    ts.it_value.tv_sec = 0;       //
-    ts.it_value.tv_nsec = 1000000; // 1ms
-    ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 1000000; //1ms
-
-    ret = timerfd_settime(timerfd, 0, &ts, NULL);
-    if (ret < 0) {
-        LOG_SYS_CALL(timerfd_settime, ret);
-        return -3;
-    }
-
-    return timerfd;
-}
-
 uint64_t get_latest_ms(timewheel_t *tw);
-static
-int timewheel_task2(void *arg)
+
+static int timewheel_task(void *arg)
 {
     conet::enable_sys_hook(); 
     timewheel_t *tw = (timewheel_t *)arg;
@@ -204,13 +151,11 @@ int timewheel_task2(void *arg)
 
     time_mgr_t::instance().add_to_queue(tw->notify);
 
-    tw->now_ms = get_tick_ms3(); 
+    tw->now_ms = get_cur_ms(); 
     int ret = 0;
     uint64_t cnt = 0;
     while (!tw->stop)
     {
-       tw->notify->latest_ms = get_latest_ms(tw);
-
        struct pollfd pf = { fd: evfd, events: POLLIN | POLLERR | POLLHUP };
        ret = conet::co_poll(&pf, 1, -1);
 
@@ -227,51 +172,13 @@ int timewheel_task2(void *arg)
            continue;
        }
 
-       tw->now_ms = get_tick_ms3(); 
+       tw->now_ms = get_cur_ms();
+       //LOG(ERROR)<<"cur_ms:"<<tw->now_ms;
        cnt = check_timewheel(tw, tw->now_ms);
-
+       tw->notify->latest_ms = 0;//get_latest_ms(tw);
     }
 
     time_mgr_t::instance().free(tw->notify);
-
-    return 0;
-}
-
-static
-int timewheel_task(void *arg)
-{
-    conet::enable_sys_hook(); 
-    timewheel_t *tw = (timewheel_t *)arg;
-    int timerfd = -1;
-    timerfd = create_timer_fd();
-    tw->timerfd = timerfd;
-
-    uint64_t cnt = 0;
-    int ret = 0;
-
-    tw->now_ms = get_tick_ms2(); 
-
-    while (!tw->stop) {
-       struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
-       ret = co_poll(&pf, 1, -1);
-
-       cnt = 0;
-       ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
-       if (ret != sizeof(cnt)) {
-          LOG(ERROR)<<" timewheel timerfd read failed, "
-               "[ret:"<<ret<<"]"
-               "[timerfd:"<<timerfd<<"]"
-               "[poll event:"<<pf.revents<<"]"
-               "[errno:"<<errno<<"]"
-               "[errmsg:"<<strerror(errno)<<"]"
-               ;
-           continue;
-       }
-
-       tw->now_ms = get_tick_ms2(); 
-
-       check_timewheel(tw, tw->now_ms);
-    }
     return 0;
 }
 
@@ -308,11 +215,7 @@ timewheel_t *get_timewheel()
         if (NULL == g_tw) {
             g_tw = tw;
             coroutine_t *co =  NULL;
-            if (tw->enable_notify) {
-                co  = alloc_coroutine(timewheel_task2, tw, 128*4096);
-            } else {
-                co = alloc_coroutine(timewheel_task, tw, 128*4096);
-            }
+            co  = alloc_coroutine(timewheel_task, tw, 128*4096);
             tw->co = co;
             // 这个必须在 alloc_coroutine 下面
             tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
@@ -327,7 +230,7 @@ timewheel_t *get_timewheel()
 
 void cancel_timeout(timeout_handle_t *obj) {
     if (!list_empty(&obj->link_to)) 
-    { 
+    {
 
         list_del_init(&obj->link_to);
         timewheel_t * tw = obj->tw;
@@ -341,13 +244,15 @@ void cancel_timeout(timeout_handle_t *obj) {
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval)
 {
     list_del_init(&obj->link_to);
+    obj->interval = interval;
+    obj->tw = tw;
     if (timeout <=0)
     {
        list_add_tail(&obj->link_to, &tw->now_list);
        return true;
     }
 
-    uint64_t cur_ms = get_cur_ms(tw);
+    uint64_t cur_ms = get_cur_ms();
     uint64_t t = cur_ms + timeout;
     if (t < tw->prev_ms)  t = tw->prev_ms;
     obj->timeout = t;
@@ -356,8 +261,6 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
 
     int pos = obj->timeout % tw->slot_num;
     list_add_tail(&obj->link_to, &tw->slots[pos]);
-    obj->tw = tw;
-    obj->interval = interval;
     return true;
 }
 
@@ -371,15 +274,12 @@ bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval)
     return set_timeout_impl(tw, obj, interval, interval);
 }
 
-
 uint64_t get_latest_ms(timewheel_t *tw)
 {
-
-    uint64_t now_ms = tw->prev_ms;
+    uint64_t now_ms = tw->now_ms;
     int pos = tw->pos;
     int slot_num = tw->slot_num;
     list_head *slots = tw->slots;
-    
     uint64_t min = now_ms + 10;
     for(int i=0; i<10; ++i)
     {
@@ -398,7 +298,7 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 {
 
     if (cur_ms == 0 ) {
-        cur_ms = get_cur_ms(tw);
+        cur_ms = get_cur_ms();
     }
 
     if (tw->task_num <=0) {
