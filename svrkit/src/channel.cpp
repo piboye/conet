@@ -182,7 +182,7 @@ int channel_t::do_write_co(void *arg)
         list_for_each_entry_safe(out_data, n, &queue, link_to)
         {
             list_del_init(&out_data->link_to);
-            ret = send(fd, out_data->data, out_data->len, 0);
+            ret = send_data(fd, (char *)out_data->data, out_data->len);
             if (out_data->free_fn)
             {
                 out_data->free_fn(out_data->free_arg, out_data->data, out_data->len);

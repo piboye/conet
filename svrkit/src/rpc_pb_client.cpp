@@ -165,7 +165,7 @@ int rpc_pb_call_udp_impl(int fd,
     PacketStream *stream = (PacketStream *) ps_pool->alloc();
     size_t out_len = stream->max_size;
     serialize_cmd_base(stream->buff, &out_len, req_base, req);
-    ret = send(fd, stream->buff+4, out_len-4, 0);
+    ret = send_data(fd, stream->buff+4, out_len-4);
     ps_pool->release(stream);
 
     if (ret <=0) {
