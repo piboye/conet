@@ -255,6 +255,10 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     if (t < tw->prev_ms)  t = tw->prev_ms;
     obj->timeout = t;
 
+    if (tw->enable_notify) {
+        tw->notify->latest_ms = t;
+    }
+
     ++tw->task_num;
 
     int pos = obj->timeout % tw->slot_num;
