@@ -19,12 +19,15 @@
 #include "glog/logging.h"
 #include "base/defer.h"
 #include <sys/timerfd.h>
+#include <sys/syscall.h>
+
 #include "gflags/gflags.h"
 #include <pthread.h>
 #include "time_mgr.h"
 #include <sys/time.h>
 #include "hook_helper.h"
 #include "base/ptr_cast.h"
+#include "coroutine.h"
 
 HOOK_DECLARE( int , gettimeofday, (struct timeval *tv, struct timezone *tz));
 HOOK_DECLARE( int , read, (int fd, void *buf, size_t len));
@@ -80,7 +83,7 @@ static
 int create_timer_fd()
 {
     int timerfd = -1;
-    timerfd = timerfd_create(CLOCK_MONOTONIC,  TFD_CLOEXEC);
+    timerfd = timerfd_create(CLOCK_MONOTONIC,  TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
         LOG(ERROR)<<"timerfd_create failed, "
             "[ret:"<<timerfd<<"]"
@@ -129,15 +132,17 @@ void * time_mgr_t::main_proc()
     while (stop_flag == 0)
     {
         uint64_t cnt = 0;
-        ret = _(read)(timerfd, &cnt, sizeof(cnt));
+        struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
+        ret = co_poll(&pf, 1, -1);
+        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
         if (ret != sizeof(cnt))
         {
-          LOG(ERROR)<<"read timerfd failed."
-               "[ret:"<<ret<<"]"
-               "[timerfd:"<<timerfd<<"]"
-               "[errno:"<<errno<<"]"
-               "[errmsg:"<<strerror(errno)<<"]"
-               ;
+            LOG(ERROR)<<"read timerfd failed."
+                "[ret:"<<ret<<"]"
+                "[timerfd:"<<timerfd<<"]"
+                "[errno:"<<errno<<"]"
+                "[errmsg:"<<strerror(errno)<<"]"
+                ;
             continue;
         }
         

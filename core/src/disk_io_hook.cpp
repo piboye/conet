@@ -39,7 +39,7 @@
 #include "fd_ctx.h"
 #include "network_hook.h"
 #include "hook_helper.h"
-#include "../../base/incl/tls.h"
+#include "base/tls.h"
 
 
 using namespace conet;
@@ -235,7 +235,7 @@ ssize_t disk_read(int fd, void *buf, size_t nbyte)
 
     off64_t off = 0;
     off = lseek64(fd,  0, SEEK_CUR);
-    if (-1 == lseek64(fd, nbytes, SEEK_CUR))
+    if (-1 == lseek64(fd, nbyte, SEEK_CUR))
     {
         return -1;
     }
@@ -401,7 +401,7 @@ ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt)
     uint64_t total_len = 0;
     for (int i=0; i< iovcnt; ++i)
     {
-        total_len += iov.iov_len;
+        total_len += iov[i].iov_len;
     }
 
     if (-1 == lseek64(fd, total_len, SEEK_CUR))
@@ -453,7 +453,7 @@ ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt)
         uint64_t total_len = 0;
         for (int i=0; i< iovcnt; ++i)
         {
-            total_len += iov.iov_len;
+            total_len += iov[i].iov_len;
         }
 
         if (-1 == lseek64(fd, total_len, SEEK_CUR))

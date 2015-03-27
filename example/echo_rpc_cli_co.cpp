@@ -27,6 +27,7 @@
 
 #include "base/net_tool.h"
 #include "base/defer.h"
+#include "base/delay_init.h"
 
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
@@ -79,13 +80,14 @@ int proc_send(void *arg)
     {
         cmd_id = 0;
     }
+    int fd = task->lb->get();
     for (int i=0, len = g_data.size(); i<len; ++i) {
         req.set_msg(*g_data[i]);
         int retcode=0;
         if (cmd_id) {
-            ret = conet::rpc_pb_call(*task->lb, cmd_id, &req, &resp, &retcode, &errmsg);
+            ret = conet::rpc_pb_call(fd, cmd_id, &req, &resp, &retcode, &errmsg);
         } else {
-            ret = conet::rpc_pb_call(*task->lb, method, &req, &resp, &retcode, &errmsg);
+            ret = conet::rpc_pb_call(fd, method, &req, &resp, &retcode, &errmsg);
         }
         if (ret) {
             LOG(ERROR)<<"ret:"<<ret;
@@ -104,6 +106,17 @@ int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
     google::InitGoogleLogging(argv[0]);
+
+    delay_init::call_all_level();
+    LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
+        <<" success:"<<delay_init::success_cnt
+        <<", failed:"<<delay_init::failed_cnt;
+
+    if(delay_init::failed_cnt>0)
+    {
+        LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+        return 1;
+    }
 
     if (prepare_data(FLAGS_data_file.c_str())) {
         LOG(ERROR)<<"read data failed!";
