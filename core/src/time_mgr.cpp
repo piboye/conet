@@ -133,7 +133,7 @@ void * time_mgr_t::main_proc()
     {
         uint64_t cnt = 0;
         struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
-        ret = co_poll(&pf, 1, -1);
+        ret = poll(&pf, 1, -1);
         ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
         if (ret != sizeof(cnt))
         {
