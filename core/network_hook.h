@@ -51,6 +51,9 @@ void disable_sys_hook()
         co->is_enable_sys_hook = 0;
 }
 
+
+int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags);
+
 }
 
 #endif /* end of include guard */

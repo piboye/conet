@@ -177,13 +177,13 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     d->snd_timeout = 1000;
     d->domain = 0;
     int flags = 0;
-    flags = _(fcntl)(fd, F_GETFL, 0);
-    //default is block 
     d->user_flag = 0;
 
     if (!has_nonblocked) {
+        //default is block 
         // 设置 none block, 方便hook 系统调用
         // user_flag 只保存用户设置的标志。
+        flags = _(fcntl)(fd, F_GETFL, 0);
         _(fcntl)(fd, F_SETFL, flags | O_NONBLOCK);
     }
 

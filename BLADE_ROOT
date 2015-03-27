@@ -1,7 +1,7 @@
 cc_config(
-#warnings = ['-Wall', '-DUSE_VALGRIND'],
+warnings = ['-Wall', '-DUSE_VALGRIND'],
 #warnings = ['-Wall'], 
-warnings = ['-Wall', '-fsanitize=all', '-fno-omit-frame-pointer'], 
+#warnings = ['-Wall', '-fsanitize=all', '-fno-omit-frame-pointer'], 
 extra_incs=['thirdparty/protobuf/', 'thirdparty/', ],
 #cxxflags=['-std=c++11', '-Dtypeof=__typeof__'],
 )

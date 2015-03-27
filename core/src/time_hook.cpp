@@ -32,9 +32,6 @@ HOOK_CPP_FUNC_DEF(int , gettimeofday, (struct timeval *tv, struct timezone *tz))
     if (tz != NULL || NULL == sys_tv)  {
         return _(gettimeofday)(tv, tz);
     }
-    if (!conet::is_enable_sys_hook()) {
-        return _(gettimeofday)(tv, tz);
-    }
 
     int ret = 0;
     tv->tv_sec = sys_tv->tv_sec;

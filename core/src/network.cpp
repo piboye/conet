@@ -21,7 +21,7 @@
 #include "../../base/tls.h"
 #include "../../base/gcc_builtin_help.h"
 
-DEFINE_int32(epoll_size, 102400, "epoll event size ");
+DEFINE_int32(epoll_size, 1024, "epoll event size ");
 
 
 HOOK_DECLARE(

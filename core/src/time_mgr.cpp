@@ -189,7 +189,7 @@ void time_mgr_t::check_timeout()
 
         if (t->status == 1) t->status = 2; 
 
-        if (t->latest_ms <= cur_ms && t->event_fd >= 0)
+        if (t->latest_ms <= this->cur_ms && t->event_fd >= 0)
         {
             ret = write(t->event_fd, &val, sizeof(val));
             if (ret != 8)

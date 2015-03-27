@@ -136,7 +136,7 @@ void co_main_helper2(void *p)
     return ;
 }
 
-uint64_t g_coroutine_next_id=1;
+uint64_t __attribute__((aligned(8))) g_coroutine_next_id=1;
 
 int init_coroutine(coroutine_t * self)
 {
@@ -152,7 +152,7 @@ int init_coroutine(coroutine_t * self)
     self->static_vars = NULL;
     self->spec = NULL;
     self->pthread_spec = NULL;
-    self->id = g_coroutine_next_id++;
+    self->id = __sync_fetch_and_add(&g_coroutine_next_id, 1);
     self->stack = NULL;
     self->stack_size = 0;
     INIT_LIST_HEAD(&self->wait_to);

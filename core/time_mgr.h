@@ -48,20 +48,21 @@ struct timeout_notify_t
 
 struct time_mgr_t 
 {
-    int32_t stop_flag;
     int32_t time_resolution;
     int timerfd;
     pthread_t *tid;
     pthread_mutex_t this_mutex;
 
+    // 64bit, 8字节对齐， 一个写， 多个读， 安全
     timeval * __attribute__((aligned(8))) gettimeofday_cache;
     uint64_t __attribute__((aligned(8))) cur_ms;
-    
+    uint64_t __attribute__((aligned(8))) in_queue_num;
+    int64_t __attribute__((aligned(8))) stop_flag;
+ 
     ObjPool<timeout_notify_t> notify_pool;
 
     list_head timeout_notify_queue; // 超时通知队列
 
-    uint64_t __attribute__((aligned(8))) in_queue_num;
 
     list_head timeout_notify_inqueue; // 入队队列
     list_head timeout_notify_dequeue; // 出队队列
