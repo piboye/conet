@@ -28,9 +28,10 @@
 #include "event_notify.h"
 #include "pthread_hook.h"
 
-#include "../../base/tls.h"
-#include "../../base/auto_var.h"
-#include "../../base/addr_map.h"
+#include "base/time_helper.h"
+#include "base/tls.h"
+#include "base/auto_var.h"
+#include "base/addr_map.h"
 
 
 #define SYS_FUNC(name) g_sys_##name##_func
@@ -123,11 +124,32 @@ static int trylock(lock_ctx_t *ctx);
 namespace conet 
 {
 
+struct pthread_join_ctx_t
+{
+    list_head link_to;
+    pthread_t tid;
+    void **retval;
+    int ret;
+    uint64_t timeout;
+    coroutine_t *co;
+    pthread_join_ctx_t(pthread_t tid, void ** ret, uint64_t timeout=0)
+    {
+        INIT_LIST_HEAD(&link_to);
+        this->tid = tid;
+        this->retval = ret;
+        this->timeout = timeout;
+        ret = 0;
+        co = NULL;
+    }
+};
+
 struct pthread_mgr_t
 {
     list_head lock_schedule_queue;   // lock schdule queue;
     list_head pcond_schedule_queue;  // pthread condition var notify schedule queue
     pthread_mutex_t pcond_schedule_mutex;
+
+    list_head pthread_join_queue; // pthread join queue;
     conet::task_t schedule_task;     // 调度任务
     event_notify_t event_notify;
 
@@ -135,6 +157,7 @@ struct pthread_mgr_t
     {
         INIT_LIST_HEAD(&lock_schedule_queue);
         INIT_LIST_HEAD(&pcond_schedule_queue);
+        INIT_LIST_HEAD(&pthread_join_queue);
         pthread_mutex_init(&pcond_schedule_mutex, NULL);
 
         int ret = event_notify.init(event_cb, this);
@@ -163,6 +186,15 @@ struct pthread_mgr_t
     void add_lock_schedule(lock_ctx_t *ctx) 
     {
         list_add_tail(&ctx->wait_item, &lock_schedule_queue);
+        if (list_empty(&schedule_task.link_to)) {
+            conet::registry_delay_task(&schedule_task);
+        }
+    }
+
+    void add_to_pthread_join_schedule(pthread_join_ctx_t *ctx)
+    {
+
+        list_add_tail(&ctx->link_to, &this->pthread_join_queue);
         if (list_empty(&schedule_task.link_to)) {
             conet::registry_delay_task(&schedule_task);
         }
@@ -398,6 +430,8 @@ public:
 
 namespace conet 
 {
+
+
     int pthread_mgr_t::proc_pthread_schedule()
     {
         int cnt =0;
@@ -437,7 +471,32 @@ namespace conet
             }
         }
 
-        if ( !list_empty(pqueue) || !list_empty(pqueue))
+        list_head * jqueue = &this->pthread_join_queue;
+        if (!list_empty(jqueue))
+        { // pthread join schdule
+            pthread_join_ctx_t *ctx = NULL, *next= NULL;
+            list_for_each_entry_safe(ctx, next, jqueue, link_to)
+            {
+                int ret = pthread_tryjoin_np(ctx->tid, ctx->retval);
+                if (ret == 0)  {
+                    ctx->ret = ret;
+                    list_del_init(&ctx->link_to);
+                    conet::resume(ctx->co); 
+                    ++cnt;
+                } else {
+                    if (ctx->timeout > 0) {
+                        if (ctx->timeout < conet::get_sys_ms()) {
+                            ctx->ret = ETIMEDOUT;
+                            list_del_init(&ctx->link_to);
+                            conet::resume(ctx->co); 
+                            ++cnt;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ( !list_empty(lqueue) || !list_empty(pqueue) || !list_empty(jqueue))
         {
             conet::registry_delay_task(&schedule_task);
         }
@@ -647,6 +706,8 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
     }
 
     // coroutine
+    if (abstime->tv_sec <= 0) return EINVAL;
+    if (abstime->tv_nsec >= 1000000000) return EINVAL;
 
     pcond_ctx_t ctx;
     ctx.ret_timeout = 0;
@@ -741,7 +802,7 @@ HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
     pcond_mgr_t *mgr = find_cond_map_can_null(cond);
     if (mgr) {
         SCOPE_WRLOCK(&g_cond_map_lock)
-        {   
+        {
             get_cond_map()->remove(&mgr->node);
         }
         mgr->dtor();
@@ -749,3 +810,42 @@ HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
     }
     return _(pthread_cond_destroy)(cond);
 }
+
+HOOK_FUNC_DEF(int, pthread_join, (pthread_t tid, void **retval))
+{
+    HOOK_FUNC(pthread_join);
+    if (!conet::is_enable_pthread_hook())
+    {
+        return _(pthread_join)(tid, retval);
+    }
+    pthread_join_ctx_t ctx(tid, retval, 0);
+    ctx.co = CO_SELF();
+
+    pthread_mgr_t *mgr = TLS_GET(g_pthread_mgr);
+    mgr->add_to_pthread_join_schedule(&ctx);
+    conet::yield();
+    return ctx.ret;
+}
+
+HOOK_FUNC_DEF(int, pthread_timedjoin_np, (pthread_t tid, void **retval, 
+            const struct timespec * abstime))
+{
+    HOOK_FUNC(pthread_timedjoin_np);
+    if (!conet::is_enable_pthread_hook())
+    {
+        return _(pthread_timedjoin_np)(tid, retval, abstime);
+    }
+    if (abstime->tv_sec <= 0) return EINVAL;
+    if (abstime->tv_nsec >= 1000000000) return EINVAL;
+
+    uint64_t timeout = (abstime->tv_sec*1000 + abstime->tv_nsec/1000000);
+
+    pthread_join_ctx_t ctx(tid, retval, timeout);
+    ctx.co = CO_SELF();
+
+    pthread_mgr_t *mgr = TLS_GET(g_pthread_mgr);
+    mgr->add_to_pthread_join_schedule(&ctx);
+    conet::yield();
+    return ctx.ret;
+}
+

@@ -62,6 +62,7 @@ public:
     static server_group_t * build(ServerGroup const &conf);
 
     int start();
+
     int stop(int seconds);
 };
 

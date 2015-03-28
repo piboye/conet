@@ -174,7 +174,7 @@ static int timewheel_task(void *arg)
 
        tw->now_ms = get_cur_ms();
        cnt = check_timewheel(tw, tw->now_ms);
-       tw->notify->latest_ms = get_latest_ms(tw);
+       tw->notify->latest_ms = 0; //get_latest_ms(tw);
     }
 
     time_mgr_t::instance().free(tw->notify);
