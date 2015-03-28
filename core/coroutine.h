@@ -101,6 +101,21 @@ public:
     virtual int run()=0;
 };
 
+#define NewCo(ref_vars, op) \
+    ({ conet::closure_t<int> * cl = NewClosureWithRef(int, (), ref_vars, { \
+               op \
+               return 0;\
+            }); \
+    conet::alloc_coroutine(&conet::call_closure_and_delete, cl); \
+    })
+
+#define CO_RUN(ref_vars, op) \
+    do {  \
+        conet::coroutine_t *co = NewCo(ref_vars, op); \
+        conet::set_auto_delete(co); \
+        conet::resume(co); \
+    } while(0)
+
 }
 
 #endif //

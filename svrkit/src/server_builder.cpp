@@ -344,10 +344,16 @@ int server_worker_t::stop(int seconds)
 int server_group_t::stop(int seconds)
 {
     stop_flag = 1;
-    for (size_t i =0; i< m_work_pool.size(); ++i)
+    BEGIN_PARALLEL 
     {
-        m_work_pool[i]->stop(seconds);
-    }
+        for (size_t i =0; i< m_work_pool.size(); ++i)
+        {
+            server_worker_t *worker = m_work_pool[i];
+            DO_PARALLEL((worker, seconds), {
+                worker->stop(seconds);
+            });
+        }
+    } WAIT_ALL_PARALLEL();
     return 0;
 }
 
@@ -378,15 +384,16 @@ int ServerContainer::start()
 
 int ServerContainer::stop(int seconds)
 {
-    for(size_t i= 0; i<server_groups.size(); ++i) 
+    BEGIN_PARALLEL 
     {
-        server_groups[i]->stop_flag = 1;
-    }
-
-    for(size_t i= 0; i<server_groups.size(); ++i) 
-    {
-       server_groups[i]->stop(seconds); 
-    }
+        for(size_t i= 0; i<server_groups.size(); ++i) 
+        {
+           server_group_t * group = server_groups[i];
+           DO_PARALLEL((group, seconds), {
+                group->stop(seconds);
+           });
+        }
+    } WAIT_ALL_PARALLEL();
     return 0;
 }
 

@@ -39,6 +39,7 @@
 #include "svrkit/static_resource.h"
 #include "base/pb2json.h"
 #include "base/defer.h"
+#include "core/conet_all.h"
 
 
 namespace conet
@@ -192,14 +193,31 @@ int main(int argc, char * argv[])
         return 3;
     }
 
-    g_server_container->start();
-    while(!get_server_stop_flag())
+    CO_RUN((g_server_container), {
+        g_server_container->start();
+    });
+
+    int exit_finished = 0;
+    while(likely((exit_finished< 2)))
     {
-       sleep(1); 
+        if (unlikely(get_server_stop_flag() && exit_finished == 0))
+        {
+           exit_finished = 1;
+           CO_RUN((exit_finished), {
+                LOG(INFO)<<"server ready exit!";
+                int ret = 0;
+                ret = g_server_container->stop(FLAGS_stop_wait_seconds);
+                if (ret) {
+                    LOG(ERROR)<<"server exit failed, [ret:"<<ret<<"]!";
+                } else {
+                    LOG(INFO)<<"server exit success!";
+                }
+                exit_finished = 2;
+           });
+        }
+        conet::dispatch();
     }
 
-    LOG(INFO)<<"server ready exit!";
-    ret = g_server_container->stop(FLAGS_stop_wait_seconds);
 
     delete g_server_container;
     g_server_container = NULL;

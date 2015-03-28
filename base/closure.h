@@ -217,6 +217,15 @@ T call_closure(void *arg)
     return cl->Run();
 }
 
+template<typename T>
+T call_closure_and_delete (void *arg)
+{
+    closure_t<T> * cl = (closure_t<T> *)(arg);
+    T ret = cl->Run();
+    delete cl;
+    return ret;
+}
+
 }
 
 #endif /* end of include guard */ 
