@@ -46,7 +46,7 @@ public:
     pthread_mutex_t & mutex;
     ScopeLock(pthread_mutex_t & m): mutex(m) 
     {
-        _(pthread_mutex_lock)(&mutex);
+        pthread_mutex_lock(&mutex);
     }
     ~ScopeLock()
     {
@@ -132,6 +132,9 @@ void * time_mgr_t::main_proc()
     while (stop_flag == 0)
     {
         uint64_t cnt = 0;
+
+        update_gettimeofday_cache();
+
         struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
         ret = poll(&pf, 1, -1);
         ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
@@ -146,10 +149,9 @@ void * time_mgr_t::main_proc()
             continue;
         }
         
-        update_gettimeofday_cache();
-        do_in_queue();
-        check_timeout();
-        do_dequeue();
+        //do_in_queue();
+        //check_timeout();
+        //do_dequeue();
     }
 
     close(timerfd);

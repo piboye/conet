@@ -116,8 +116,8 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->prev_ms = cur_ms;
     self->stop = 0;
     self->co = NULL;
-    self->notify = time_mgr_t::instance().alloc_timeout_notify();
-    self->enable_notify = 1;
+    //self->notify = time_mgr_t::instance().alloc_timeout_notify();
+    //self->enable_notify = 0;
 
     INIT_LIST_HEAD(&self->now_list);
     init_task(&self->delay_task, &do_now_task, self);
@@ -135,7 +135,79 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
 uint64_t get_latest_ms(timewheel_t *tw);
 
-static int timewheel_task(void *arg)
+static 
+int create_timer_fd()
+{
+    int timerfd = -1;
+    timerfd = timerfd_create(CLOCK_MONOTONIC,  TFD_NONBLOCK | TFD_CLOEXEC);
+    if (timerfd < 0) {
+        LOG(ERROR)<<"timerfd_create failed, "
+            "[ret:"<<timerfd<<"]"
+            "[errno:"<<errno<<"]"
+            "[errmsg:"<<strerror(errno)<<"]"
+            ;
+        return -1;
+    }
+    int ret = 0; 
+
+    struct itimerspec ts;
+    ts.it_value.tv_sec = 0;       //
+    ts.it_value.tv_nsec = 1000000; // 1ms
+    ts.it_interval.tv_sec = 0;
+    ts.it_interval.tv_nsec = 1000000; //1ms
+
+    ret = timerfd_settime(timerfd, 0, &ts, NULL);
+    if (ret < 0) {
+        LOG(ERROR)<<"timerfd_settime failed, "
+            "[ret:"<<ret<<"]"
+            "[errno:"<<errno<<"]"
+            "[errmsg:"<<strerror(errno)<<"]"
+            ;
+        return -3;
+    }
+
+    return timerfd;
+}
+
+static
+int timewheel_task(void *arg)
+{
+    conet::enable_sys_hook(); 
+    timewheel_t *tw = (timewheel_t *)arg;
+    int timerfd = -1;
+    timerfd = create_timer_fd();
+    tw->timerfd = timerfd;
+
+    uint64_t cnt = 0;
+    int ret = 0;
+
+    tw->now_ms = get_cur_ms();
+
+    while (!tw->stop) {
+       struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
+       ret = co_poll(&pf, 1, -1);
+
+       cnt = 0;
+       ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
+       if (ret != sizeof(cnt)) {
+          LOG(ERROR)<<" timewheel timerfd read failed, "
+               "[ret:"<<ret<<"]"
+               "[timerfd:"<<timerfd<<"]"
+               "[poll event:"<<pf.revents<<"]"
+               "[errno:"<<errno<<"]"
+               "[errmsg:"<<strerror(errno)<<"]"
+               ;
+           continue;
+       }
+
+       tw->now_ms = get_cur_ms(); 
+
+       check_timewheel(tw, tw->now_ms);
+    }
+    return 0;
+}
+
+static int timewheel_task2(void *arg)
 {
     conet::enable_sys_hook(); 
     timewheel_t *tw = (timewheel_t *)arg;
@@ -255,9 +327,11 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     if (t < tw->prev_ms)  t = tw->prev_ms;
     obj->timeout = t;
 
+    /*
     if (tw->enable_notify) {
         tw->notify->latest_ms = t;
     }
+    */
 
     ++tw->task_num;
 
@@ -303,13 +377,11 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
         cur_ms = get_cur_ms();
     }
 
-    /*
     if (tw->task_num <=0) {
         tw->pos = cur_ms % tw->slot_num;;
         tw->prev_ms = cur_ms;
         return 0;
     }
-    */
 
     int64_t elasp_ms = time_diff(cur_ms, tw->prev_ms);
 

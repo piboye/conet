@@ -15,10 +15,8 @@
  *
  * =====================================================================================
  */
-#include "net_tool.h"
 
 #include <stack>
-
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -36,8 +34,9 @@
 #include <string>
 #include <algorithm>
 
-#include "time_helper.h"
 #include "glog/logging.h"
+#include "time_helper.h"
+#include "net_tool.h"
 
 namespace conet 
 {
