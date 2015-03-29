@@ -44,19 +44,10 @@ namespace conet
 static __thread timewheel_t * g_tw = NULL;
 epoll_ctx_t * get_epoll_ctx();
 
+
 static inline uint64_t get_cur_ms()
 {
-    return time_mgr_t::instance().cur_ms;
-}
-
-uint64_t get_tick_ms()
-{
-    return time_mgr_t::instance().cur_ms;
-}
-
-uint64_t get_sys_ms()
-{
-    return time_mgr_t::instance().cur_ms;
+    return get_sys_ms();
 }
 
 using namespace conet;
@@ -117,7 +108,7 @@ void init_timewheel(timewheel_t *self, int slot_num)
     self->stop = 0;
     self->co = NULL;
     //self->notify = time_mgr_t::instance().alloc_timeout_notify();
-    //self->enable_notify = 0;
+    //self->enable_notify = 1;
 
     INIT_LIST_HEAD(&self->now_list);
     init_task(&self->delay_task, &do_now_task, self);

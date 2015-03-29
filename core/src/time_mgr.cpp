@@ -135,6 +135,12 @@ void * time_mgr_t::main_proc()
 
         update_gettimeofday_cache();
 
+        /*
+        do_in_queue();
+        check_timeout();
+        do_dequeue();
+        */
+
         struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
         ret = poll(&pf, 1, -1);
         ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
@@ -148,10 +154,6 @@ void * time_mgr_t::main_proc()
                 ;
             continue;
         }
-        
-        //do_in_queue();
-        //check_timeout();
-        //do_dequeue();
     }
 
     close(timerfd);
@@ -256,6 +258,32 @@ int time_mgr_t::stop()
     tid = NULL;
     return 0;
 }
+
+uint64_t get_sys_ms()
+{
+    if (g_time_mgr.gettimeofday_cache) {
+        return g_time_mgr.cur_ms;
+    } else {
+        struct timeval te;
+        gettimeofday(&te, NULL);
+        uint64_t ms = te.tv_sec*1000UL + te.tv_usec/1000;
+        return ms;
+    }
+}
+
+
+uint64_t get_tick_ms()
+{
+    if (g_time_mgr.gettimeofday_cache) {
+        return g_time_mgr.cur_ms;
+    } else {
+        struct timeval te;
+        gettimeofday(&te, NULL);
+        uint64_t ms = te.tv_sec*1000UL + te.tv_usec/1000;
+        return ms;
+    }
+}
+
 
 }
 
