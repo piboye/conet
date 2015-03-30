@@ -256,6 +256,7 @@ int rpc_pb_udp_call(char const *ip, int port,
     ret = connect(fd, (struct sockaddr*)&addr,sizeof(addr));
     if (ret) {
         *errmsg="connect failed!";
+        close(fd);
         return -4;
     }
     ret = rpc_pb_udp_call(fd, cmd_name, a_req, a_resp, retcode, errmsg, timeout);

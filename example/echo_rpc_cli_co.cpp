@@ -84,19 +84,25 @@ int proc_send(void *arg)
     for (int i=0, len = g_data.size(); i<len; ++i) {
         req.set_msg(*g_data[i]);
         int retcode=0;
+
+        if (fd < 0) break;
         if (cmd_id) {
             ret = conet::rpc_pb_call(fd, cmd_id, &req, &resp, &retcode, &errmsg);
         } else {
             ret = conet::rpc_pb_call(fd, method, &req, &resp, &retcode, &errmsg);
         }
+
         if (ret) {
             LOG(ERROR)<<"ret:"<<ret;
+            close(fd);
+            fd = task->lb->get();
             continue;
         }
 
         if (retcode)
             LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg "<<errmsg<<" resposne:"<<resp.DebugString();;
     }
+    if (fd >= 0) close(fd);
     ++g_finish_task_num;
     return 0;
 }

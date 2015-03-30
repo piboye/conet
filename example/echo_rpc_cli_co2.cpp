@@ -53,11 +53,12 @@ int proc_send(void *arg)
     for (int i=0; i<send_num; ++i) 
     {
         int retcode=0;
+        if (fd < 0) break;
         ret = conet::rpc_pb_call(fd, cmd_id, (google::protobuf::Message *)NULL, (google::protobuf::Message *)NULL, &retcode, &errmsg);
         if (ret) {
+            LOG(ERROR)<<"ret:"<<ret;
             close(fd);
             fd = task->lb->get();
-            LOG(ERROR)<<"ret:"<<ret;
             continue;
         }
 
@@ -67,6 +68,7 @@ int proc_send(void *arg)
             LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg:"<<errmsg;
         }
     }
+    if (fd >= 0) close(fd);
     ++g_finish_task_num;
     return 0;
 }

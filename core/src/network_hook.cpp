@@ -291,6 +291,8 @@ HOOK_SYS_FUNC_DEF(
         return syscall(SYS_close, fd );
     }
 
+    if (fd < 0) return EBADF; 
+
     fd_ctx_t *lp = get_fd_ctx(fd);
     if (lp) 
     {
