@@ -19,6 +19,7 @@
 #define __PTHREAD_HOOK_H__
 
 #include "coroutine_impl.h"
+int64_t is_in_malloc();
 namespace conet
 {
 
@@ -29,6 +30,9 @@ void disable_pthread_hook();
 inline
 int is_enable_pthread_hook()
 {
+    if (is_in_malloc()) {
+        return 0;
+    }
     coroutine_t *co = get_curr_co_can_null();
     return co && !co->is_main && (co->is_enable_pthread_hook);
 }
