@@ -19,9 +19,10 @@
 #define __PTHREAD_HOOK_H__
 
 #include "coroutine_impl.h"
-int64_t is_in_malloc();
 namespace conet
 {
+
+int64_t is_in_malloc();
 
 int is_enable_pthread_hook();
 void enable_pthread_hook();

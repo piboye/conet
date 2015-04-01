@@ -38,79 +38,69 @@
         } \
     } while(0) \
 
-static int64_t g_enable_malloc_hook = 0;
+namespace 
+{
+int64_t __thread g_in_malloc = 0;
 
-static int64_t g_in_malloc = 0;
 class SetInMallocHelp
 {
 public:
     SetInMallocHelp()
     {
-        __sync_fetch_and_add(&g_in_malloc,1);
+        g_in_malloc = 1;
     }
 
     ~SetInMallocHelp()
     {
 
-        __sync_fetch_and_add(&g_in_malloc, -1);
+        g_in_malloc = 0;
     }
 };
 
-int64_t is_in_malloc()
-{
-    return g_in_malloc;
 }
+
+namespace conet
+{
+
+    int64_t is_in_malloc()
+    {
+        return g_in_malloc;
+    }
+}
+
+
+
 
 #define DISABLE_CO_HOOK() SetInMallocHelp __set_in_malloc_##__LINE__
 
-void enable_malloc_hook() 
-{
-    g_enable_malloc_hook = 1;
-}
 
 HOOK_FUNC_DEF(void*, malloc, (size_t size)) 
 {
     HOOK_FUNC(malloc);
 
-    if (g_enable_malloc_hook) {
-        DISABLE_CO_HOOK();
-        return _(malloc)(size);
-    } else {
-        return _(malloc)(size);
-    }
+    DISABLE_CO_HOOK();
+    return _(malloc)(size);
 }
 
 HOOK_FUNC_DEF(void *, realloc, (void *ptr, size_t size))
 {
     HOOK_FUNC(realloc);
-    if (g_enable_malloc_hook) {
-        DISABLE_CO_HOOK();
-        return _(realloc)(ptr, size);
-    } else {
-        return _(realloc)(ptr, size);
-    }
+    DISABLE_CO_HOOK();
+    return _(realloc)(ptr, size);
 }
 
 HOOK_FUNC_DEF(void *, memalign, (size_t  b, size_t size))
 {
     HOOK_FUNC(memalign);
-    if (g_enable_malloc_hook) {
-        DISABLE_CO_HOOK();
-        return _(memalign)(b, size);
-    } else {
-        return _(memalign)(b, size);
-    }
+    DISABLE_CO_HOOK();
+    return _(memalign)(b, size);
 }
 
 HOOK_FUNC_DEF(void , free, (void *ptr))
 {
     HOOK_FUNC(free);
-    if (g_enable_malloc_hook) {
-        DISABLE_CO_HOOK();
-        return _(free)(ptr);
-    } else {
-        return _(free)(ptr);
-    }
+    DISABLE_CO_HOOK();
+    return _(free)(ptr);
 }
 
 
