@@ -23,6 +23,7 @@ cc_library(
         "src/ares_wrap.cpp",
         "src/time_mgr.cpp",
         "src/common.cpp",
+        "src/malloc_hook.cpp",
     ],
 
     incs= [ 
