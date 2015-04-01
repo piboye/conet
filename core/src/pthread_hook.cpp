@@ -121,8 +121,13 @@ struct pcond_ctx_t
 
 static int trylock(lock_ctx_t *ctx);
 
-namespace conet 
+namespace conet
 {
+
+int64_t __attribute__((weak)) is_in_malloc() 
+{
+    return 0;
+}
 
 struct pthread_join_ctx_t
 {
