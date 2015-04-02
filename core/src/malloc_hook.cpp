@@ -47,13 +47,14 @@ class SetInMallocHelp
 public:
     SetInMallocHelp()
     {
-        g_in_malloc = 1;
+        //__sync_fetch_and_add(&g_in_malloc, 1);
+        ++g_in_malloc;
     }
 
     ~SetInMallocHelp()
     {
-
-        g_in_malloc = 0;
+        --g_in_malloc;
+        //__sync_fetch_and_add(&g_in_malloc,-1);
     }
 };
 
