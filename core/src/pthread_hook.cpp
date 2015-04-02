@@ -265,6 +265,7 @@ static int trylock(lock_ctx_t *ctx)
 }
 
 
+/*
 HOOK_FUNC_DEF(int, pthread_mutex_lock,(pthread_mutex_t *mutex))
 {
 	HOOK_FUNC(pthread_mutex_lock);
@@ -338,6 +339,9 @@ HOOK_FUNC_DEF(int, pthread_rwlock_wrlock,(pthread_rwlock_t *rwlock))
     conet::yield();
     return 0;
 }
+*/
+
+/*  自旋锁， 没必要hook, 因为这个本来就很快
 
 HOOK_FUNC_DEF(int, pthread_spin_lock,(pthread_spinlock_t *lock))
 {
@@ -364,6 +368,8 @@ HOOK_FUNC_DEF(int, pthread_spin_lock,(pthread_spinlock_t *lock))
     return 0;
 }
 
+*/
+
 
 
 namespace {
@@ -377,7 +383,7 @@ public:
     {
         mutex = m;
         cnt = 0;
-        _(pthread_mutex_lock)(m);
+        pthread_mutex_lock(m);
 
     }
     ~scope_lock() {
@@ -395,7 +401,7 @@ public:
     {
         lock = l;
         cnt = 0;
-        _(pthread_rwlock_rdlock)(l);
+        pthread_rwlock_rdlock(l);
 
     }
     ~scope_rdlock() {
@@ -413,7 +419,7 @@ public:
     {
         lock = l;
         cnt = 0;
-        _(pthread_rwlock_wrlock)(l);
+        pthread_rwlock_wrlock(l);
     }
     ~scope_wrlock() {
         pthread_rwlock_unlock(lock);
@@ -682,7 +688,7 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 
     if (mutex) pthread_mutex_unlock(mutex);
     conet::yield();
-    if (mutex) _(pthread_mutex_lock)(mutex);
+    if (mutex) pthread_mutex_lock(mutex);
 
     return 0;
 }
@@ -743,7 +749,7 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
 
     if (mutex) pthread_mutex_unlock(mutex);
     conet::yield();
-    if (mutex) _(pthread_mutex_lock)(mutex);
+    if (mutex) pthread_mutex_lock(mutex);
     if (ctx.ret_timeout) {
         return ETIMEDOUT;
     }

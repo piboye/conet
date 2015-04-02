@@ -19,9 +19,6 @@
 #include <malloc.h>
 #include <sys/syscall.h>
 #include <dlfcn.h>
-#include "base/auto_var.h"
-
-
 
 #define SYS_FUNC(name) g_sys_##name##_func
 #define _(name) SYS_FUNC(name)
