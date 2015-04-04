@@ -26,6 +26,10 @@ namespace conet
     {
         int ret = 0;
         ret = time_mgr_t::instance().start();
+        if (ret) {
+            LOG(ERROR)<<"init time mgr failed! [ret:"<<ret<<"]";
+            return -1;
+        }
         return 0;
     }
 
@@ -33,6 +37,10 @@ namespace conet
     {
         int ret = 0;
         ret = time_mgr_t::instance().stop();
+        if (ret) {
+            LOG(ERROR)<<"free time mgr failed! [ret:"<<ret<<"]";
+            return -1;
+        }
         return 0;
     }
 
