@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 
 #include "coroutine.h"
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
 #include "timewheel.h"
 #include "gflags/gflags.h"
 #include "log.h"
@@ -296,9 +296,8 @@ void free_coroutine(coroutine_t *co)
 
 typedef void (*coroutine_fun_t)();
 
-void *resume(coroutine_t * co, void * val)
+void *resume(coroutine_env_t * env, coroutine_t * co, void * val)
 {
-    coroutine_env_t *env = get_coroutine_env();
     coroutine_t *cur = env->curr_co;
     env->curr_co = co;
 
@@ -318,6 +317,12 @@ void *resume(coroutine_t * co, void * val)
     list_add_tail(&cur->wait_to, &env->run_queue);
 
     return  jump_fcontext(&(cur->fctx), co->fctx, val);
+}
+void *resume(coroutine_t * co, void * val)
+{
+
+    coroutine_env_t *env = get_coroutine_env();
+    return resume(env, co, val);
 }
 
 void * yield(list_head *wait_to, void * val)

@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 
 #include "log.h"
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
 #include "coroutine.h"
 
 #include <sys/resource.h>

@@ -181,14 +181,14 @@ int main(int argc, char * argv[])
     }
 
     conet::init_conet_global_env();
-    CONET_DEFER({
-        conet::free_conet_global_env();
-    });
+    conet::init_conet_env();
 
 
     g_server_container = ServerBuilder::build(conf);
     if (NULL == g_server_container)
     {
+        conet::free_conet_env();
+        conet::free_conet_global_env();
         LOG(ERROR)<<"build server failed!";
         return 3;
     }
@@ -221,6 +221,9 @@ int main(int argc, char * argv[])
 
     delete g_server_container;
     g_server_container = NULL;
+
+    conet::free_conet_env();
+    conet::free_conet_global_env();
 
     conet::call_server_fini_func();
 

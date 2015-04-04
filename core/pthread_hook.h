@@ -18,7 +18,11 @@
 #ifndef __PTHREAD_HOOK_H__
 #define __PTHREAD_HOOK_H__
 
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
+#include "base/auto_var.h"
+#include "base/addr_map.h"
+#include "event_notify.h"
+
 namespace conet
 {
 
@@ -86,6 +90,39 @@ public:
     {
         restore_pthread_hook_stat(m_stat);
     }
+};
+
+struct pcond_ctx_t;
+struct lock_ctx_t;
+struct pthread_join_ctx_t;
+struct pthread_mgr_t
+{
+    list_head lock_schedule_queue;   // lock schdule queue;
+    list_head pcond_schedule_queue;  // pthread condition var notify schedule queue
+    pthread_mutex_t pcond_schedule_mutex;
+
+    list_head pthread_join_queue; // pthread join queue;
+    conet::task_t schedule_task;     // 调度任务
+    event_notify_t event_notify;
+
+    coroutine_env_t * co_env;
+
+    explicit pthread_mgr_t(coroutine_env_t *);
+
+
+    static int event_cb(void *arg, uint64_t num);
+
+    void add_to_pcond_schedule(pcond_ctx_t *ctx);
+
+
+    void add_lock_schedule(lock_ctx_t *ctx) ;
+
+    void add_to_pthread_join_schedule(pthread_join_ctx_t *ctx);
+
+    ~pthread_mgr_t();
+
+    int proc_pthread_schedule();
+
 };
 
 }

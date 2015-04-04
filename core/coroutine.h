@@ -33,6 +33,7 @@ coroutine_t * current_coroutine();
 void * yield(list_head *wait_to = NULL, void *val=NULL) ;
 
 void * resume(coroutine_t * co, void *val=NULL);
+void * resume(coroutine_env_t * env, coroutine_t * co, void * val);
 
 coroutine_env_t * get_coroutine_env();
 

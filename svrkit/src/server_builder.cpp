@@ -25,6 +25,7 @@
 #include "base/cpu_affinity.h"
 #include <sched.h>
 #include "core/parallel.h"
+#include "base/defer.h"
 
 namespace conet
 {
@@ -45,6 +46,8 @@ server_worker_t::~server_worker_t()
 
 void* server_worker_t::main(void * arg)
 {
+    conet::init_conet_env();
+
     server_worker_t *self = (server_worker_t *)(arg);
 
     if (self->cpu_affinity && CPU_COUNT(self->cpu_affinity) > 0) {
@@ -89,15 +92,13 @@ void* server_worker_t::main(void * arg)
               exit_co = conet::alloc_coroutine(
                       conet::ptr_cast<conet::co_main_func_t>(
                           &server_worker_t::proc_server_exit), self);
+              conet::set_auto_delete(exit_co);
               conet::resume(exit_co);
           }
           conet::dispatch();
       }
 
-      if (exit_co) 
-      {
-          free_coroutine(exit_co);
-      }
+    conet::free_conet_env();
     return NULL;
 }
 

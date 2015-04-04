@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  coroutine_impl.h
+ *       Filename:  coroutine_env.h
  *
  *    Description:
  *
@@ -17,12 +17,14 @@
  */
 #ifndef __COROUTINE_IMPL_H_INCL__
 #define __COROUTINE_IMPL_H_INCL__
+
 #include <ucontext.h>
+#include <map>
+#include <sys/epoll.h>
+
 #include "gc.h"
 #include "timewheel.h"
 #include "coroutine.h"
-#include <map>
-#include <sys/epoll.h>
 #include "gflags/gflags.h"
 #include "base/fixed_mempool.h"
 #include "base/tls.h"
@@ -38,7 +40,6 @@ DECLARE_int32(stack_size);
 namespace conet
 {
 
-//struct epoll_ctx_t;
 struct epoll_ctx_t
 {
     int m_epoll_fd;
@@ -48,9 +49,15 @@ struct epoll_ctx_t
     int m_mem_size;
 
     int wait_num;
+    task_t task;
+    coroutine_env_t * co_env;
 };
 
 struct fd_ctx_mgr_t;
+
+struct dispatch_mgr_t;
+struct timewheel_t;
+struct pthread_mgr_t;
 
 struct coroutine_env_t
 {
@@ -59,7 +66,15 @@ struct coroutine_env_t
     coroutine_t * main;
     list_head tasks;
     uint64_t spec_key_seed;
-}  
+    epoll_ctx_t *epoll_ctx;
+    dispatch_mgr_t *dispatch;
+    timewheel_t  * tw;
+
+    pthread_mgr_t * pthread_mgr;
+
+    coroutine_env_t();
+    ~coroutine_env_t();
+}
 __attribute__((aligned(64)))
 ;
 
@@ -114,21 +129,16 @@ struct coroutine_t
 __attribute__((aligned(64)))
 ;
 
-coroutine_env_t *alloc_coroutine_env();
-void free_coroutine_env(void *arg);
-
 extern __thread coroutine_env_t * g_coroutine_env;
+
+
+// 协程环境 数组, 方便调式使用
+extern coroutine_env_t * g_coroutine_envs;
 
 inline
 coroutine_env_t * get_coroutine_env()
 {
-    coroutine_env_t *env = g_coroutine_env;
-    if (unlikely(NULL == env)) {
-        env = alloc_coroutine_env();
-        tls_onexit_add(env, &free_coroutine_env);
-        g_coroutine_env = env;
-    }
-    return env;
+    return g_coroutine_env;
 }
 
 inline 

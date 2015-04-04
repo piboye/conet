@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include "coroutine.h"
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
 #include "timewheel.h"
 #include "log.h"
 #include "hook_helper.h"
@@ -17,9 +17,10 @@
 #include "dispatch.h"
 #include "gflags/gflags.h"
 
-#include "../../base/list.h"
-#include "../../base/tls.h"
-#include "../../base/gcc_builtin_help.h"
+#include "base/list.h"
+#include "base/tls.h"
+#include "base/gcc_builtin_help.h"
+
 
 DEFINE_int32(epoll_size, 1024, "epoll event size ");
 
@@ -296,7 +297,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     }
 }
 
-epoll_ctx_t *create_epoll(int event_size);
+epoll_ctx_t *create_epoll_ctx(int event_size);
 
 
 void init_epoll_ctx(epoll_ctx_t *self, int size)
@@ -450,16 +451,17 @@ int proc_netevent(int timeout)
     return proc_netevent(epoll_ctx, timeout);
 }
 
-int task_proc(void *arg)
+int proc_netevent(void *arg)
 {
     return proc_netevent((epoll_ctx_t *) arg, -1);
 }
 
-epoll_ctx_t *create_epoll(int event_size)
+epoll_ctx_t *create_epoll_ctx(coroutine_env_t * env, int event_size)
 {
     epoll_ctx_t * p = new epoll_ctx_t;
     init_epoll_ctx(p, event_size);
-    registry_task(task_proc, p);
+    init_task(&p->task, proc_netevent, p);
+    p->co_env = env;
     return p;
 }
 
@@ -474,7 +476,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
     poll_ctx.coroutine = current_coroutine();
 
     ++ epoll_ctx->wait_num;
-    
+
     yield();
     poll_ctx.coroutine = NULL;
 
@@ -496,7 +498,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 }
 
 
-void free_epoll(epoll_ctx_t *ep)
+void free_epoll_ctx(epoll_ctx_t *ep)
 {
     munmap(ep->m_epoll_events, ep->m_mem_size);
     delete ep;
@@ -507,13 +509,15 @@ int get_epoll_pend_task_num()
     return get_epoll_ctx()->wait_num;
 }
 
-__thread epoll_ctx_t * g_epoll_ctx = NULL;
+//__thread epoll_ctx_t * g_epoll_ctx = NULL;
 
-CONET_DEF_TLS_GET(g_epoll_ctx, create_epoll(FLAGS_epoll_size), free_epoll);
+//CONET_DEF_TLS_GET(g_epoll_ctx, create_epoll_ctx(FLAGS_epoll_size), free_epoll);
 
+inline
 epoll_ctx_t * get_epoll_ctx()
 {
-    return TLS_GET(g_epoll_ctx);
+    return get_coroutine_env()->epoll_ctx;
+    //return TLS_GET(g_epoll_ctx);
 }
 
 void poll_ctx_timeout_proc(void *arg)

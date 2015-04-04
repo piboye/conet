@@ -130,11 +130,13 @@ int main(int argc, char * argv[])
     }
 
     conet::init_conet_global_env();
+    conet::init_conet_env();
     CONET_DEFER({
+        conet::free_conet_env();
         conet::free_conet_global_env();
     });
 
-    conet::IpListLB lb; 
+    conet::IpListLB lb;
     lb.init(FLAGS_server_addr);
 
     tasks = new task_t[FLAGS_task_num];

@@ -3,7 +3,7 @@
  *
  *       Filename:  timewheel.cpp
  *
- *    Description:
+ *    Description:  时间轮, 实现定时和超时
  *
  *        Version:  1.0
  *        Created:  2014年05月06日 06时26分36秒
@@ -33,17 +33,13 @@
 #include "conet_all.h"
 #include "fd_ctx.h"
 #include "coroutine.h"
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
 
 #include "base/tls.h"
 #include "base/time_helper.h"
 
 namespace conet
 {
-
-static __thread timewheel_t * g_tw = NULL;
-epoll_ctx_t * get_epoll_ctx();
-
 
 static inline uint64_t get_cur_ms()
 {
@@ -54,7 +50,9 @@ using namespace conet;
 
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval);
 
-DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
+
+void init_timewheel(timewheel_t *self, int solt_num = 60*1000);
+void fini_timewheel(timewheel_t *self);
 
 
 void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
@@ -65,12 +63,6 @@ void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
     self->arg = arg;
     self->tw = NULL;
     self->interval = 0;
-}
-
-
-int check_timewheel(void * arg)
-{
-    return check_timewheel((timewheel_t *) arg, 0);
 }
 
 static
@@ -90,38 +82,40 @@ int do_now_task(void *arg)
     return 0;
 }
 
-void init_timewheel(timewheel_t *self, int slot_num)
+timewheel_t::timewheel_t(coroutine_env_t *env, int slot_num)
 {
     assert(slot_num > 0);
     list_head *slots = new list_head[slot_num];
     for(int i=0; i<slot_num; ++i) {
         INIT_LIST_HEAD(&slots[i]);
     }
-    self->slots = slots;
-    self->slot_num = slot_num;
-    self->task_num = 0;
+    this->slots = slots;
+    this->slot_num = slot_num;
+    this->task_num = 0;
 
     uint64_t cur_ms = get_cur_ms();
-    self->now_ms = cur_ms;
-    self->pos = cur_ms % slot_num;
-    self->prev_ms = cur_ms;
-    self->stop = 0;
-    self->co = NULL;
+    this->now_ms = cur_ms;
+    this->pos = cur_ms % slot_num;
+    this->prev_ms = cur_ms;
+    this->stop_flag = 0;
+    this->co = NULL;
     //self->notify = time_mgr_t::instance().alloc_timeout_notify();
     //self->enable_notify = 1;
 
-    INIT_LIST_HEAD(&self->now_list);
-    init_task(&self->delay_task, &do_now_task, self);
-    registry_task(&self->delay_task);
+    this->co_env = env;
+
+    INIT_LIST_HEAD(&this->now_list);
+    init_task(&this->delay_task, &do_now_task, this);
+    co_env->dispatch->registry(&this->delay_task);
 }
 
-void fini_timewheel(timewheel_t *self)
+
+timewheel_t::~timewheel_t()
 {
-    unregistry_task(&self->delay_task);
-    delete [] self->slots;
+    co_env->dispatch->unregistry(&this->delay_task);
+    delete [] this->slots;
 }
 
-int check_timewheel(timewheel_t *tw, uint64_t cur_ms);
 
 
 uint64_t get_latest_ms(timewheel_t *tw);
@@ -174,12 +168,16 @@ int timewheel_task(void *arg)
 
     tw->now_ms = get_cur_ms();
 
-    while (!tw->stop) {
+    while (!tw->stop_flag) {
        struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
        ret = co_poll(&pf, 1, -1);
 
        cnt = 0;
        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
+       if (tw->stop_flag) {
+        // 时间轮退出
+            break;
+       }
        if (ret != sizeof(cnt)) {
           LOG(ERROR)<<" timewheel timerfd read failed, "
                "[ret:"<<ret<<"]"
@@ -193,8 +191,10 @@ int timewheel_task(void *arg)
 
        tw->now_ms = get_cur_ms(); 
 
-       check_timewheel(tw, tw->now_ms);
+       tw->check(tw->now_ms);
     }
+    close(timerfd);
+    tw->timerfd = -1;
     return 0;
 }
 
@@ -217,13 +217,14 @@ static int timewheel_task2(void *arg)
     tw->now_ms = get_cur_ms(); 
     int ret = 0;
     uint64_t cnt = 0;
-    while (!tw->stop)
+    while (!tw->stop_flag)
     {
        struct pollfd pf = { fd: evfd, events: POLLIN | POLLERR | POLLHUP };
        ret = conet::co_poll(&pf, 1, -1);
 
        cnt = 0;
        ret = syscall(SYS_read, evfd, &cnt, sizeof(cnt)); 
+       if (tw->stop_flag) break;
        if (ret != sizeof(cnt)) {
           LOG(ERROR)<<" timewheel eventfd read failed, "
                "[ret:"<<ret<<"]"
@@ -236,7 +237,7 @@ static int timewheel_task2(void *arg)
        }
 
        tw->now_ms = get_cur_ms();
-       cnt = check_timewheel(tw, tw->now_ms);
+       cnt = tw->check(tw->now_ms);
        tw->notify->latest_ms = 0; //get_latest_ms(tw);
     }
 
@@ -244,49 +245,32 @@ static int timewheel_task2(void *arg)
     return 0;
 }
 
-void stop_timewheel(timewheel_t *self)
+int timewheel_t::start()
 {
-    self->stop = 1;
-    conet::wait((coroutine_t *)self->co);
+    // 开始 定时调度
+    coroutine_t *co =  NULL;
+    co  = alloc_coroutine(timewheel_task, this, 128*4096);
+    this->co = co;
+    conet::set_auto_delete(co);
+    conet::resume(co, this);
+    return 0;
 }
 
-timewheel_t *alloc_timewheel()
+int timewheel_t::stop(int ms)
 {
-    timewheel_t *tw =  new timewheel_t();
-    init_timewheel(tw, FLAGS_timewheel_slot_num);
-    return tw;
-}
-
-void free_timewheel(timewheel_t *tw)
-{
-    fini_timewheel(tw);
-    if (tw->co) {
-        if (conet::is_stop((coroutine_t *)tw->co))  {
-            tw->stop = 1;
-            conet::wait((coroutine_t *)tw->co);
-        }
-        free_coroutine((coroutine_t *)tw->co);
+    this->stop_flag = 1;
+    coroutine_t *co = (coroutine_t *)this->co; 
+    this->co = NULL;
+    if (co) {
+        conet::resume(co);
     }
-    delete tw;
+    return 0;
 }
 
+inline
 timewheel_t *get_timewheel()
 {
-    if (NULL == g_tw) {
-        timewheel_t *tw = alloc_timewheel();
-        if (NULL == g_tw) {
-            g_tw = tw;
-            coroutine_t *co =  NULL;
-            co  = alloc_coroutine(timewheel_task, tw, 128*4096);
-            tw->co = co;
-            // 这个必须在 alloc_coroutine 下面
-            tls_onexit_add(tw, (void (*)(void *))&free_timewheel);
-            conet::resume((coroutine_t *)tw->co);
-        } else {
-            free_timewheel(tw);
-        }
-    }
-    return g_tw;
+    return get_coroutine_env()->tw;
 }
 
 
@@ -331,14 +315,14 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     return true;
 }
 
-bool set_timeout(timewheel_t *tw, timeout_handle_t * obj, int timeout)
+bool timewheel_t::set_timeout(timeout_handle_t * obj, int timeout)
 {
-    return set_timeout_impl(tw, obj, timeout, 0);
+    return set_timeout_impl(this, obj, timeout, 0);
 }
 
-bool set_interval(timewheel_t *tw, timeout_handle_t * obj, int interval)
+bool timewheel_t::set_interval(timeout_handle_t * obj, int interval)
 {
-    return set_timeout_impl(tw, obj, interval, interval);
+    return set_timeout_impl(this, obj, interval, interval);
 }
 
 uint64_t get_latest_ms(timewheel_t *tw)
@@ -361,8 +345,9 @@ uint64_t get_latest_ms(timewheel_t *tw)
 }
 
 
-int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
+int timewheel_t::check(uint64_t cur_ms)
 {
+    timewheel_t *tw = this;
 
     if (cur_ms == 0 ) {
         cur_ms = get_cur_ms();
@@ -419,14 +404,14 @@ int check_timewheel(timewheel_t *tw, uint64_t cur_ms)
 void set_timeout(timeout_handle_t *obj, int timeout /* ms*/)
 {
     timewheel_t *tw = get_timewheel();
-    set_timeout(tw, obj, timeout);
+    tw->set_timeout(obj, timeout);
 }
 
 
 void set_interval(timeout_handle_t *obj, int timeout /* ms*/)
 {
     timewheel_t *tw = get_timewheel();
-    set_interval(tw, obj, timeout);
+    tw->set_interval(obj, timeout);
 }
 
 }

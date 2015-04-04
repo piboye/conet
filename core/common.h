@@ -23,5 +23,8 @@ namespace conet
 {
     int init_conet_global_env();
     int free_conet_global_env();
+
+    int init_conet_env();
+    int free_conet_env();
 }
 #endif /* end of include guard */

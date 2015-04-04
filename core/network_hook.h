@@ -18,8 +18,9 @@
 #ifndef __NETWORK_HOOK_H__
 #define __NETWORK_HOOK_H__
 
-#include "coroutine_impl.h"
 #include <sys/socket.h>
+
+#include "coroutine_env.h"
 
 namespace conet
 {

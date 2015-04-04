@@ -20,8 +20,10 @@
 
 
 #include "glog/logging.h"
-#include "pb2json.h"
 #include "google/protobuf/descriptor.h"
+
+#include "pb2json.h"
+
 #include "jsoncpp/json.h"
 #include "jsoncpp/reader.h"
 #include "jsoncpp/value.h"

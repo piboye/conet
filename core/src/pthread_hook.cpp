@@ -22,7 +22,7 @@
 #include <dlfcn.h>
 
 #include "coroutine.h"
-#include "coroutine_impl.h"
+#include "coroutine_env.h"
 #include "timewheel.h"
 #include "dispatch.h"
 #include "event_notify.h"
@@ -80,17 +80,81 @@ HOOK_FUNC_DEF(
 }
 
 */
+namespace {
+class scope_lock
+{
+public:
+    pthread_mutex_t *mutex;
+    int cnt;
+    explicit
+    scope_lock(pthread_mutex_t *m) 
+    {
+        mutex = m;
+        cnt = 0;
+        pthread_mutex_lock(m);
+
+    }
+    ~scope_lock() {
+        pthread_mutex_unlock(mutex);
+    }
+};
+
+class scope_rdlock
+{
+public:
+    pthread_rwlock_t *lock;
+    int cnt;
+    explicit
+    scope_rdlock(pthread_rwlock_t *l) 
+    {
+        lock = l;
+        cnt = 0;
+        pthread_rwlock_rdlock(l);
+
+    }
+    ~scope_rdlock() {
+        pthread_rwlock_unlock(lock);
+    }
+};
+
+class scope_wrlock
+{
+public:
+    pthread_rwlock_t *lock;
+    int cnt;
+    explicit
+    scope_wrlock(pthread_rwlock_t *l) 
+    {
+        lock = l;
+        cnt = 0;
+        pthread_rwlock_wrlock(l);
+    }
+    ~scope_wrlock() {
+        pthread_rwlock_unlock(lock);
+    }
+};
+
+}
+
+#define SCOPE_RDLOCK(l) \
+    for (scope_rdlock scope_rdlock_##__LINE__ (l); scope_rdlock_##__LINE__.cnt <=0; scope_rdlock_##__LINE__.cnt=1)
+
+
+#define SCOPE_WRLOCK(l) \
+    for (scope_wrlock scope_wrlock_##__LINE__ (l); scope_wrlock_##__LINE__.cnt <=0; scope_wrlock_##__LINE__.cnt=1)
+
+
+#define SCOPE_LOCK(mutex) \
+    for (scope_lock scope_lock_##__LINE__ (mutex); scope_lock_##__LINE__.cnt <=0; scope_lock_##__LINE__.cnt=1)
+
 
 
 using namespace conet;
-
-struct pcond_mgr_t;
 namespace conet 
 {
-    struct pthread_mgr_t;
-}
 
-namespace {
+struct pcond_mgr_t;
+struct pthread_mgr_t;
 enum {
     MUTEX_TYPE = 1,
     RDLOCK_TYPE = 2,
@@ -117,12 +181,41 @@ struct pcond_ctx_t
     pthread_mgr_t *pmgr;
 };
 
-}
+struct pcond_mgr_t
+{
+   conet::AddrMap::Node node;
+   list_head wait_list;
+   pthread_mutex_t mutex;
+
+   explicit 
+   pcond_mgr_t(void *key)
+   {
+        INIT_LIST_HEAD(&this->wait_list);
+        this->node.init(key);
+        pthread_mutex_init(&mutex, NULL);
+   }
+
+   void dtor()
+   {
+        SCOPE_LOCK(&this->mutex)
+        {
+            list_del_init(&this->wait_list);
+        }
+        pthread_mutex_destroy(&this->mutex);
+   }
+
+   static int fini(void *arg, conet::AddrMap::Node *n)
+   {
+        pcond_mgr_t *p = container_of(n, pcond_mgr_t, node);
+        p->dtor();
+        delete p;
+        return 0;
+   }
+};
+
 
 static int trylock(lock_ctx_t *ctx);
 
-namespace conet
-{
 
 int64_t __attribute__((weak)) is_in_malloc() 
 {
@@ -148,89 +241,15 @@ struct pthread_join_ctx_t
     }
 };
 
-struct pthread_mgr_t
-{
-    list_head lock_schedule_queue;   // lock schdule queue;
-    list_head pcond_schedule_queue;  // pthread condition var notify schedule queue
-    pthread_mutex_t pcond_schedule_mutex;
 
-    list_head pthread_join_queue; // pthread join queue;
-    conet::task_t schedule_task;     // 调度任务
-    event_notify_t event_notify;
-
-    pthread_mgr_t()
-    {
-        INIT_LIST_HEAD(&lock_schedule_queue);
-        INIT_LIST_HEAD(&pcond_schedule_queue);
-        INIT_LIST_HEAD(&pthread_join_queue);
-        pthread_mutex_init(&pcond_schedule_mutex, NULL);
-
-        int ret = event_notify.init(event_cb, this);
-        if (ret) {
-            fprintf(stderr, "init pthread mgr event_notify failed; ret:%d", ret); 
-        }
-
-        AUTO_VAR(fn, =, &pthread_mgr_t::proc_pthread_schedule);
-        task_proc_func_t p =  NULL;
-        memcpy(&p, &fn, sizeof(void *)); // i hate c++ !!!!
-        conet::init_task(&schedule_task, p, this);
+pthread_mgr_t * get_pthread_mgr() {
+    coroutine_env_t *env = get_coroutine_env();
+    if (NULL == env->pthread_mgr) {
+        env->pthread_mgr = new pthread_mgr_t(env);
     }
-
-    static int event_cb(void *arg, uint64_t num)
-    {
-        pthread_mgr_t * self = (pthread_mgr_t *)(arg);
-        if (num > 0) {
-            conet::registry_delay_task(&self->schedule_task);
-        }
-        return 0;
-    }
-
-    void add_to_pcond_schedule(pcond_ctx_t *ctx);
-
-
-    void add_lock_schedule(lock_ctx_t *ctx) 
-    {
-        list_add_tail(&ctx->wait_item, &lock_schedule_queue);
-        if (list_empty(&schedule_task.link_to)) {
-            conet::registry_delay_task(&schedule_task);
-        }
-    }
-
-    void add_to_pthread_join_schedule(pthread_join_ctx_t *ctx)
-    {
-
-        list_add_tail(&ctx->link_to, &this->pthread_join_queue);
-        if (list_empty(&schedule_task.link_to)) {
-            conet::registry_delay_task(&schedule_task);
-        }
-    }
-
-    ~pthread_mgr_t()
-    {
-        list_del(&lock_schedule_queue);
-        list_del(&pcond_schedule_queue);
-        event_notify.stop();
-        pthread_mutex_unlock(&pcond_schedule_mutex);
-    }
-
-    int proc_pthread_schedule();
-
-};
-
-static __thread pthread_mgr_t *g_pthread_mgr = NULL;
-CONET_DEF_TLS_VAR_HELP(g_pthread_mgr,
-        ({
-
-            conet::DisablePthreadHook disable;
-            pthread_mgr_t * m = new pthread_mgr_t();
-            m;
-        }),
-        ({
-            delete self; 
-        })
-); 
-
+    return env->pthread_mgr;
 }
+
 
 static int trylock(lock_ctx_t *ctx) 
 {
@@ -262,6 +281,151 @@ static int trylock(lock_ctx_t *ctx)
          return -1;
     }
     return -2;
+}
+
+void pthread_mgr_t::add_to_pcond_schedule(pcond_ctx_t *ctx)
+{
+    if (!list_empty(&ctx->wait_item))
+    {
+        SCOPE_LOCK(&ctx->mgr->mutex)
+        {
+            list_del_init(&ctx->wait_item);
+        }
+    }
+
+    SCOPE_LOCK(&pcond_schedule_mutex) 
+    {
+        list_add_tail(&ctx->wait_item, &pcond_schedule_queue);
+    }
+    event_notify.notify(1);
+}
+
+
+pthread_mgr_t::pthread_mgr_t(coroutine_env_t *env)
+{
+    INIT_LIST_HEAD(&lock_schedule_queue);
+    INIT_LIST_HEAD(&pcond_schedule_queue);
+    INIT_LIST_HEAD(&pthread_join_queue);
+    pthread_mutex_init(&pcond_schedule_mutex, NULL);
+    this->co_env = env;
+
+    int ret = event_notify.init(event_cb, this);
+    if (ret) {
+        fprintf(stderr, "init pthread mgr event_notify failed; ret:%d", ret); 
+    }
+
+    AUTO_VAR(fn, =, &pthread_mgr_t::proc_pthread_schedule);
+    task_proc_func_t p =  NULL;
+    memcpy(&p, &fn, sizeof(void *)); // i hate c++ !!!!
+    conet::init_task(&schedule_task, p, this);
+}
+
+int pthread_mgr_t::event_cb(void *arg, uint64_t num)
+{
+    pthread_mgr_t * self = (pthread_mgr_t *)(arg);
+    if (num > 0) {
+        conet::registry_delay_task(&self->schedule_task);
+    }
+    return 0;
+}
+
+void pthread_mgr_t::add_lock_schedule(lock_ctx_t *ctx) 
+{
+    list_add_tail(&ctx->wait_item, &lock_schedule_queue);
+    if (list_empty(&schedule_task.link_to)) {
+        conet::registry_delay_task(&schedule_task);
+    }
+}
+
+void pthread_mgr_t::add_to_pthread_join_schedule(pthread_join_ctx_t *ctx)
+{
+
+    list_add_tail(&ctx->link_to, &this->pthread_join_queue);
+    if (list_empty(&schedule_task.link_to)) {
+        conet::registry_delay_task(&schedule_task);
+    }
+}
+
+int pthread_mgr_t::proc_pthread_schedule()
+{
+    int cnt =0;
+    list_head * lqueue = &this->lock_schedule_queue;
+    if (!list_empty(lqueue))
+    { // lock schdule
+        lock_ctx_t *ctx = NULL, *next= NULL;
+        list_for_each_entry_safe(ctx, next, lqueue, wait_item)
+        {
+            int ret = trylock(ctx);
+            if (ret == 0)  {
+                list_del_init(&ctx->wait_item);
+                conet::resume(ctx->co); 
+                ++cnt;
+            }
+        }
+    }
+
+    list_head *pqueue = &this->pcond_schedule_queue;
+    if (!list_empty(pqueue))
+    { // pthread condition var schedule
+        LIST_HEAD(notify_queue);
+
+        SCOPE_LOCK(&pcond_schedule_mutex)
+        {
+            list_add_tail(pqueue, &notify_queue);
+            list_del_init(pqueue);
+        }
+
+        pcond_ctx_t * ctx = NULL, *next = NULL;
+        list_for_each_entry_safe(ctx, next, &notify_queue, wait_item)
+        {
+            list_del_init(&ctx->wait_item);
+            cancel_timeout(&ctx->tm);
+            conet::resume(ctx->co); 
+            ++cnt;
+        }
+    }
+
+    list_head * jqueue = &this->pthread_join_queue;
+    if (!list_empty(jqueue))
+    { // pthread join schdule
+        pthread_join_ctx_t *ctx = NULL, *next= NULL;
+        list_for_each_entry_safe(ctx, next, jqueue, link_to)
+        {
+            int ret = pthread_tryjoin_np(ctx->tid, ctx->retval);
+            if (ret == 0)  {
+                ctx->ret = ret;
+                list_del_init(&ctx->link_to);
+                conet::resume(ctx->co); 
+                ++cnt;
+            } else {
+                if (ctx->timeout > 0) {
+                    if (ctx->timeout < conet::get_sys_ms()) {
+                        ctx->ret = ETIMEDOUT;
+                        list_del_init(&ctx->link_to);
+                        conet::resume(ctx->co); 
+                        ++cnt;
+                    }
+                }
+            }
+        }
+    }
+
+    if ( !list_empty(lqueue) || !list_empty(pqueue) || !list_empty(jqueue))
+    {
+        conet::registry_delay_task(&schedule_task);
+    }
+
+    return cnt;
+}
+
+pthread_mgr_t::~pthread_mgr_t()
+{
+    list_del(&lock_schedule_queue);
+    list_del(&pcond_schedule_queue);
+    event_notify.stop();
+    pthread_mutex_unlock(&pcond_schedule_mutex);
+}
+
 }
 
 
@@ -371,185 +535,6 @@ HOOK_FUNC_DEF(int, pthread_spin_lock,(pthread_spinlock_t *lock))
 */
 
 
-
-namespace {
-class scope_lock
-{
-public:
-    pthread_mutex_t *mutex;
-    int cnt;
-    explicit
-    scope_lock(pthread_mutex_t *m) 
-    {
-        mutex = m;
-        cnt = 0;
-        pthread_mutex_lock(m);
-
-    }
-    ~scope_lock() {
-        pthread_mutex_unlock(mutex);
-    }
-};
-
-class scope_rdlock
-{
-public:
-    pthread_rwlock_t *lock;
-    int cnt;
-    explicit
-    scope_rdlock(pthread_rwlock_t *l) 
-    {
-        lock = l;
-        cnt = 0;
-        pthread_rwlock_rdlock(l);
-
-    }
-    ~scope_rdlock() {
-        pthread_rwlock_unlock(lock);
-    }
-};
-
-class scope_wrlock
-{
-public:
-    pthread_rwlock_t *lock;
-    int cnt;
-    explicit
-    scope_wrlock(pthread_rwlock_t *l) 
-    {
-        lock = l;
-        cnt = 0;
-        pthread_rwlock_wrlock(l);
-    }
-    ~scope_wrlock() {
-        pthread_rwlock_unlock(lock);
-    }
-};
-
-}
-
-#define SCOPE_RDLOCK(l) \
-    for (scope_rdlock scope_rdlock_##__LINE__ (l); scope_rdlock_##__LINE__.cnt <=0; scope_rdlock_##__LINE__.cnt=1)
-
-
-#define SCOPE_WRLOCK(l) \
-    for (scope_wrlock scope_wrlock_##__LINE__ (l); scope_wrlock_##__LINE__.cnt <=0; scope_wrlock_##__LINE__.cnt=1)
-
-
-#define SCOPE_LOCK(mutex) \
-    for (scope_lock scope_lock_##__LINE__ (mutex); scope_lock_##__LINE__.cnt <=0; scope_lock_##__LINE__.cnt=1)
-
-namespace conet 
-{
-
-
-    int pthread_mgr_t::proc_pthread_schedule()
-    {
-        int cnt =0;
-        list_head * lqueue = &this->lock_schedule_queue;
-        if (!list_empty(lqueue))
-        { // lock schdule
-            lock_ctx_t *ctx = NULL, *next= NULL;
-            list_for_each_entry_safe(ctx, next, lqueue, wait_item)
-            {
-                int ret = trylock(ctx);
-                if (ret == 0)  {
-                    list_del_init(&ctx->wait_item);
-                    conet::resume(ctx->co); 
-                    ++cnt;
-                }
-            }
-        }
-
-        list_head *pqueue = &this->pcond_schedule_queue;
-        if (!list_empty(pqueue))
-        { // pthread condition var schedule
-            LIST_HEAD(notify_queue);
-            
-            SCOPE_LOCK(&pcond_schedule_mutex)
-            {
-                list_add_tail(pqueue, &notify_queue);
-                list_del_init(pqueue);
-            }
-
-            pcond_ctx_t * ctx = NULL, *next = NULL;
-            list_for_each_entry_safe(ctx, next, &notify_queue, wait_item)
-            {
-                list_del_init(&ctx->wait_item);
-                cancel_timeout(&ctx->tm);
-                conet::resume(ctx->co); 
-                ++cnt;
-            }
-        }
-
-        list_head * jqueue = &this->pthread_join_queue;
-        if (!list_empty(jqueue))
-        { // pthread join schdule
-            pthread_join_ctx_t *ctx = NULL, *next= NULL;
-            list_for_each_entry_safe(ctx, next, jqueue, link_to)
-            {
-                int ret = pthread_tryjoin_np(ctx->tid, ctx->retval);
-                if (ret == 0)  {
-                    ctx->ret = ret;
-                    list_del_init(&ctx->link_to);
-                    conet::resume(ctx->co); 
-                    ++cnt;
-                } else {
-                    if (ctx->timeout > 0) {
-                        if (ctx->timeout < conet::get_sys_ms()) {
-                            ctx->ret = ETIMEDOUT;
-                            list_del_init(&ctx->link_to);
-                            conet::resume(ctx->co); 
-                            ++cnt;
-                        }
-                    }
-                }
-            }
-        }
-
-        if ( !list_empty(lqueue) || !list_empty(pqueue) || !list_empty(jqueue))
-        {
-            conet::registry_delay_task(&schedule_task);
-        }
-
-        return cnt;
-    }
-}
-
-struct pcond_mgr_t
-{
-   conet::AddrMap::Node node;
-   list_head wait_list;
-   pthread_mutex_t mutex;
-
-   explicit 
-   pcond_mgr_t(void *key)
-   {
-        INIT_LIST_HEAD(&this->wait_list);
-        this->node.init(key);
-        pthread_mutex_init(&mutex, NULL);
-   }
-
-   void dtor()
-   {
-        SCOPE_LOCK(&this->mutex)
-        {
-            list_del_init(&this->wait_list);
-        }
-        pthread_mutex_destroy(&this->mutex);
-   }
-
-   static int fini(void *arg, conet::AddrMap::Node *n)
-   {
-        pcond_mgr_t *p = container_of(n, pcond_mgr_t, node);
-        p->dtor();
-        delete p;
-        return 0;
-   }
-};
-
-
-
 static pthread_rwlock_t g_cond_map_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 static conet::AddrMap * volatile g_cond_map = NULL;
@@ -637,25 +622,6 @@ static pcond_mgr_t * find_cond_map(void *key)
     return old_mgr;
 }
 
-namespace conet
-{
-    void pthread_mgr_t::add_to_pcond_schedule(pcond_ctx_t *ctx)
-    {
-        if (!list_empty(&ctx->wait_item))
-        {
-            SCOPE_LOCK(&ctx->mgr->mutex)
-            {
-                list_del_init(&ctx->wait_item);
-            }
-        }
-
-        SCOPE_LOCK(&pcond_schedule_mutex) 
-        {
-            list_add_tail(&ctx->wait_item, &pcond_schedule_queue);
-        }
-        event_notify.notify(1);
-    }
-}
 
 HOOK_FUNC_DEF(int, pthread_cond_wait,
         (pthread_cond_t * __restrict cond, 
@@ -668,7 +634,7 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
         return _(pthread_cond_wait)(cond, mutex);
     }
 
-    pthread_mgr_t *pmgr = TLS_GET(g_pthread_mgr);
+    pthread_mgr_t *pmgr = get_pthread_mgr();
 
     pcond_ctx_t ctx;
     ctx.ret_timeout = 0;
@@ -732,7 +698,7 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
         set_timeout(&ctx.tm, timeout);
     }    
 
-    pthread_mgr_t *pmgr = TLS_GET(g_pthread_mgr);
+    pthread_mgr_t *pmgr = get_pthread_mgr();
 
     ctx.co = conet::current_coroutine();
     INIT_LIST_HEAD(&ctx.wait_item);
@@ -832,7 +798,7 @@ HOOK_FUNC_DEF(int, pthread_join, (pthread_t tid, void **retval))
     pthread_join_ctx_t ctx(tid, retval, 0);
     ctx.co = CO_SELF();
 
-    pthread_mgr_t *mgr = TLS_GET(g_pthread_mgr);
+    pthread_mgr_t *mgr = get_pthread_mgr();
     mgr->add_to_pthread_join_schedule(&ctx);
     conet::yield();
     return ctx.ret;
@@ -854,7 +820,7 @@ HOOK_FUNC_DEF(int, pthread_timedjoin_np, (pthread_t tid, void **retval,
     pthread_join_ctx_t ctx(tid, retval, timeout);
     ctx.co = CO_SELF();
 
-    pthread_mgr_t *mgr = TLS_GET(g_pthread_mgr);
+    pthread_mgr_t *mgr = get_pthread_mgr();
     mgr->add_to_pthread_join_schedule(&ctx);
     conet::yield();
     return ctx.ret;
