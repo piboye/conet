@@ -37,19 +37,27 @@ dispatch_mgr_t::dispatch_mgr_t(coroutine_env_t *env)
 dispatch_mgr_t::~dispatch_mgr_t()
 {
     task_t *t=NULL, *n = NULL;
-    list_for_each_entry_safe(t, n, &tasks, link_to) 
     {
-        list_del_init(&t->link_to);
-        if (t->auto_del) {
-            delete t;
+        LIST_HEAD(queue);
+        list_swap(&queue, &tasks);
+        list_for_each_entry_safe(t, n, &queue, link_to) 
+        {
+            list_del_init(&t->link_to);
+            if (t->auto_del) {
+                delete t;
+            }
         }
     }
 
-    list_for_each_entry_safe(t, n, &delay_tasks, link_to) 
     {
-        list_del_init(&t->link_to);
-        if (t->auto_del) {
-            delete t;
+        LIST_HEAD(queue);
+        list_swap(&queue, &delay_tasks);
+        list_for_each_entry_safe(t, n, &queue, link_to) 
+        {
+            list_del_init(&t->link_to);
+            if (t->auto_del) {
+                delete t;
+            }
         }
     }
 }
@@ -72,12 +80,11 @@ void dispatch_mgr_t::delay(task_t *task)
     list_head * queue = &this->delay_tasks;
     if (list_empty(&task->link_to)) {
         list_add_tail(&task->link_to, queue);
+        ++this->delay_task_num;
     } else {
-        // 重新注册, 应该报错
-        list_move_tail(&task->link_to, queue);
+        // 重新注册
+        //list_move_tail(&task->link_to, queue);
     }
-
-    ++this->delay_task_num;
 }
 
 void dispatch_mgr_t::unregistry(task_t *task)
@@ -86,6 +93,11 @@ void dispatch_mgr_t::unregistry(task_t *task)
     --this->task_num;
 }
 
+void dispatch_mgr_t::unregistry_delay(task_t *task)
+{
+    list_del_init(&task->link_to);
+    --this->delay_task_num;
+}
 
 struct dispatch_mgr_t *get_dispatch_mgr()
 {
@@ -96,27 +108,27 @@ int proc_tasks(dispatch_mgr_t *mgr)
 {
     int num = 0;
     task_t *t=NULL, *n = NULL;
-    list_for_each_entry_safe(t, n, &mgr->tasks, link_to) 
+
+    if (mgr->task_num > 0) 
     {
-        int ret = t->proc(t->arg);
-        if(ret >0) num+=ret;
+        list_for_each_entry_safe(t, n, &mgr->tasks, link_to) 
+        {
+            int ret = t->proc(t->arg);
+            if(ret >0) ++num;
+        }
     }
 
-    if (list_empty(&mgr->delay_tasks)) {
+    if (mgr->delay_task_num <=0) {
         return num;
     }
 
-    list_head delay_list;
-    { // swap delay list;
-        INIT_LIST_HEAD(&delay_list);
-        list_add(&delay_list, &mgr->delay_tasks);
-        list_del_init(&mgr->delay_tasks);
-    }
+    LIST_HEAD(delay_list);
+    list_swap(&delay_list, &mgr->delay_tasks);
 
     list_for_each_entry_safe(t, n, &delay_list, link_to) {
         list_del_init(&t->link_to);
         int ret = t->proc(t->arg);
-        if(ret >0) num+=ret;
+        if(ret >0) ++num;
         if (t->auto_del) {
             delete t;
         }

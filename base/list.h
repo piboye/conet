@@ -8,11 +8,11 @@
 #include <stddef.h>
 
 #define c_offsetof(TYPE, MEMBER) \
-    ({TYPE * a = NULL; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
+    ({TYPE * a = nullptr; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
 
 #define container_of(ptr, type, member) \
     ({\
-	    (type *)((char *)ptr - c_offsetof(type,member)); \
+	    (type *)((char *)ptr - c_offsetof(type, member)); \
      })
 
 struct list_head {

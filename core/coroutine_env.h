@@ -72,6 +72,16 @@ struct coroutine_env_t
 
     pthread_mgr_t * pthread_mgr;
 
+    fixed_mempool_t default_stack_pool;
+    
+
+    // 延迟删除 coroutine 对象
+    list_head delay_del_list;
+    task_t delay_del_task;
+
+    //corotuine_t 结构体 缓存池
+    fixed_mempool_t co_struct_pool;
+
     coroutine_env_t();
     ~coroutine_env_t();
 }
@@ -97,6 +107,7 @@ struct coroutine_t
     CO_MAIN_FUN *pfn;
     void *pfn_arg;
 
+    coroutine_env_t *env;
     char const *desc;
     gc_mgr_t * gc_mgr; // gc mem alloc manager
 

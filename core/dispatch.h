@@ -56,6 +56,8 @@ struct dispatch_mgr_t
 
     // 延迟执行一次任务
     void delay(task_t*);
+    
+    void unregistry_delay(task_t *task);
 };
 
 

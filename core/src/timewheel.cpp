@@ -70,7 +70,12 @@ int do_now_task(void *arg)
 {
     timewheel_t *tw = (timewheel_t *)(arg);
     timeout_handle_t *it=NULL, *next=NULL;
-    list_for_each_entry_safe(it, next, &tw->now_list, link_to)
+
+    LIST_HEAD(queue);
+
+    list_swap(&queue, &tw->now_list);
+
+    list_for_each_entry_safe(it, next, &queue, link_to)
     {
       list_del_init(&it->link_to);
       it->fn(it->arg);
@@ -106,13 +111,15 @@ timewheel_t::timewheel_t(coroutine_env_t *env, int slot_num)
 
     INIT_LIST_HEAD(&this->now_list);
     init_task(&this->delay_task, &do_now_task, this);
-    co_env->dispatch->registry(&this->delay_task);
+
+    // now 任务, 都放到 dispatch 的 delay 队列上
+    co_env->dispatch->delay(&this->delay_task);
 }
 
 
 timewheel_t::~timewheel_t()
 {
-    co_env->dispatch->unregistry(&this->delay_task);
+    co_env->dispatch->unregistry_delay(&this->delay_task);
     delete [] this->slots;
 }
 
@@ -251,7 +258,7 @@ int timewheel_t::start()
     coroutine_t *co =  NULL;
     co  = alloc_coroutine(timewheel_task, this, 128*4096);
     this->co = co;
-    conet::set_auto_delete(co);
+    //conet::set_auto_delete(co);
     conet::resume(co, this);
     return 0;
 }
@@ -263,6 +270,7 @@ int timewheel_t::stop(int ms)
     this->co = NULL;
     if (co) {
         conet::resume(co);
+        conet::free_coroutine(co);
     }
     return 0;
 }
@@ -295,6 +303,7 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
     if (timeout <=0 && interval == 0)
     {
        list_add_tail(&obj->link_to, &tw->now_list);
+       tw->co_env->dispatch->delay(&tw->delay_task);
        return true;
     }
     uint64_t cur_ms = get_cur_ms();

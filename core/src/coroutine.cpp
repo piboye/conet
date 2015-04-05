@@ -20,29 +20,8 @@ extern "C" void conet_swapcontext(ucontext_t *co, ucontext_t *co2);
 extern "C" void conet_setcontext(ucontext_t *co);
 
 
-static __thread conet::fixed_mempool_t * g_coroutine_struct_pool = NULL;
-
-static 
-void free_co_struct_pool(void *arg)
-{
-
-    conet::fixed_mempool_t * pool = (conet::fixed_mempool_t *)(arg);
-    pool->fini();
-    delete pool;
-}
-
 namespace conet
 {
-
-conet::fixed_mempool_t * get_co_struct_pool()
-{
-    if (NULL == g_coroutine_struct_pool) {
-         g_coroutine_struct_pool = new conet::fixed_mempool_t();
-         g_coroutine_struct_pool->init(sizeof(coroutine_t), 1000, __alignof__(coroutine_t));
-         conet::tls_onexit_add(g_coroutine_struct_pool, &free_co_struct_pool);
-    }
-    return g_coroutine_struct_pool;
-}
 
 
 bool is_stop(coroutine_t *co)
@@ -67,10 +46,11 @@ void co_return(coroutine_t *co)
     jump_fcontext(&(co->fctx), last->fctx, NULL);
 }
 
-void delay_del_coroutine(void *arg)
+int delay_del_coroutine(void *arg)
 {
     coroutine_t * co = (coroutine_t *)(arg);
     free_coroutine(co);
+    return 0;
 }
 
 int64_t g_page_size  = sysconf(_SC_PAGESIZE);
@@ -123,11 +103,12 @@ void co_main_helper2(void *p)
 
     if (co->is_end_delete) 
     {
-        //auto delete coroute object;
-        //free_coroutine(co);
-        timeout_handle_t del_self;
-        init_timeout_handle(&del_self, delay_del_coroutine, co);
-        set_timeout(&del_self, 0);
+        // 延迟删除
+        coroutine_env_t *env = co->env;
+        conet::task_t task;
+        init_task(&task, delay_del_coroutine, co);
+        list_add_tail(&task.link_to, &env->delay_del_list);
+        env->dispatch->delay(&env->delay_del_task);
         co_return(co);
         return;
     }
@@ -161,36 +142,16 @@ int init_coroutine(coroutine_t * self)
     return 0;
 }
 
-__thread fixed_mempool_t * g_default_stack_pool=NULL;
-
-
 void free_default_stack_pool(void *p)
 {
     fixed_mempool_t *p1 = (fixed_mempool_t *)(p);
     delete p1;
 }
 
-fixed_mempool_t *get_default_stack_pool()
-{
-    if (NULL == g_default_stack_pool)
-    {
-        fixed_mempool_t *pool = new fixed_mempool_t();
-        pool->init(FLAGS_stack_size, 10000, 64); // 64 bytes for cache_line align
-        if (NULL == g_default_stack_pool)
-        {
-            g_default_stack_pool = pool;
-            conet::tls_onexit_add(g_default_stack_pool, free_default_stack_pool);
-        } else {
-            delete g_default_stack_pool;
-        }
-    }
-    return g_default_stack_pool;
-}
-
 #define CACHE_LINE_SIZE 64
 int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_size)
 {
-    fixed_mempool_t * pool = get_default_stack_pool();
+    fixed_mempool_t * pool = &self->env->default_stack_pool;
     if (stack_size == FLAGS_stack_size) {
         self->stack = pool->alloc();
         stack_size = pool->alloc_size;
@@ -232,12 +193,13 @@ void set_coroutine_desc(coroutine_t *co, char const *desc)
 
 coroutine_t * alloc_coroutine(CO_MAIN_FUN * fn, void * arg,  uint32_t stack_size)
 {
-    //coroutine_t *co = ALLOC_VAR(coroutine_t);
-    coroutine_t *co = (coroutine_t *)get_co_struct_pool()->alloc();
+    coroutine_env_t *env = get_coroutine_env();
+    coroutine_t *co = (coroutine_t *)env->co_struct_pool.alloc();
     if (stack_size <=0) {
         stack_size = FLAGS_stack_size;
     }
     init_coroutine(co);
+    co->env = env;
     set_callback(co, fn, arg, stack_size);
     return co;
 }
@@ -276,7 +238,7 @@ void free_coroutine(coroutine_t *co)
 
     if (co->stack_size == (uint64_t)FLAGS_stack_size) 
     {
-        get_default_stack_pool()->free(co->stack);
+        co->env->default_stack_pool.free(co->stack);
     } 
     else
     {
@@ -290,7 +252,7 @@ void free_coroutine(coroutine_t *co)
         }
     }
     co->stack = NULL;
-    get_co_struct_pool()->free(co);
+    co->env->co_struct_pool.free(co);
 }
 
 

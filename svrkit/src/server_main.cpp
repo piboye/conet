@@ -225,9 +225,9 @@ int main(int argc, char * argv[])
     conet::free_conet_env();
     conet::free_conet_global_env();
 
-    conet::call_server_fini_func();
 
     fini_google_lib();
 
+    conet::call_server_fini_func();
     return 0;
 }

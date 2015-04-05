@@ -42,7 +42,7 @@ cc_library(
     ],
 
     extra_cppflags=["-fPIC"],
-    export_incs=["incl/"],
+    export_incs=["./"],
     link_all_symbols = True,
     #export_dynamic = True,
 );

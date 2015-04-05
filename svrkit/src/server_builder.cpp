@@ -83,21 +83,20 @@ void* server_worker_t::main(void * arg)
         }
     }
 
-      coroutine_t *exit_co = NULL;
+    coroutine_t *exit_co = NULL;
 
-      while (likely(!self->exit_finsished)) 
-      {
-          if (unlikely(self->stop_flag && exit_co == NULL)) 
-          {
-              exit_co = conet::alloc_coroutine(
-                      conet::ptr_cast<conet::co_main_func_t>(
-                          &server_worker_t::proc_server_exit), self);
-              conet::set_auto_delete(exit_co);
-              conet::resume(exit_co);
-          }
-          conet::dispatch();
-      }
-
+    while (likely(!self->exit_finsished)) 
+    {
+        if (unlikely(self->stop_flag && exit_co == NULL)) 
+        {
+            exit_co = conet::alloc_coroutine(
+                    conet::ptr_cast<conet::co_main_func_t>(
+                        &server_worker_t::proc_server_exit), self);
+            conet::resume(exit_co);
+        }
+        conet::dispatch();
+    }
+    conet::free_coroutine(exit_co);
     conet::free_conet_env();
     return NULL;
 }
