@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <map>
 #include <string>
+#include <unordered_map>
 
 #include "glog/logging.h"
 
@@ -31,29 +32,31 @@
 #include "base/query_string.h"
 #include "thirdparty/gflags/gflags.h"
 
+using namespace std;
+
 namespace conet
 {
 DEFINE_bool(log_failed_rpc, true, "log failed rpc call");
 
-static std::map<std::string, std::map<std::string, rpc_pb_cmd_t*> * >  *g_server_cmd_maps=NULL;
-//static std::map<std::string, rpc_pb_cmd_t*> *g_server_cmd_maps=NULL;
+static unordered_map<string, unordered_map<string, rpc_pb_cmd_t*> * >  *g_server_cmd_maps=NULL;
 
 static 
 void clear_server_maps(void)
 {
-    if (g_server_cmd_maps) {
-        AUTO_VAR(it, = , g_server_cmd_maps->begin());
-        for (; it != g_server_cmd_maps->end(); ++it) {
-            if (it->second == NULL) continue;
-            AUTO_VAR(it2, = ,it->second->begin());
-            for (; it2 != it->second->end(); ++it2) {
-                delete it2->second;
+    auto cmd_maps = g_server_cmd_maps;
+    g_server_cmd_maps = NULL;
+    if (cmd_maps) {
+        for (auto cmd_map : *cmd_maps) 
+        {
+            if (cmd_map.second == NULL) continue;
+            for (auto cmd : *cmd_map.second) 
+            {
+                delete cmd.second;
             }
-            delete it->second;
+            delete cmd_map.second;
         }
     }
-    delete g_server_cmd_maps;
-    g_server_cmd_maps = NULL;
+    delete cmd_maps;
 }
 
 
@@ -65,17 +68,17 @@ int global_registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
     }
 
     std::string const & method_name = cmd->method_name;
-    std::map<std::string, rpc_pb_cmd_t *> * server_map = (*g_server_cmd_maps)[server_name];
+    auto server_map = (*g_server_cmd_maps)[server_name];
     if (server_map == NULL)
     {
-        server_map = new std::map<std::string, rpc_pb_cmd_t*>();
+        server_map = new typeof(*server_map);
         (*g_server_cmd_maps)[server_name] = server_map;
     }
 
 
     if (server_map->find(method_name) != server_map->end())
     {
-        LOG(ERROR)<<"duplicate cmd:"<<method_name<<" has been registried!"
+        LOG(FATAL)<<"duplicate cmd:"<<method_name<<" has been registried!"
             <<" in [server:"<<server_name<<"]";
         return -1;
     }
@@ -125,7 +128,7 @@ int rpc_pb_server_base_t::get_global_server_cmd(std::string const & server_name)
         return -1;
     }
 
-    std::map<std::string, rpc_pb_cmd_t *> * server_map = (*g_server_cmd_maps)[server_name];
+    auto server_map = (*g_server_cmd_maps)[server_name];
     if (server_map == NULL)
     {
         LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";

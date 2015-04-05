@@ -5,11 +5,15 @@
 #define NULL 0
 #endif
 #include <stdlib.h>
+#include <stddef.h>
 
-#define c_offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#define c_offsetof(TYPE, MEMBER) \
+    ({TYPE * a = NULL; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
 
-#define container_of(ptr, type, member) ({                  \
-	(type *)( (char *)ptr - c_offsetof(type,member) );})
+#define container_of(ptr, type, member) \
+    ({\
+	    (type *)((char *)ptr - c_offsetof(type,member)); \
+     })
 
 struct list_head {
     struct list_head *next, *prev;
