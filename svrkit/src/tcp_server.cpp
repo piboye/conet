@@ -106,6 +106,7 @@ static
 void * alloc_server_work_co(void *arg)
 {
     conet::coroutine_t * co = alloc_coroutine((int (*)(void *))conn_proc_co, NULL);
+    set_auto_delete(co);
     resume(co, NULL);
     return co;
 }
@@ -362,6 +363,8 @@ int tcp_server_t::do_stop(int wait_ms)
             sleep(1);
         }
     }
+
+    //this->co_pool.clear();
 
     server->state = SERVER_STOPED;
 

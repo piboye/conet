@@ -102,13 +102,7 @@ namespace conet
             return n->value;
         }
 
-        void set_free_obj_func(void (*fn)(void *arg, void * value), void *arg)
-        {
-            free_obj_func = fn;
-            free_obj_arg = arg;
-        }
-
-        ~Lifo()
+        void clear()
         {
             node_type *n = NULL;
             while( (n = used_list.pop()))
@@ -123,6 +117,17 @@ namespace conet
             {
                 delete n;
             }
+        }
+
+        void set_free_obj_func(void (*fn)(void *arg, void * value), void *arg)
+        {
+            free_obj_func = fn;
+            free_obj_arg = arg;
+        }
+
+        ~Lifo()
+        {
+            clear();
         }
     };
 
