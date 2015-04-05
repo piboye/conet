@@ -63,7 +63,7 @@ struct event_notify_t
         this->cb = cb;
         this->cb_arg = cb_arg;
         this->stop_flag = 0;
-        set_auto_delete(this->work_co);
+        //set_auto_delete(this->work_co);
         conet::resume(this->work_co);
         return 0;
     }
@@ -73,7 +73,7 @@ struct event_notify_t
        event_notify_t *self = (event_notify_t *)(arg);
 
        conet::enable_sys_hook(); 
-            
+
        do 
        {
            uint64_t ready = 0;
@@ -86,7 +86,7 @@ struct event_notify_t
                }
            }
        } while(!self->stop_flag);
-       
+
        close(self->fd);
        self->fd = -1;
        return 0; 
@@ -102,6 +102,7 @@ struct event_notify_t
         this->stop_flag = 1;
         conet::resume(this->work_co);
         int ret = wait(this->work_co); 
+        conet::free_coroutine(this->work_co);
         this->work_co = NULL;
         return ret;
     }

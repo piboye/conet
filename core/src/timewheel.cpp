@@ -205,6 +205,7 @@ int timewheel_task(void *arg)
     return 0;
 }
 
+/*
 static int timewheel_task2(void *arg)
 {
     conet::enable_sys_hook(); 
@@ -251,6 +252,7 @@ static int timewheel_task2(void *arg)
     time_mgr_t::instance().free(tw->notify);
     return 0;
 }
+*/
 
 int timewheel_t::start()
 {
