@@ -31,6 +31,7 @@
 #include "base/ptr_cast.h"
 
 #include "cmd_base.h"
+#include "base/macro_help.h"
 
 namespace conet
 {
@@ -264,10 +265,18 @@ int registry_rpc_pb_cmd(std::string const & server_name, uint64_t cmd_id, std::s
 #define CONET_MACRO_CONCAT_IMPL(a, b) a##b
 #define CONET_MACRO_CONCAT(a, b) CONET_MACRO_CONCAT_IMPL(a,b)
 
-#define REGISTRY_RPC_PB_FUNC(cmd_id, method_name, func, arg) \
+#define REGISTRY_RPC_PB_FUNC4(cmd_id, method_name, func, arg) \
     static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) =  \
         conet::registry_rpc_pb_cmd("main_server", cmd_id, method_name, func, arg)
 
+#define REGISTRY_RPC_PB_FUNC5(server_name, cmd_id, method_name, func, arg) \
+    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_, __LINE__) =  \
+        conet::registry_rpc_pb_cmd(server_name, cmd_id, method_name, func, arg)
+
+#define REGISTRY_RPC_PB_FUNC(...) \
+    BOOST_PP_IF( \
+            BOOST_PP_EQUAL(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 5), \
+            REGISTRY_RPC_PB_FUNC5, REGISTRY_RPC_PB_FUNC4) (__VA_ARGS__) \
 
 template <typename T>
 class CmdClassObjMgrHelp
@@ -298,9 +307,20 @@ public:
     }
 };
 
-#define REGISTRY_RPC_PB_CLASS_MEHTORD(cmd_id, method_name, Class, func) \
+#define REGISTRY_RPC_PB_CLASS_MEHTORD4(cmd_id, method_name, Class, func) \
     static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_,__LINE__) = \
         conet::registry_rpc_pb_cmd("main_server", cmd_id, method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
+
+#define REGISTRY_RPC_PB_CLASS_MEHTORD5(server_name, cmd_id, method_name, Class, func) \
+    static int CONET_MACRO_CONCAT(g_rpc_pb_registry_cmd_,__LINE__) = \
+        conet::registry_rpc_pb_cmd(cmd_id, method_name, &Class::func, new conet::CmdClassObjMgrHelp<Class>())
+
+
+#define REGISTRY_RPC_PB_CLASS_MEHTORD(...) \
+    BOOST_PP_IF( \
+            BOOST_PP_EQUAL(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 5), \
+            REGISTRY_RPC_PB_CLASS_MEHTORD5, REGISTRY_RPC_PB_CLASS_MEHTORD4) (__VA_ARGS__) \
+
 
 }
 

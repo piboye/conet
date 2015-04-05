@@ -40,12 +40,13 @@ namespace conet
 {
 
 static
-int conn_proc_co(conn_info_t *info)
+int conn_proc_co(void *)
 {
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
+
     conet::coroutine_t *co = CO_SELF();
-    info = (conn_info_t *)yield();
+    conn_info_t * info = (conn_info_t *)yield();
     if (info == NULL)
     {
         return 0;
@@ -261,12 +262,14 @@ int tcp_server_t::main_proc2()
         this->listen_fd = listen_fd;
     } 
 
+    //设置为 非阻塞, accept 的时候就不会塞住 
     set_none_block(listen_fd, true);
 
     listen(listen_fd, this->conf.listen_backlog); 
 
     if (FLAGS_enable_defer_accept) { 
         int waits = 1; // 1 seconds;
+        // 延迟 accept, 就是等客户端发了数据再accept 上套接字, 免去读等待
         setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
     }
 
@@ -307,7 +310,7 @@ int tcp_server_t::main_proc2()
             //int fd = accept(listen_fd, (struct sockaddr *)&conn_info->addr, &len);
             if (fd <0) break;
             new_fds.push_back(fd);
-        } 
+        }
 
         for (size_t i=0; i<new_fds.size(); ++i)
         {

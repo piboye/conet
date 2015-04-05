@@ -16,6 +16,11 @@
  * =====================================================================================
  */
 #include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+
 #include "./common.h"
 #include "./time_mgr.h"
 #include "coroutine_env.h"
@@ -27,9 +32,10 @@ namespace conet
         int ret = 0;
         ret = time_mgr_t::instance().start();
         if (ret) {
-            LOG(ERROR)<<"init time mgr failed! [ret:"<<ret<<"]";
+            LOG(FATAL)<<"init time mgr failed! [ret:"<<ret<<"]";
             return -1;
         }
+        g_coroutine_envs = new coroutine_env_t*[102400];
         return 0;
     }
 
@@ -38,10 +44,21 @@ namespace conet
         int ret = 0;
         ret = time_mgr_t::instance().stop();
         if (ret) {
-            LOG(ERROR)<<"free time mgr failed! [ret:"<<ret<<"]";
+            LOG(FATAL)<<"free time mgr failed! [ret:"<<ret<<"]";
             return -1;
         }
+        delete g_coroutine_envs;
         return 0;
+    }
+
+    uint64_t get_local_tid()
+    {
+        static __thread uint64_t tid = 0;
+        if (tid > 0) return tid;
+        //pid_t pid = getpid();
+        tid = syscall(__NR_gettid);
+        //tid = tid2-pid;
+        return tid;
     }
 
     int init_conet_env()
@@ -50,8 +67,11 @@ namespace conet
             LOG(FATAL)<<"duplicate init coroutine env";
             return -1;
         }
-        g_coroutine_env = new coroutine_env_t();
-        g_coroutine_env->tw->start();
+        uint64_t tid = get_local_tid();
+        coroutine_env_t *env = new coroutine_env_t();
+        g_coroutine_env = env;
+        g_coroutine_envs[tid] = env;
+        env->tw->start();
         return 0;
     }
 
@@ -62,8 +82,10 @@ namespace conet
             return -1;
         }
 
+        uint64_t tid = get_local_tid();
         delete g_coroutine_env;
         g_coroutine_env = NULL;
+        g_coroutine_envs[tid] = NULL;
         return 0;
     }
 }

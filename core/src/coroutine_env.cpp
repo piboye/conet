@@ -36,7 +36,7 @@ DEFINE_int32(timewheel_slot_num, 60*1000, "default timewheel slot num");
 
 __thread coroutine_env_t * g_coroutine_env=NULL;
 
-coroutine_env_t * g_coroutine_envs=NULL;
+coroutine_env_t ** g_coroutine_envs=NULL;
 
 epoll_ctx_t *create_epoll_ctx(coroutine_env_t *, int event_size);
 void free_epoll_ctx(epoll_ctx_t *ep);

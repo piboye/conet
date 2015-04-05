@@ -18,6 +18,7 @@
 #ifndef __PB_RPC_SERVER_H_INC__
 #define __PB_RPC_SERVER_H_INC__
 #include <string>
+#include <set>
 
 #include "rpc_pb_server_base_impl.h"
 
@@ -39,6 +40,9 @@ struct rpc_pb_server_base_t;
 struct rpc_pb_server_t: public server_base_t
 {
     std::vector<server_base_t *> m_servers;
+
+    // tcp, udp server, 真正的底层server, 用于 start
+    std::set<server_base_t *> m_raw_servers;
 
     rpc_pb_server_base_t * base_server;
 

@@ -133,7 +133,7 @@ extern __thread coroutine_env_t * g_coroutine_env;
 
 
 // 协程环境 数组, 方便调式使用
-extern coroutine_env_t * g_coroutine_envs;
+extern coroutine_env_t ** g_coroutine_envs;
 
 inline
 coroutine_env_t * get_coroutine_env()

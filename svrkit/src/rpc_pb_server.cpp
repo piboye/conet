@@ -197,6 +197,7 @@ int rpc_pb_server_t::add_server(tcp_server_t *server)
         server->set_conn_cb(ptr_cast<tcp_server_t::conn_proc_cb_t>(&proc_tcp_rpc_pb), this);
     }
     this->m_servers.push_back(server);
+    this->m_raw_servers.insert(server);
     return 0;
 }
 
@@ -204,6 +205,7 @@ int rpc_pb_server_t::add_server(udp_server_t *server)
 {
     server->set_conn_cb(ptr_cast<udp_server_t::conn_proc_cb_t>(&proc_udp_rpc_pb), this);
     this->m_servers.push_back(server);
+    this->m_raw_servers.insert(server);
     return 0;
 }
 
@@ -211,15 +213,16 @@ int rpc_pb_server_t::add_server(http_server_t *server)
 {
     base_server->registry_all_rpc_http_api(server, this->http_base_path);
     this->m_servers.push_back(server);
+    this->m_raw_servers.insert(server->tcp_server);
     return 0;
 }
 
 int rpc_pb_server_t::start()
 {
     int ret =  0;
-    for (size_t i= 0; i< m_servers.size(); ++i)
+    for (auto server : m_raw_servers)
     {
-        ret = m_servers[i]->start();
+        ret = server->start();
     }
     return ret;
 }
@@ -236,9 +239,8 @@ int rpc_pb_server_t::do_stop(int wait_ms)
     }
 
     BEGIN_PARALLEL {
-        for (size_t i= 0; i< m_servers.size(); ++i)
+        for (auto server : m_raw_servers)
         {
-            server_base_t *server = m_servers[i];
             DO_PARALLEL((server, wait_ms), {
                 int ret = 0;
                 ret = server->stop(wait_ms);
