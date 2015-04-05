@@ -30,9 +30,9 @@ bool is_stop(coroutine_t *co)
 }
 
 static
-void co_return(coroutine_t *co) 
+void co_return(coroutine_t *co)
 {
-    coroutine_env_t *env = get_coroutine_env();
+    coroutine_env_t *env = co->env;
     if (list_empty(&env->run_queue)) {
         LOG(FATAL)<<"co thread env run queue empty";
         return ;
@@ -280,6 +280,7 @@ void *resume(coroutine_env_t * env, coroutine_t * co, void * val)
 
     return  jump_fcontext(&(cur->fctx), co->fctx, val);
 }
+
 void *resume(coroutine_t * co, void * val)
 {
 
