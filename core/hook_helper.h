@@ -40,5 +40,17 @@
     typedef ret_type (* name##_pfn_t) proto; \
     extern "C" name##_pfn_t _(name)
 
+#define HOOK_FUNC_DEF(ret_type, name, proto) \
+    typedef ret_type (* name##_pfn_t) proto; \
+    name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name) ; \
+    ret_type name proto \
+ 
+
+#define HOOK_FUNC(name) \
+    do { \
+        if( !_(name)) {  \
+            _(name) = (name##_pfn_t) dlsym(RTLD_NEXT,#name);  \
+        } \
+    } while(0) \
 
 #endif /* end of include guard */

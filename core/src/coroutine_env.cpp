@@ -109,7 +109,7 @@ coroutine_env_t::coroutine_env_t()
 coroutine_env_t::~coroutine_env_t()
 {
     if (this->pthread_mgr) {
-        delete this->pthread_mgr;
+        free_pthread_mgr(this->pthread_mgr);
         this->pthread_mgr = NULL;
     }
 

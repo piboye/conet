@@ -30,9 +30,7 @@ namespace conet
 class fifo_lockfree_t 
 {
 public:
-
     struct node_t;
-
     struct pointer_t 
     {
         node_t *ptr;
@@ -54,7 +52,6 @@ public:
             ptr = a.ptr;
             tag = a.tag;
         }
-
     }
     __attribute__ ((packed, aligned (16)))
     ;
@@ -105,8 +102,22 @@ public:
 
     fifo_lockfree_t() 
     {
+        node_t *nd = alloc_node();
+        head_.ptr = nd;
+        head_.tag = 0;
+        tail_.ptr = nd;
+        tail_.tag = 0;
 
+        null_node = nd;
     }
+
+    ~fifo_lockfree_t()
+    {
+
+        free_node(null_node);
+    }
+
+    node_t * null_node;
 
     static
     node_t * alloc_node()
@@ -121,15 +132,6 @@ public:
     void free_node(node_t *nd) 
     {
         free(nd);
-    }
-
-    void init()
-    {
-        node_t *nd = alloc_node();
-        head_.ptr = nd;
-        head_.tag = 0;
-        tail_.ptr = nd;
-        tail_.tag = 0;
     }
 
     void push(node_t *nd, void * val) 
@@ -172,7 +174,6 @@ public:
                 &&(head_.tag == tail_.tag));
 
     }
-
 
     node_t * pop() 
     {

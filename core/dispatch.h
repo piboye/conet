@@ -75,6 +75,8 @@ void registry_delay_task(task_proc_func_t proc, void *arg);
 
 int proc_tasks(list_head *list);
 int dispatch();
+
+int proc_delay_back(void *arg);
 void delay_back();
 
 }

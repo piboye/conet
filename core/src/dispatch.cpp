@@ -192,7 +192,6 @@ struct delay_back_t
     coroutine_t *co;
 };
 
-static 
 int proc_delay_back(void *arg)
 {
     delay_back_t * self = (delay_back_t *)(arg);
