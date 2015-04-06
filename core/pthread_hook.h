@@ -38,7 +38,7 @@ inline
 void enable_pthread_hook()
 {
     coroutine_t *co = get_curr_co_can_null();
-    if (co) 
+    if (co)
         co->is_enable_pthread_hook = 1;
 }
 
@@ -46,24 +46,25 @@ inline
 void disable_pthread_hook()
 {
     coroutine_t *co = get_curr_co_can_null();
-    if (co) 
+    if (co)
         co->is_enable_pthread_hook = 0;
 }
 
-inline void disable_pthread_hook_save(int *stat) 
+inline void disable_pthread_hook_save(int *stat)
 {
     coroutine_t *co = get_curr_co_can_null();
-    if (co) { 
+    if (co) {
         *stat = co->is_enable_pthread_hook;
         co->is_enable_pthread_hook = 0;
     } else {
         *stat = 0;
     }
 }
+
 inline void restore_pthread_hook_stat(int stat)
 {
     coroutine_t *co = get_curr_co_can_null();
-    if (co) { 
+    if (co) {
         co->is_enable_pthread_hook = stat;
     }
 }

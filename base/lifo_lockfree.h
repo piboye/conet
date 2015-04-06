@@ -24,6 +24,10 @@
 #include <stdlib.h>
 #include <malloc.h>
 
+#ifndef ACCESS_ONCE
+#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
+#endif
+
 namespace conet 
 {
 

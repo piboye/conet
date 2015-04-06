@@ -23,7 +23,7 @@
 #include "base/auto_var.h"
 #include "base/addr_map.h"
 #include "event_notify.h"
-#include "base/fifo_lockfree.h"
+#include "base/llist.h"
 
 #include "coroutine.h"
 #include "coroutine_env.h"
@@ -46,7 +46,8 @@ struct pcond_mgr_t;
 struct pcond_ctx_t;
 struct pthread_mgr_t
 {
-    fifo_lockfree_t pcond_schedule_queue; // pcond 调度队列
+    // condition var  调度队列
+    llist_head pcond_schedule_queue; 
     event_notify_t pcond_event_notify;
     coroutine_env_t * co_env;
 
@@ -73,7 +74,17 @@ struct pcond_ctx_t
     pthread_mgr_t *pmgr;
 
     // 用于 pcond_schedule_queue 
-    fifo_lockfree_t::node_t node;
+    llist_node link_to_schedule;
+
+    pcond_ctx_t()
+    {
+        INIT_LIST_HEAD(&wait_item);
+        ret_timeout = 0;
+        //init_timeout_handle(&tm, NULL, NULL);
+        mgr= NULL;
+        pmgr = NULL;
+        co = NULL;
+    }
 };
 
 struct pcond_mgr_t
@@ -128,7 +139,7 @@ void pthread_mgr_t::add_to_pcond_schedule(pcond_ctx_t *ctx)
         }
     }
 
-    pcond_schedule_queue.push(&ctx->node, ctx); 
+    llist_add(&ctx->link_to_schedule, &pcond_schedule_queue);
     pcond_event_notify.notify(1);
 }
 
@@ -142,6 +153,8 @@ pthread_mgr_t::pthread_mgr_t(coroutine_env_t *env)
         fprintf(stderr, "init pthread mgr pcond_event_notify failed; ret:%d", ret); 
         abort();
     }
+
+    init_llist_head(&pcond_schedule_queue);
 }
 
 int pthread_mgr_t::pcond_event_cb(void *arg, uint64_t num)
@@ -149,14 +162,21 @@ int pthread_mgr_t::pcond_event_cb(void *arg, uint64_t num)
     pthread_mgr_t * self = (pthread_mgr_t *)(arg);
     if (num > 0) {
         int cnt =0;
-        fifo_lockfree_t::node_t *n = NULL;
-        while ((n = self->pcond_schedule_queue.pop()) != NULL)
-        {
-            pcond_ctx_t *ctx = (pcond_ctx_t *)n->value;
 
-            cancel_timeout(&ctx->tm);
-            conet::resume(ctx->co);
-            ++cnt;
+        llist_node * queue = llist_del_all(&self->pcond_schedule_queue);
+
+        if ( queue ) {
+            // 之前是先进后出, 倒序后, 就是先进先出了
+            queue = llist_reverse_order(queue);
+
+            pcond_ctx_t * ctx = NULL, *next = NULL;
+            llist_for_each_entry_safe(ctx, next, &queue, link_to_schedule)
+            {
+                ctx->link_to_schedule.next=NULL;
+                cancel_timeout(&ctx->tm);
+                conet::resume(ctx->co);
+                ++cnt;
+            }
         }
     }
     return 0;
@@ -273,15 +293,12 @@ HOOK_FUNC_DEF(int, pthread_cond_wait,
 
     pcond_ctx_t ctx;
 
-    ctx.ret_timeout = 0;
-    init_timeout_handle(&ctx.tm, NULL, NULL);
     ctx.co = conet::current_coroutine();
-    INIT_LIST_HEAD(&ctx.wait_item);
 
     pcond_mgr_t *mgr = find_cond_map(cond);
     ctx.mgr = mgr;
-    SCOPE_LOCK(&mgr->mutex) 
-    {
+    SCOPE_LOCK(&mgr->mutex)
+    { 
         list_add_tail(&ctx.wait_item, &mgr->wait_list);
     }
 
@@ -316,21 +333,20 @@ HOOK_FUNC_DEF(int, pthread_cond_timedwait,
         return _(pthread_cond_timedwait)(cond, mutex, abstime);
     }
 
-    // coroutine
-    if (abstime->tv_sec <= 0) return EINVAL;
-    if (abstime->tv_nsec >= 1000000000) return EINVAL;
-
     pcond_ctx_t ctx;
-    ctx.ret_timeout = 0;
-    init_timeout_handle(&ctx.tm, proc_pthread_cond_timeout, &ctx);
-    if(abstime) 
-    {   
+    if(abstime)
+    {
+        if (abstime->tv_sec <= 0) return EINVAL;
+        if (abstime->tv_nsec >= 1000000000) return EINVAL;
+
         uint64_t timeout = (abstime->tv_sec*1000 + abstime->tv_nsec/1000000);
         uint64_t now = conet::get_sys_ms();  // 必须是系统的时间
         if (timeout < now) timeout = 0;
         timeout -= now;
+
+        init_timeout_handle(&ctx.tm, proc_pthread_cond_timeout, &ctx);
         set_timeout(&ctx.tm, timeout);
-    }    
+    }
 
     pthread_mgr_t *pmgr = get_pthread_mgr();
 

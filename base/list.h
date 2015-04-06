@@ -7,13 +7,18 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#ifndef c_offsetof 
 #define c_offsetof(TYPE, MEMBER) \
     ({TYPE * a = nullptr; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
 
+#endif
+
+#ifndef container_of
 #define container_of(ptr, type, member) \
     ({\
 	    (type *)((char *)ptr - c_offsetof(type, member)); \
      })
+#endif
 
 struct list_head {
     struct list_head *next, *prev;
