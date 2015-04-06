@@ -1,4 +1,4 @@
 cc_config(
 extra_incs=['thirdparty/protobuf/', 'thirdparty/', ],
-cxxflags=['-std=c++11', '-Dtypeof=__typeof__', '-Wall', '-DUSE_VALGRIND'],
+cxxflags=['-std=c++11', '-Dtypeof=__typeof__']
 )
