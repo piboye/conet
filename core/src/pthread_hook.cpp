@@ -72,7 +72,7 @@ struct pcond_ctx_t
     pcond_mgr_t *mgr;
     pthread_mgr_t *pmgr;
 
-    // 用于 pcond_schedule_queue 
+    // 用于 pcond_schedule_queue
     fifo_lockfree_t::node_t node;
 };
 
@@ -82,7 +82,7 @@ struct pcond_mgr_t
    list_head wait_list;
    pthread_mutex_t mutex;
 
-   explicit 
+   explicit
    pcond_mgr_t(void *key)
    {
         INIT_LIST_HEAD(&this->wait_list);
@@ -193,7 +193,7 @@ static conet::AddrMap * get_cond_map()
             map = new conet::AddrMap();
         }
 
-        map->init(1000);
+        map->init(10000);
         map->set_destructor_func(&pcond_mgr_t::fini, NULL);
         if (__sync_bool_compare_and_swap(&g_cond_map, NULL, map)) {
             on_exit(delete_g_cond_map, map);
@@ -208,6 +208,7 @@ static conet::AddrMap * get_cond_map()
 }
 
 
+inline
 static pcond_mgr_t * find_cond_map_can_null(void *key)
 {
     conet::AddrMap *map = get_cond_map();
@@ -223,6 +224,7 @@ static pcond_mgr_t * find_cond_map_can_null(void *key)
     }
 }
 
+inline
 static pcond_mgr_t * find_cond_map(void *key)
 {
     conet::AddrMap *map = get_cond_map();
@@ -411,7 +413,8 @@ HOOK_FUNC_DEF(int, pthread_cond_destroy, (pthread_cond_t *cond))
 {
 	HOOK_FUNC(pthread_cond_destroy);
     pcond_mgr_t *mgr = find_cond_map_can_null(cond);
-    if (mgr) {
+    if (mgr) 
+    {
         SCOPE_WRLOCK(&g_cond_map_lock)
         {
             get_cond_map()->remove(&mgr->node);
