@@ -28,7 +28,8 @@ namespace conet
 class PbObjPool
 {
 public:
-    google::protobuf::Message * m_obj_proto;    
+    google::protobuf::Message * m_obj_proto;
+    google::protobuf::Arena arena;
     
     obj_pool_t m_queue;
     int m_hold_proto_flag;
@@ -51,14 +52,14 @@ public:
     void * pb_obj_new(void *arg) 
     {
        PbObjPool * self = (PbObjPool *)(arg);
-       return self->m_obj_proto->New(); 
+       return self->m_obj_proto->New(&self->arena);
     }
 
     static 
     void pb_obj_free(void *arg, void *obj) 
     {
-        google::protobuf::Message * msg = (google::protobuf::Message *)(obj);
-        delete msg;
+        //google::protobuf::Message * msg = (google::protobuf::Message *)(obj);
+        //delete msg;
     }
 
     int init(google::protobuf::Message *pb, int hold=0)

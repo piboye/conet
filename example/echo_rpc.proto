@@ -1,3 +1,6 @@
+syntax = "proto3";
+option cc_enable_arenas=true;
+
 message EchoReq
 {
     optional bytes msg = 1; // request message

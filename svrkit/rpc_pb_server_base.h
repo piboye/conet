@@ -140,6 +140,9 @@ struct rpc_pb_cmd_t
             rsp = rsp->New();
         }
 
+        n->req_pool.init(req, 0);
+        n->rsp_pool.init(rsp, 0);
+
         n->init(this->cmd_id, this->method_name, req, rsp);
         n->arg = this->arg;
         n->proc = this->proc;
@@ -179,7 +182,7 @@ struct rpc_pb_cmd_t
    rpc_stat_base_t failed_stat[5];
    
    //错误码统计
-   std::map<int, int64_t> error_ret_stat; // error return code summory
+   std::map<int, uint64_t> error_ret_stat; // error return code summory
 
 private:
    //disable copy and assignement, please use clone method

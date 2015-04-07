@@ -140,7 +140,7 @@ struct cmd_base_t
     }
 };
 
-inline 
+inline static
 int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::protobuf::Message const *msg, int timeout)
 {
     ps->init(fd);
@@ -181,7 +181,7 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
     return ret;
 }
 
-inline
+inline static
 int serialize_cmd_base_impl(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
     uint32_t out_len = 0;
@@ -271,8 +271,6 @@ int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::pr
     out->resize(out_len+4);
     return 0;
 }
-
 }
-
 
 #endif /* end of include guard */

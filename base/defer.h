@@ -59,6 +59,7 @@ struct __conet_defer_t_##__LINE__  \
     op \
 } __conet_defer_var_##__LINE__ __attribute__((unused)) \
 
+#define CONET_SCOPE_EXIT CONET_DEFER
 
 
 #endif /* end of include guard */

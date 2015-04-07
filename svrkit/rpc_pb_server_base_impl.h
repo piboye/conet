@@ -32,7 +32,7 @@ struct rpc_pb_server_base_t;
 
 int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_response_t *resp);
 int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx, ref_str_t req, google::protobuf::Message **rsp, std::string *errmsg);
-        
+
 struct rpc_pb_server_base_t
 {
     StrMap cmd_maps;
