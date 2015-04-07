@@ -103,7 +103,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
                 append_to_str(cmd_id, &errmsg);
 
                 init_ref_str(&cmd_base.errmsg, errmsg);
-                ret = serialize_cmd_base_impl(out, olen, &cmd_base, NULL);
+                ret = serialize_cmd_base_impl(out, olen, &cmd_base, NULL, 0);
                 if (ret < 0) {
                     LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
                 }
@@ -121,7 +121,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
                 cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
                 errmsg ="unsuppored cmd:"+cmd_name_s;
                 init_ref_str(&cmd_base.errmsg, errmsg);
-                ret = serialize_cmd_base_impl(out,olen, &cmd_base, NULL);
+                ret = serialize_cmd_base_impl(out,olen, &cmd_base, NULL, 0);
                 if (ret < 0) {
                     LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
                 }
@@ -139,7 +139,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
         cmd_base.type = CmdBase::RESPONSE_TYPE;
         cmd_base.ret = retcode;
 
-        ret = serialize_cmd_base_impl(out, olen, &cmd_base, rsp);
+        ret = serialize_cmd_base_impl(out, olen, &cmd_base, rsp, rsp->ByteSize());
         if (rsp) {
             cmd->rsp_pool.release(rsp);
         }

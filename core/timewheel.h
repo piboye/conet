@@ -68,6 +68,7 @@ struct timewheel_t
 
     int task_num;
     int slot_num;
+    uint32_t slot_num_mask;
     void * co;
     int stop_flag;
     int timerfd;

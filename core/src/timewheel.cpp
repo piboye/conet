@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/eventfd.h>
+#include <malloc.h>
 
 #include "gflags/gflags.h"
 #include "hook_helper.h"
@@ -38,6 +39,7 @@
 #include "base/tls.h"
 #include "base/time_helper.h"
 
+
 namespace conet
 {
 
@@ -49,10 +51,6 @@ static inline uint64_t get_cur_ms()
 using namespace conet;
 
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval);
-
-
-void init_timewheel(timewheel_t *self, int solt_num = 60*1000);
-void fini_timewheel(timewheel_t *self);
 
 
 void init_timeout_handle(timeout_handle_t * self, void (*fn)(void *), void *arg)
@@ -90,17 +88,29 @@ int do_now_task(void *arg)
 timewheel_t::timewheel_t(coroutine_env_t *env, int slot_num)
 {
     assert(slot_num > 0);
-    list_head *slots = new list_head[slot_num];
+
+    // 取 2 的整数倍
+    slot_num =  1<<(sizeof(uint32_t) * 8 - __builtin_clz(slot_num)+1);
+
+    // CACHE LINE 对齐
+    list_head *slots = (list_head *)memalign(64, sizeof(list_head) * slot_num);
+
     for(int i=0; i<slot_num; ++i) {
         INIT_LIST_HEAD(&slots[i]);
     }
     this->slots = slots;
+
+
     this->slot_num = slot_num;
+    this->slot_num_mask = slot_num-1;
+
     this->task_num = 0;
 
     uint64_t cur_ms = get_cur_ms();
     this->now_ms = cur_ms;
-    this->pos = cur_ms % slot_num;
+
+    this->pos = cur_ms & slot_num_mask;
+
     this->prev_ms = cur_ms;
     this->stop_flag = 0;
     this->co = NULL;
@@ -120,7 +130,7 @@ timewheel_t::timewheel_t(coroutine_env_t *env, int slot_num)
 timewheel_t::~timewheel_t()
 {
     co_env->dispatch->unregistry_delay(&this->delay_task);
-    delete [] this->slots;
+    free(this->slots);
 }
 
 
@@ -287,7 +297,6 @@ timewheel_t *get_timewheel()
 void cancel_timeout(timeout_handle_t *obj) {
     if (!list_empty(&obj->link_to)) 
     {
-
         list_del_init(&obj->link_to);
         timewheel_t * tw = obj->tw;
         if (tw && obj->timeout >0)  {
@@ -297,6 +306,7 @@ void cancel_timeout(timeout_handle_t *obj) {
     obj->tw = NULL;
 }
 
+inline
 bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int interval)
 {
     list_del_init(&obj->link_to);
@@ -308,9 +318,11 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
        tw->co_env->dispatch->delay(&tw->delay_task);
        return true;
     }
+
     uint64_t cur_ms = get_cur_ms();
     uint64_t t = cur_ms + timeout;
-    if (t < tw->prev_ms)  t = tw->prev_ms;
+    if (t < tw->prev_ms)  { t = tw->prev_ms; }
+
     obj->timeout = t;
 
     /*
@@ -321,7 +333,7 @@ bool set_timeout_impl(timewheel_t *tw, timeout_handle_t * obj, int timeout, int 
 
     ++tw->task_num;
 
-    int pos = obj->timeout % tw->slot_num;
+    int pos = obj->timeout & tw->slot_num_mask;
     list_add_tail(&obj->link_to, &tw->slots[pos]);
     return true;
 }
@@ -340,12 +352,12 @@ uint64_t get_latest_ms(timewheel_t *tw)
 {
     uint64_t now_ms = tw->now_ms;
     int pos = tw->pos;
-    int slot_num = tw->slot_num;
+    int slot_num_mask = tw->slot_num_mask;
     list_head *slots = tw->slots;
     uint64_t min = now_ms + 10;
     for(int i=0; i<10; ++i)
     {
-        pos = (pos +i) %slot_num;
+        pos = (pos +i) & slot_num_mask;
         if (!list_empty(&slots[pos])) {
             min  = now_ms + i;
             break;
@@ -365,7 +377,7 @@ int timewheel_t::check(uint64_t cur_ms)
     }
 
     if (tw->task_num <=0) {
-        tw->pos = cur_ms % tw->slot_num;;
+        tw->pos = cur_ms & tw->slot_num_mask;;
         tw->prev_ms = cur_ms;
         return 0;
     }
@@ -378,15 +390,15 @@ int timewheel_t::check(uint64_t cur_ms)
 
     if (elasp_ms <=0) return 0;
 
-    int slot_num = tw->slot_num;
+    int slot_num_mask = tw->slot_num_mask;
     list_head *slots = tw->slots;
     int pos = tw->pos;
 
     if ((int64_t) elasp_ms >= slot_num)
     {
-        end_pos = (pos + slot_num -1) % slot_num;
+        end_pos = (pos + slot_num -1) & slot_num_mask;
     } else {
-        end_pos = cur_ms % slot_num;
+        end_pos = cur_ms & slot_num_mask;
     }
 
     do
@@ -404,10 +416,10 @@ int timewheel_t::check(uint64_t cur_ms)
             }
         }
         if (pos == end_pos) break;
-        pos = (pos+1) % slot_num;
+        pos = (pos+1) & slot_num_mask;
     } while(1);
 
-    tw->pos = cur_ms % slot_num;;
+    tw->pos = cur_ms & slot_num_mask;
     tw->prev_ms = cur_ms;
     return cnt;
 }

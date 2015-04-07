@@ -38,9 +38,16 @@ struct cmd_base_t
     uint32_t ret;  // 6
     ref_str_t errmsg; //7
 
+
     void init()
     {
        memset(this, 0, sizeof(*this));
+    }
+
+    // 可能的长度值
+    uint32_t get_maybe_size()
+    {
+        return sizeof(cmd_base_t) - 3 *sizeof(uint32_t) + body.len + cmd_name.len + errmsg.len;
     }
 
     int parse(char const * buff, size_t len)
@@ -182,15 +189,14 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
 }
 
 inline static
-int serialize_cmd_base_impl(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
+int serialize_cmd_base_impl(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg, uint32_t msg_len)
 {
     uint32_t out_len = 0;
     int ret = 0;
     uint32_t max_len = *len;
 
-    uint32_t msg_len = 0;
-    if (msg ) {
-        msg_len = msg->ByteSize();
+    if (cmd_base->get_maybe_size() + msg_len < max_len) {
+        return -1;
     }
 
     char *ptr = out;
@@ -224,15 +230,19 @@ int serialize_cmd_base_impl(char*out, size_t *len,  cmd_base_t *cmd_base, google
     return 0;
 }
 
-inline
+static inline
 int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
     if (*len <=4) {
         return -1;
     }
+    uint32_t msg_len = 0;
+    if (msg ) {
+        msg_len = msg->ByteSize();
+    }
     int ret = 0;
     *len-=4;
-    ret = serialize_cmd_base_impl(out+4, len, cmd_base, msg);
+    ret = serialize_cmd_base_impl(out+4, len, cmd_base, msg, msg_len);
     if (ret) {
         return ret;
     }
@@ -244,11 +254,11 @@ int serialize_cmd_base(char*out, size_t *len,  cmd_base_t *cmd_base, google::pro
     return 0;
 }
 
-inline
+static inline
 int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::protobuf::Message const *msg)
 {
     int ret = 0;
-    uint32_t max_len = 1000; // cmd base 预留
+    uint32_t max_len = cmd_base->get_maybe_size();
 
     uint32_t msg_len = 0;
     if (msg ) {
@@ -260,7 +270,7 @@ int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::pr
 
     size_t len = out->size()-4;
 
-    ret = serialize_cmd_base_impl(&(*out)[4], &len, cmd_base, msg);
+    ret = serialize_cmd_base_impl(&(*out)[4], &len, cmd_base, msg, msg_len);
     if (ret) {
         return ret;
     }
@@ -271,6 +281,7 @@ int serialize_cmd_base(std::vector<char> *out,  cmd_base_t *cmd_base, google::pr
     out->resize(out_len+4);
     return 0;
 }
+
 }
 
 #endif /* end of include guard */
