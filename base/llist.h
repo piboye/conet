@@ -244,6 +244,8 @@ static inline struct llist_node *llist_del_all(struct llist_head *head)
  * but keep @head->first.  If multiple consumers are needed, please
  * use llist_del_all or use lock between consumers.
  */
+//应该有ABA 问题,  这个使用要小心,  多个线程调用这个函数, 会破坏其它函数的 lock-free, 
+//建议一个线程调用这个函数就安全, 或者不使用这个函数, 改用 list_del_all
 static inline
 struct llist_node *llist_del_first(struct llist_head *head)
 {
