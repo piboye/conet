@@ -201,21 +201,27 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
         ret = self->proc(self->arg, &pb_ctx, req1, rsp1, &errmsg); 
     }
 
-    Json::Value root(Json::objectValue); 
-    Json::Value body(Json::objectValue);  
+    std::string out_txt="{\"ret\":";
+    char tmp[30];
+    snprintf(tmp, sizeof(tmp), "%d", ret);
+    out_txt.append(tmp);
+
     if (!errmsg.empty()) {
-        Json::Value err_v(errmsg);
-        root["errmsg"].swap(err_v);
+        out_txt.append(",\"errmsg\":");
+        out_txt.append(errmsg);
     }
+
     if (rsp1) {
-        conet::pb2json(rsp1, &body); 
-        root["body"].swap(body); 
+        out_txt.append(",\"body\":");
+        conet::pb2json(rsp1, &out_txt); 
     }
-    root["ret"]= ret;
+
+    out_txt.append("}");
+    conet::response_to(resp, 200, out_txt);
 
     //Json::FastWriter writer;
     //conet::response_to(resp, 200, writer.write(root));
-    conet::response_to(resp, 200, root.toStyledString());
+    //conet::response_to(resp, 200, root.toStyledString());
 
     if (req1) self->req_pool.release(req1);
     if (rsp1) self->rsp_pool.release(rsp1);

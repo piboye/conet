@@ -22,12 +22,13 @@
 #include "glog/logging.h"
 #include "google/protobuf/descriptor.h"
 
-#include "pb2json.h"
 
 #include "jsoncpp/json.h"
 #include "jsoncpp/reader.h"
 #include "jsoncpp/value.h"
 #include "jsoncpp/writer.h"
+
+#include "pb2json.h"
 
 #include "auto_var.h"
 #include "url_encode.h"
@@ -35,6 +36,175 @@
 using namespace conet;
 namespace conet
 {
+
+int pb2json(const google::protobuf::Message *msg, std::string *a_out)
+{
+	const google::protobuf::Descriptor *d = msg->GetDescriptor();
+	if(!d)  return -1;
+	size_t count = d->field_count();
+
+
+
+#define APPEND_NAME(root, name)  \
+        root.append("\""); \
+        root.append(name); \
+        root.append("\":"); \
+
+    std::string &root = *a_out;
+
+    root.append("{");
+
+	for (size_t i = 0; i != count ; ++i)
+	{
+		const google::protobuf::FieldDescriptor *field = d->field(i);
+		if(!field) return -2;
+
+		const google::protobuf::Reflection *ref = msg->GetReflection();
+		if(!ref)return -3;
+        
+        if (i > 0) {
+            root.append(",");
+        }
+		const char *name = field->name().c_str();
+		if(ref->HasField(*msg, field))
+		{
+			switch (field->cpp_type())
+			{
+
+            #define ENCODE_BASE(t, f, t2, fmt) \
+			case google::protobuf::FieldDescriptor::CPPTYPE_##t: \
+            { \
+                root.append("\""); \
+                root.append(name); \
+                if(field->is_repeated()) { \
+                    root.append("\":["); \
+			        size_t count = ref->FieldSize(*msg,field); \
+                    for(size_t i = 0; i != count ; ++i) { \
+                        t2 val  =  ref->GetRepeated##f(*msg, field, i); \
+                        char tmp[20];\
+                        if (i > 0) { \
+                            snprintf(tmp, sizeof(tmp), ",%" fmt, val); \
+                        } else { \
+                            snprintf(tmp, sizeof(tmp), "%" fmt, val); \
+                        } \
+                        root.append(tmp); \
+                    } \
+                    root.append("]"); \
+			    } else {  \
+                    t2 val  =  ref->Get##f(*msg, field); \
+                    char tmp[30];\
+                    snprintf(tmp, sizeof(tmp), "\":%" fmt, val); \
+                    root.append(tmp); \
+			    } \
+            } \
+			break \
+                
+                ENCODE_BASE(DOUBLE, Double, double, "lf");
+                ENCODE_BASE(FLOAT, Float, float, "f");
+                ENCODE_BASE(INT64, Int64, Json::Int64, "lld");
+                ENCODE_BASE(UINT64, UInt64, Json::UInt64, "llu");
+                ENCODE_BASE(INT32, Int32, int32_t, "d");
+                ENCODE_BASE(UINT32, UInt32, uint32_t, "u");
+                ENCODE_BASE(BOOL, Bool, bool, "d");
+
+#undef ENCODE_BASE
+#define APPEND_STRING(root, str) \
+                root.append("\""); \
+                root.append(str); \
+                root.append("\""); \
+
+		case google::protobuf::FieldDescriptor::CPPTYPE_STRING: 
+        {
+            root.append("\""); 
+            root.append(name); 
+		    if(field->is_repeated()) { 
+                root.append("\":["); 
+                size_t count = ref->FieldSize(*msg,field); 
+                for(size_t i = 0 ; i != count ; ++i) { 
+                    if (i> 0) root.append(",");
+                    std::string const & val  =  ref->GetRepeatedString(*msg, field, i); 
+                    if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+                        std::string val2;
+                        url_encode(val, &val2);
+                        APPEND_STRING(root, val2);
+                    } else {
+                        APPEND_STRING(root, val);
+                    }
+                }
+                root.append("]"); 
+            } else {  
+                root.append("\":"); 
+                if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+                    std::string val;
+                    url_encode(ref->GetString(*msg, field), &val);
+                    APPEND_STRING(root, val);
+                } else {
+                    std::string const &val = ref->GetString(*msg,field);
+                    APPEND_STRING(root, val);
+                }
+            }
+            break;
+        }
+
+		case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+        {
+            root.append("\""); 
+            root.append(name); 
+            if(field->is_repeated()) { 
+                root.append("\":["); 
+                size_t count = ref->FieldSize(*msg,field); 
+                for(size_t i = 0 ; i != count ; ++i) { 
+                    if (i> 0) root.append(",");
+                    AUTO_VAR(val, =,  &ref->GetRepeatedMessage(*msg, field, i)); 
+                    pb2json(val, &root);
+                } 
+                root.append("]"); 
+            } else { 
+              root.append("\":"); 
+              AUTO_VAR(val,  =,  &(ref->GetMessage(*msg,field)));
+              pb2json(val,  &root);
+            }
+            break;
+        }
+
+		case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        {
+            root.append("\"");
+            root.append(name);
+            if(field->is_repeated()) {
+                root.append("\":[");
+                size_t count = ref->FieldSize(*msg,field);
+                for(size_t i = 0 ; i != count ; ++i) {
+                    AUTO_VAR(val, =, ref->GetRepeatedEnum(*msg,field, i));
+                    char tmp[20];
+                    if (i> 0)  {
+                        snprintf(tmp, sizeof(tmp), ", %lu", (uint64_t) val);
+                    } else {
+                        snprintf(tmp, sizeof(tmp), "%lu", (uint64_t) val);
+                    }
+                    root.append(tmp);
+                }
+                root.append("]"); 
+            } else {
+                AUTO_VAR(val, =, ref->GetEnum(*msg,field));
+                char tmp[30];
+                snprintf(tmp, sizeof(tmp), "\":%lu", (uint64_t) val);
+                root.append(tmp);
+            }
+            break;
+        }
+		default:
+		break;
+		}
+
+		}
+
+	}
+
+    root.append("}");
+	return 0; 
+}
+
 
 int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 {
@@ -167,13 +337,6 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 namespace conet
 {
 
-void pb2json(const google::protobuf::Message *msg, std::string *out)
-{
-	GOOGLE_PROTOBUF_VERIFY_VERSION;
-    Json::Value root(Json::objectValue);
-    pb2json(msg, &root);
-    *out = root.toStyledString();
-}
 
 #define SET_ERROR_INFO(error_var, error_val)    \
         do { LOG(ERROR)<<error_val; if (error_var) *error_var = error_val; } while (0)
@@ -500,6 +663,7 @@ int pb2json(const google::protobuf::Descriptor *d, Json::Value * a_root)
 	}
 	return 0; 
 }
+
 void pb2json(const google::protobuf::Descriptor *d, std::string *out)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -507,5 +671,15 @@ void pb2json(const google::protobuf::Descriptor *d, std::string *out)
     pb2json(d, &root);
     *out = root.toStyledString();
 }
+
+/*
+void pb2json(const google::protobuf::Message *msg, std::string *out)
+{
+	GOOGLE_PROTOBUF_VERIFY_VERSION;
+    Json::Value root(Json::objectValue);
+    pb2json(msg, &root);
+    *out = root.toStyledString();
+}
+*/
 
 }
