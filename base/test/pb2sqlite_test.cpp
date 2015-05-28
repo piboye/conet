@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include "pb2sqlite.h"
 
-#include "base/src/test.pb.h"
+#include "base/test/test.pb.h"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"

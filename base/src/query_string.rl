@@ -38,8 +38,12 @@
 namespace conet
 {
 
+namespace 
+{
 /** Data **/
 %% write data;
+
+}
 
 int parse_query_string(char const *buf, size_t len, std::map<std::string, std::string> *param)
 {
@@ -173,8 +177,10 @@ int query_string_to_msg(char const *buf, size_t len, google::protobuf::Message *
                 break; \
             } \
             case google::protobuf::FieldDescriptor::CPPTYPE_STRING: { \
-                value.clear(); \
-                url_decode(start, len2, &value); \
+                if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) { \
+                    value.clear(); \
+                    url_decode(start, len2, &value); \
+                } \
                 reflection->SetString(msg, field, value); \
                 break; \
             } \

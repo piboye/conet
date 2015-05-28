@@ -3,10 +3,10 @@ option cc_enable_arenas=true;
 
 message EchoReq
 {
-    optional bytes msg = 1; // request message
+    optional string msg = 1; // request message
 }
 
 message EchoResp
 {
-    optional bytes msg = 1;
+    optional string msg = 1;
 }

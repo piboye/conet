@@ -31,7 +31,7 @@ TEST(query_string, parse)
     ret = parse_query_string(txt.c_str(), txt.size(), &params);
     ASSERT_EQ(0, ret);
     ASSERT_STREQ("3", params["a"].c_str());
-    ASSERT_STREQ("f4 ", params["b"].c_str());
+    ASSERT_STREQ("f4+", params["b"].c_str());
 }
 
 TEST(query_string, to_json)

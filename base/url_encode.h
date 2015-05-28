@@ -24,11 +24,12 @@
 namespace conet
 {
 
+void url_encode(char const * src ,  size_t len, std::string * out);
 void url_encode(std::string const & src, std::string * out);
 
-void url_decode(const std::string& src, std::string *out);
+int url_decode(const std::string& src, std::string *out);
 
-void url_decode(char const * src, size_t len, std::string *out);
+int url_decode(char const * src, size_t len, std::string *out);
 
 }
 #endif /* end of include guard */

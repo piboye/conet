@@ -82,6 +82,19 @@ namespace conet
         return 0;
     }
 
+    template <>
+    int string2number<bool>(char const * src, bool *i)
+    {
+        if (0 == strncmp(src, "true", sizeof("true"))) {
+            *i = true;
+            return 0;
+        } else if (0 == strncmp(src, "false", sizeof("false"))) {
+            *i = false;
+            return 0;
+        }
+        return -1;
+    }
+
     template <typename IT>
     std::string number2string(IT i)
     {
@@ -105,6 +118,17 @@ namespace conet
         out.resize(len);
         return out;
     }
+
+    template <>
+    std::string number2string<bool>(bool i)
+    {
+        if (i) {
+            return std::string("true"); 
+        } else {
+            return std::string("true"); 
+        }
+    }
+
 
     template <>
     std::string number2string<uint64_t>(uint64_t i)

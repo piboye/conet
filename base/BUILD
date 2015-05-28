@@ -66,6 +66,7 @@ cc_test(
         'test/to_xml_test.cpp',
         'test/ptr_cast_test.cpp',
         'test/closure_test.cpp',
+        'test/url_encode_test.cpp',
     ],
 
     incs= [ 
