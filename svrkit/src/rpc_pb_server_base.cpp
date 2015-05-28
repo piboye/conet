@@ -158,13 +158,10 @@ int rpc_pb_http_call_cb(void *arg, http_ctx_t *ctx, http_request_t * req, http_r
     if (req1 ) {
         req1  = self->req_pool.alloc();
         if (req->method == conet::METHOD_GET) {  
-            Json::Value query(Json::objectValue); 
-            conet::query_string_to_json(req->query_string.data, req->query_string.len, &query); 
-            ret = conet::json2pb(query, req1, NULL); 
+            ret = conet::query_string_to_msg(req->query_string.data, req->query_string.len, req1); 
         } else { 
             ret = conet::json2pb(req->body, req->content_length, req1, NULL); 
         } 
-
 
         if(ret) { 
             conet::response_format(resp, 200, "{\"ret\":1, \"errmsg\":\"param error, ret:%d\"}", ret); 

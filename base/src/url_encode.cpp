@@ -47,23 +47,79 @@ void url_encode(std::string const & src, std::string * out)
     }
 }
  
+
+int hex_char(char ch)
+{
+    switch(ch)
+    {
+#define HEX_CASE(a) case '##a##': return a;
+        case '1': return 1;
+        case '2': return 2;
+        case '3': return 3;
+        case '4': return 4;
+        case '5': return 5;
+        case '6': return 6;
+        case '7': return 7;
+        case '8': return 8;
+        case '9': return 9;
+        case '0': return 0;
+        case 'a': return 10;
+        case 'b': return 11;
+        case 'c': return 12;
+        case 'd': return 13;
+        case 'e': return 14;
+        case 'f': return 15;
+        case 'A': return 10;
+        case 'B': return 11;
+        case 'C': return 12;
+        case 'D': return 13;
+        case 'E': return 14;
+        case 'F': return 15;
+    }
+    return -1;
+}
  
-void url_decode(const std::string& szToDecode, std::string *out)
+void url_decode(const std::string& src, std::string *out)
+{
+    url_decode(src.c_str(), src.size(), out);
+}
+
+void url_decode(char const * src, size_t len, std::string *out)
 {
     std::string &result= *out;
     int hex = 0;
-    for (size_t i = 0; i < szToDecode.length(); ++i)
+    for (size_t i = 0; i < len; ++i)
     {
-        switch (szToDecode[i])
+        switch (src[i])
         {
         case '+':
             result += ' ';
             break;
         case '%':
-            if (isxdigit(szToDecode[i + 1]) && isxdigit(szToDecode[i + 2]))
+            if (i+2< len)
             {
-                std::string hexStr = szToDecode.substr(i + 1, 2);
-                hex = strtol(hexStr.c_str(), 0, 16);
+                int v = hex_char(src[i+1]);
+                if (v<0) {
+                    result.push_back('%');
+                    result.push_back(src[i+1]);
+                    result.push_back(src[i+2]);
+                    i+=2;
+                    break;
+                }
+
+                hex = v; 
+
+                v = hex_char(src[i+2]);
+                if (v<0) {
+                    result.push_back('%');
+                    result.push_back(src[i+1]);
+                    result.push_back(src[i+2]);
+                    i+=2;
+                    break;
+                }
+                hex <<=4;
+                hex += v;
+
                 //字母和数字[0-9a-zA-Z]、一些特殊符号[$-_.+!*'(),] 、以及某些保留字[$&+,/:;=?@]
                 //可以不经过编码直接用于URL
                 if (!((hex >= 48 && hex <= 57) || //0-9
@@ -75,16 +131,16 @@ void url_decode(const std::string& szToDecode, std::string *out)
                     || hex == 0x3A || hex == 0x3B|| hex == 0x3D || hex == 0x3f || hex == 0x40 || hex == 0x5f
                     ))
                 {
-                    result += char(hex);
+                    result.push_back(char(hex));
                     i += 2;
                 }
-                else result += '%';
+                else result.push_back('%');
             }else {
-                result += '%';
+                result.push_back('%');
             }
             break;
         default:
-            result += szToDecode[i];
+            result.push_back(src[i]);
             break;
         }
     }

@@ -23,12 +23,15 @@
 #include <string>
 #include "jsoncpp/value.h"
 #include "jsoncpp/json.h"
+#include "thirdparty/protobuf/message.h"
 
 namespace conet
 {
     int parse_query_string(char const *buf, size_t len, std::map<std::string, std::string> *param);
 
     int query_string_to_json(char const *buf, size_t len, Json::Value *root);
+
+    int query_string_to_msg(char const *buf, size_t len, google::protobuf::Message *msg);
 }
 
 #endif /* end of include guard */
