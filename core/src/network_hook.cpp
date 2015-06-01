@@ -979,10 +979,7 @@ HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *r
     }
 
     if (NULL == req) { 
-        if (rem) {
-            rem->tv_sec = req->tv_sec;
-            rem->tv_nsec = req->tv_nsec;
-        }
+        errno = EINVAL;
         return -1;
     }
 
