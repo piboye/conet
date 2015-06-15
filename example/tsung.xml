@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/root/bin/share/tsung/tsung-1.0.dtd">
+<tsung loglevel="notice" version="1.0">
+
+  <!-- Client side setup -->
+  <clients>
+    <client host="localhost" use_controller_vm="true"/>
+  </clients>
+  
+  <!-- Server side setup -->
+<servers>
+  <server host="127.0.0.1" port="12314" type="tcp"></server>
+</servers>
+
+  <load>
+  <!-- several arrival phases can be set: for each phase, you can set
+  the mean inter-arrival time between new clients and the phase
+  duration -->
+   <arrivalphase phase="1" duration="1" unit="minute">
+     <users interarrival="1" unit="second"></users>
+   </arrivalphase>
+  </load>
+
+ <sessions>
+  <session name="http-rpc-json" probability="100" type="ts_http">
+    <request> <http url="/rpc/call/echo?msg=hello" method="GET" version="1.1" if_modified_since="Fri, 14 Nov 2003 02:43:31 GMT"></http> </request>
+  </session>
+ </sessions>
+</tsung>
