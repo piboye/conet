@@ -63,10 +63,12 @@ cc_test(
         'test/query_string_test.cpp',
         "test/defer_test.cpp",
         'test/to_json_test.cpp',
+        'test/json_to_test.cpp',
         'test/to_xml_test.cpp',
         'test/ptr_cast_test.cpp',
         'test/closure_test.cpp',
         'test/url_encode_test.cpp',
+        'test/string_tpl_test.cpp',
     ],
 
     incs= [ 

@@ -211,8 +211,9 @@ int tcp_server_t::main_proc_with_fd_queue()
             fds.clear();
             ret = fd_queue->recv_fd(&fds);
             if (ret == 0 && fds.size() >0) {
-                for (int fd : fds)
-                {
+                for (size_t i =0; i< fds.size(); ++i)
+                { 
+                    int fd=fds[i];
                     set_nodelay(fd);
                     set_none_block(fd);
                     ++this->data.cur_conn_num;
@@ -311,8 +312,9 @@ int tcp_server_t::main_proc2()
             new_fds.push_back(fd);
         }
 
-        for (int fd : new_fds)
+        for (size_t i=0; i< new_fds.size(); ++i)
         {
+            int fd = new_fds[i];
             set_nodelay(fd);
             ++this->data.cur_conn_num;
             //memset(conn_info, 0, sizeof(conn_info_t));

@@ -9,7 +9,7 @@
 
 #ifndef c_offsetof 
 #define c_offsetof(TYPE, MEMBER) \
-    ({TYPE * a = nullptr; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
+    ({TYPE * a = NULL; (size_t) ((char *) (&a->MEMBER) - (char *)a ); })
 
 #endif
 

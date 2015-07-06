@@ -32,6 +32,7 @@
 
 #include "auto_var.h"
 #include "url_encode.h"
+#include <stdio.h>
 
 using namespace conet;
 namespace conet
