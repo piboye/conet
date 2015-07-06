@@ -40,6 +40,8 @@
 #include "base/pb2json.h"
 #include "base/defer.h"
 #include "core/conet_all.h"
+#include "base/string_tpl.h"
+#include "base/string2number.h"
 
 
 namespace conet
@@ -68,15 +70,21 @@ using namespace conet;
 std::string get_default_conf()
 {
     std::string data;
-    data.resize(RESOURCE_svrkit_default_server_conf_len+500);
-    int size = snprintf((char *)data.c_str(), data.size(), 
-            RESOURCE_svrkit_default_server_conf,
-            FLAGS_ip.c_str(),
-            FLAGS_port,
-            (int)FLAGS_duplex,
-            FLAGS_thread_num
-    );
-    data.resize(size);
+    std::map<std::string, std::string> datas;
+    datas["ip"] = FLAGS_ip;
+    datas["port"] = number2string(FLAGS_port);
+    datas["duplex"] = number2string((int)(FLAGS_duplex));
+    datas["thread_num"] = number2string((int)(FLAGS_thread_num));
+    int ret =0;
+
+    std::string errmsg;
+    ret = string_tpl(RESOURCE_svrkit_default_server_conf, datas, &data, &errmsg);
+    if (ret) {
+        LOG(ERROR)<<"load default conf failed, "
+            "[ret:"<<ret<<"][msg:"<<errmsg<<"]";
+    } else {
+        LOG(INFO)<<"load default conf:"<<data<<"]";
+    }
     return data;
 }
 
@@ -89,6 +97,7 @@ int get_conf_data(std::string const & conf_file, std::string *data)
         *data =  get_default_conf();
         return 0;
     }
+
     std::fstream fs;
     fs.open(conf_file.c_str(), std::fstream::in);
     if (!fs.is_open())
@@ -162,7 +171,6 @@ int main(int argc, char * argv[])
 
     if (conet::can_reuse_port()) {
         LOG(INFO)<<"can reuse port, very_good";
-        //fprintf(stderr, "can resue port, very good!\n");
     }
 
     std::string data;
@@ -175,8 +183,9 @@ int main(int argc, char * argv[])
     ret = json2pb(data, &conf, &errmsg);
     if (ret)
     {
-        LOG(ERROR)<<"parse conf file failed! error:"<<errmsg<<
-            " ret:"<<ret;
+        LOG(ERROR)<<"parse conf file failed! "
+            "[error:"<<errmsg<<"]"
+            "[ret:"<<ret<<"]";
         return 2;
     }
 
