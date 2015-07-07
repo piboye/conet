@@ -33,15 +33,15 @@ struct A
         int k;
         int m;
         std::string name;
-        DEF_JSON_TO_MEMBER((k, m, name))
+        DEF_JSON_TO_MEMBER(B, (k, m, name))
     };
 
     B b;
 };
 
 DEF_JSON_TO(A, (i,j, b))
-
 }
+
 
 
 

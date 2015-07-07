@@ -49,16 +49,10 @@ void json_encode(std::string &sString)
 
 #define DEF_BASETYPE_TO_JSON(fmt, type) \
 inline \
-void to_json_value(std::string &out, type value) { \
+void to_json_value_help2(std::string &out, type value) { \
     char buffer[40]; \
     snprintf(buffer, sizeof(buffer), fmt, value); \
     out.append(buffer); \
-} \
-inline \
-std::string to_json(type value) { \
-	std::string out; \
-	to_json_value(out, value); \
-	return out; \
 } \
 
 
@@ -74,7 +68,7 @@ DEF_BASETYPE_TO_JSON("%Lf", long double)
 
 
 inline
-void to_json_value(std::string &out, std::string str) {
+void to_json_value_help2(std::string &out, std::string str) {
 	json_encode(str);
 	out.append("\"");
 	out.append(str);
@@ -82,21 +76,29 @@ void to_json_value(std::string &out, std::string str) {
 }
 
 inline
-void to_json_value(std::string &out, char const * str) {
-	to_json_value(out, std::string(str));
+void to_json_value_help2(std::string &out, char const * str) {
+	to_json_value_help2(out, std::string(str));
+}
+
+template <typename T>
+inline 
+void to_json_value_help2(std::string & out, T const & val)
+{
+    return to_json_value_help(out, val);
 }
 
 template <typename t>
 inline
-void to_json_value(std::string & out, std::vector<t> const & vec) {
+void to_json_value_help2(std::string & out, std::vector<t> const & vec) {
 	out.append("[");
 	for ( size_t i=0, len=vec.size();
             i<len; ++i){
 	       if (i > 0) out.append(",");
-	       to_json_value(out, vec[i]);
+	       to_json_value_help2(out, vec[i]);
 	}
 	out.append("]");
 }
+
 
 
 #define to_json_attr2(out, name, value) \
@@ -105,7 +107,7 @@ void to_json_value(std::string & out, std::vector<t> const & vec) {
         out.append(name); \
         out.append("\""); \
         out.append(":"); \
-        to_json_helper(out, value); \
+        to_json_value_help2(out, value); \
     } while(0)\
 
 #define to_json_attr(out, name) \
@@ -115,7 +117,7 @@ void to_json_value(std::string & out, std::vector<t> const & vec) {
 
 template <typename t>
 inline
-void to_json_value(std::string & out, std::map<std::string, t> const & map) {
+void to_json_value_help2(std::string & out, std::map<std::string, t> const & map) {
        out.append("{");
     size_t i=0;
     for (typeof(map.begin()) it = map.begin(), iend = map.end();
@@ -128,7 +130,7 @@ void to_json_value(std::string & out, std::map<std::string, t> const & map) {
 
 template <typename t>
 inline
-void to_json_value(std::string & out, std::map<char *, t> const & map) {
+void to_json_value_help2(std::string & out, std::map<char *, t> const & map) {
        out.append("{");
     size_t i=0;
     for (typeof(map.begin()) it = map.begin(), iend = map.end();
@@ -141,7 +143,7 @@ void to_json_value(std::string & out, std::map<char *, t> const & map) {
 
 template <typename t>
 inline
-void to_json_value(std::string & out, std::map<char const *, t> const & map) {
+void to_json_value_help2(std::string & out, std::map<char const *, t> const & map) {
        out.append("{");
     size_t i=0;
     for (typeof(map.begin()) it = map.begin(), iend = map.end();
@@ -156,7 +158,7 @@ void to_json_value(std::string & out, std::map<char const *, t> const & map) {
 #define BASE_TYPE_MAP_TO_JSON(t1) \
 template <typename t> \
 inline \
-void to_json_value(std::string & out, std::map<t1, t> const & map) { \
+void to_json_value_help2(std::string & out, std::map<t1, t> const & map) { \
        out.append("{"); \
     size_t i=0; \
     for (typeof(map.begin()) it = map.begin(), iend = map.end(); \
@@ -184,28 +186,15 @@ BASE_TYPE_MAP_TO_JSON(unsigned long long)
 
 template <typename t>
 inline
-void to_json_value(std::string & out, t const &v) {
-    v.to_json_value(out);
-}
-
-template <typename t>
-inline
 std::string to_json(t const & v) {
     std::string out;
-    to_json_value(out, v);
-    return out;
+    return to_json_value_help2(v);
 }
 
 template <typename t>
 inline
-std::string to_json_helper(t const & v) {
-    return to_json(v);
-}
-
-template <typename t>
-inline
-void to_json_helper(std::string & out, t const &v) {
-    to_json_value(out, v);
+void to_json_value(std::string & out, t const &v) {
+    to_json_value_help2(out, v);
 }
 
 #define CONET_TO_JSON_MEM_CALL(r, out, i, name) \
@@ -215,34 +204,22 @@ void to_json_helper(std::string & out, t const &v) {
 
 #define DEF_TO_JSON_IMPL(type, seq_param)\
 inline  \
-void to_json_value(std::string & out, type const & v) { \
+void to_json_value_help(std::string & out, type const & v) { \
     out.append("{"); \
     BOOST_PP_SEQ_FOR_EACH_I(CONET_TO_JSON_MEM_CALL, out, seq_param) \
     out.append("}"); \
 } \
 \
-inline \
-std::string to_json(type const & v) { \
-    std::string out; \
-    to_json_value(out, v); \
-    return out; \
-} \
 
-#define DEF_TO_JSON_MEM(param) DEF_TO_JSON_MEM_IMPL(BOOST_PP_VARIADIC_TO_SEQ param)
+#define DEF_TO_JSON_MEM(type, param) DEF_TO_JSON_MEM_IMPL(type, BOOST_PP_VARIADIC_TO_SEQ param)
 
-#define DEF_TO_JSON_MEM_IMPL(seq_param) \
+#define DEF_TO_JSON_MEM_IMPL(type, seq_param) \
+friend \
 inline \
-void to_json_value(std::string & out) const { \
-    typeof(*this) const & v = *this; \
+void to_json_value_help(std::string & out, type const &v) { \
     out.append("{"); \
     BOOST_PP_SEQ_FOR_EACH_I(CONET_TO_JSON_MEM_CALL, out, seq_param) \
     out.append("}"); \
-} \
-inline   \
-std::string to_json() const { \
-    std::string out; \
-    this->to_json_value(out); \
-    return out; \
 } \
 
 

@@ -29,7 +29,7 @@ struct A
     {
         int k;
         int m;
-        DEF_TO_JSON_MEM((k,m))
+        DEF_TO_JSON_MEM(B, (k,m))
     };
 
     B b;
