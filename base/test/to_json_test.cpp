@@ -19,6 +19,8 @@
 #include "to_json.h"
 #include "gtest/gtest.h"
 
+namespace 
+{
 struct A
 {
     int i;
@@ -34,6 +36,7 @@ struct A
 };
 
 DEF_TO_JSON(A, (i,j, b))
+}
 
 TEST(to_json, test)
 {

@@ -21,6 +21,9 @@
 #include "gtest/gtest.h"
 #include <vector>
 
+namespace 
+{
+
 struct A
 {
     int i;
@@ -37,6 +40,10 @@ struct A
 };
 
 DEF_JSON_TO(A, (i,j, b))
+
+}
+
+
 
 TEST(json_to, test)
 {

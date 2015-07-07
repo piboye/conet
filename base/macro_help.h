@@ -20,7 +20,7 @@
 
 #ifndef BOOST_PP_VARIADICS 
 //  gcc 必须定义这个， 不然会定义为 0, 导致 BOOST_PP_VARIADIC_TO_SEQ 用不了
-# define BOOST_PP_VARIADICS 1
+# define BOOST_PP_VARIADICS 2 
 #endif 
 
 #include "boost/preprocessor.hpp"

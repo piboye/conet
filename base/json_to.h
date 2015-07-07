@@ -28,7 +28,7 @@
 
 #define DEF_BASETYPE_JSON_TO_NUMBER(type) \
 inline \
-int json_to(Json::Value const & json_value, type * val) \
+int json_to_help(Json::Value const & json_value, type * val) \
 { \
     return conet::string2number(json_value.asString(), val); \
 }
@@ -44,7 +44,7 @@ DEF_BASETYPE_JSON_TO_NUMBER(uint64_t);
 DEF_BASETYPE_JSON_TO_NUMBER(float);
 DEF_BASETYPE_JSON_TO_NUMBER(double);
 
-inline int json_to(Json::Value const & json_value, std::string * val)
+inline int json_to_help(Json::Value const & json_value, std::string * val)
 {
     *val = json_value.asString();
     return 0;
@@ -59,7 +59,7 @@ inline int json_to(Json::Value const & json_value, std::vector<T> * val)
     for (int i=0, size = (int)json_value.size(); i< size; ++i)
     {
         T v1;
-        json_to(json_value[i], &v1);
+        json_to_help(json_value[i], &v1);
         val->push_back(v1);
     }
     return 0;
@@ -70,6 +70,13 @@ inline
 int json_to(Json::Value const & json_val, T * val)
 {
     return val->json_to_self(json_val);
+}
+
+template <typename T>
+inline 
+int json_to_help(Json::Value const & json_val, T * val)
+{
+    return json_to(json_val, val);
 }
 
 template <typename T>
@@ -84,7 +91,7 @@ inline int json_to(std::string const & txt, T * val)
 }
 
 #define CONET_JSON_TO_ATTR_CALL(r, out, name) \
-    json_to(json_value[BOOST_PP_STRINGIZE(name)], &data->name);
+    json_to_help(json_value[BOOST_PP_STRINGIZE(name)], &data->name);
 
 #define DEF_JSON_TO(struct_, members) \
     DEF_JSON_TO_IMPL(struct_, BOOST_PP_VARIADIC_TO_SEQ members)

@@ -12,6 +12,7 @@
 
 #include "macro_help.h"
 
+
 #define CONET_JSON_ENCODE_CHAR(ch, alter) \
 case ch : \
     out.append(alter); \
@@ -243,5 +244,6 @@ std::string to_json() const { \
     this->to_json_value(out); \
     return out; \
 } \
+
 
 #endif
