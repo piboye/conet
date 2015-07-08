@@ -46,6 +46,6 @@ TEST(to_json, test)
     a.b.k = 5;
     a.b.m = 6;
     std::string out;
-    to_json_value(out, a);
+    out = to_json(a);
     printf("%s", out.c_str());
 }

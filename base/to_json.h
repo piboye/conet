@@ -188,7 +188,8 @@ template <typename t>
 inline
 std::string to_json(t const & v) {
     std::string out;
-    return to_json_value_help2(v);
+    to_json_value_help2(out, v);
+    return out;
 }
 
 template <typename t>
