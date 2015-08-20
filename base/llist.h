@@ -200,7 +200,7 @@ bool llist_add_batch(struct llist_node *new_first,
 
 	do {
 		new_last->next = first = ACCESS_ONCE(head->first);
-	} while (__sync_bool_compare_and_swap(&head->first, first, new_first));
+	} while (!__sync_bool_compare_and_swap(&head->first, first, new_first));
 
 	return !first;
 }
