@@ -347,9 +347,14 @@ HOOK_SYS_FUNC_DEF(
         events: POLLIN | POLLERR | POLLHUP
     };
 
+    // 预读取
     ret = syscall(SYS_read,  fd,(char*)buf , nbyte);
     //ret = _(read)(fd,(char*)buf , nbyte);
     if (ret >=0) {
+        return ret;
+    }
+    if (errno != EAGAIN)
+    {
         return ret;
     }
 
