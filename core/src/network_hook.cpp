@@ -61,35 +61,6 @@ HOOK_SYS_FUNC_DEF(
     return fd;
 }
 
-HOOK_SYS_FUNC_DEF(int , eventfd, (unsigned int initval, int flags))
-{
-	HOOK_SYS_FUNC( socket );
-
-	if( !co_is_enable_sys_hook() )
-	{
-		return g_sys_eventfd_func(initval, flags);
-	}
-	int fd = g_sys_eventfd_func(initval, flags);
-	if( fd < 0 )
-	{
-		return fd;
-	}
-
-	rpchook_t *lp = alloc_by_fd( fd );
-	lp->domain = 0;
-
-    if (flags & O_NONBLOCK)
-    {
-        lp->user_flag |= O_NONBLOCK;
-	    fcntl( fd, F_SETFL, g_sys_fcntl_func(fd, F_GETFL, 0));
-    }
-    else
-    {
-        fcntl( fd, F_SETFL, g_sys_fcntl_func(fd, F_GETFL, 0)& ~O_NONBLOCK);
-    }
-
-	return fd;
-}
 
 HOOK_SYS_FUNC_DEF(
     int , accept, ( int fd, struct sockaddr *addr, socklen_t *len)
@@ -1003,6 +974,36 @@ HOOK_SYS_FUNC_DEF(
     va_end( arg_list );
 
     return ret;
+}
+
+HOOK_SYS_FUNC_DEF(int , eventfd, (unsigned int initval, int flags))
+{
+	HOOK_SYS_FUNC( socket );
+
+	if( !conet::is_enable_sys_hook() )
+	{
+		return _(eventfd)(initval, flags);
+	}
+	int fd = _(eventfd)(initval, flags);
+	if( fd < 0 )
+	{
+		return fd;
+	}
+
+	fd_ctx_t *lp = alloc_fd_ctx( fd );
+	lp->domain = 0;
+
+    if (flags & O_NONBLOCK)
+    {
+        lp->user_flag |= O_NONBLOCK;
+	    fcntl( fd, F_SETFL, _(fcntl)(fd, F_GETFL, 0));
+    }
+    else
+    {
+        fcntl( fd, F_SETFL, _(fcntl)(fd, F_GETFL, 0)& ~O_NONBLOCK);
+    }
+
+	return fd;
 }
 
 HOOK_SYS_FUNC_DEF(int ,nanosleep,(const struct timespec *req, struct timespec *rem))
