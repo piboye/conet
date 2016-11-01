@@ -1,23 +1,6 @@
-/*
- * =====================================================================================
- * 
- *       Filename:  log.rotate.hpp
- * 
- *    Description:  
- * 
- *        Version:  1.0
- *        Created:  2011年05月12日 15时34分20秒 CST
- *       Revision:  none
- *       Compiler:  gcc
- * 
- *         Author:  piboye 
- *        Company:  
- * 
- * =====================================================================================
- */
+#ifndef ROTATE_LOG_H_1CVR0YSZ
+#define ROTATE_LOG_H_1CVR0YSZ
 
-#ifndef  ROTATE_LOG_INC
-#define  ROTATE_LOG_INC
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -188,7 +171,7 @@ class RotateLog {
         int file_num_;
         char const * basename_;
         int file_size_;
-        FILE * file_; 
+        FILE * file_;
         std::string lock_file_;
         int level_;
 };
@@ -214,4 +197,4 @@ class RotateLog {
     } while(0)
 
 
-#endif   /* ----- #ifndef ROTATE_LOG_INC  ----- */
+#endif /* end of include guard: ROTATE_LOG_H_1CVR0YSZ */
