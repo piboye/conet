@@ -7,6 +7,8 @@
 #include "log_format.h"
 #include "time_helper.h"
 #include <sys/types.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 class PLog
 {
@@ -26,7 +28,7 @@ public:
         char const * func;
         int line;
         uint64_t thread_id;
-        uint64_t timestamp;
+        struct timeval timestamp;
         std::string text;
         llist_node link_to;
         int level;
@@ -91,10 +93,9 @@ do  \
     item->file_name = __FILE__; \
     item->func = __FUNCTION__; \
     item->line = __LINE__; \
-    item->timestamp = conet::get_sys_ms(); \
     LOG_FORMAT(item->text, ##__VA_ARGS__); \
     item->text.push_back('\n'); \
-    PLog::Instance().Add(item); \
+    if (PLog::Instance().Add(item) != 0) delete item; \
 } while(0)
 
 

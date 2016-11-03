@@ -12,6 +12,7 @@
 #include "thirdparty/gflags/gflags.h"
 #include "delay_init.h"
 #include "time_helper.h"
+#include <sys/syscall.h>
 
 DEFINE_int32(log_type, 1, "0 stderr, 1 rotate log");
 DEFINE_string(log_file, "my.log", "base log filename");
@@ -105,8 +106,10 @@ int PLog::Add(ReqItem *item)
         return -1;
     }
 
+    gettimeofday(&item->timestamp, NULL);
+    item->thread_id = syscall(__NR_gettid);
+
     item->link_to.next = NULL;
-    item->timestamp = conet::get_sys_ms();
     llist_add(&item->link_to, &m_request_queue);
 
     int64_t num = __sync_fetch_and_add(&m_queue_len, 1);
@@ -122,16 +125,22 @@ int PLog::ProcLog(llist_node *queue)
 {
     queue = llist_reverse_order(queue);
     llist_node * it = NULL, *next = NULL;
+    char tm_txt[100]={0};
+    char tm_rest[20]={0};
     for(it = queue; it; it = next)
     {
         next = it->next;
         it->next = NULL;
         ReqItem *item = container_of(it, ReqItem, link_to);
+        struct tm *tl = localtime(&item->timestamp.tv_sec);
+        strftime(tm_txt, 100, "[%Y%m%d %H:%M:%S ", tl);
+        snprintf(tm_rest, 20, "%06d", (int)item->timestamp.tv_usec);
         std::string out_txt;
-        LOG_FORMAT(out_txt,
+        LOG_FORMAT(out_txt, tm_txt, tm_rest, "]"
+                "(", item->thread_id, ")"
                 "[", item->file_name, ":", item->line, "]"
                 "[", item->func, "]"
-                "[", get_level_str(item->level), "]:\t",
+                "[", get_level_str(item->level), "]: ",
                 item->text);
         write(m_fd, out_txt.c_str(), out_txt.size());
         delete item;
