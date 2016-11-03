@@ -77,6 +77,7 @@ PLog::PLog()
 PLog::~PLog()
 {
     m_stop_flags = 1;
+    pthread_join(m_main_thread, NULL);
     CleanUp();
     if (m_fd > 2)
     {
@@ -89,7 +90,6 @@ PLog::~PLog()
         close(m_work_notify);
         m_work_notify = -1;
     }
-    pthread_join(m_main_thread, NULL);
 }
 
 static PLog g_plog;

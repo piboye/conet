@@ -2,6 +2,7 @@
 #include "../plog.h"
 #include "../delay_init.h"
 #include <iostream>
+#include <time.h>
 
 int main(int argc, char **argv)
 {
