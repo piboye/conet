@@ -84,6 +84,28 @@ public:
     int manage_rotate_log();
 };
 
+
+#define PLOG_RAW(a_level, fmt, ...) \
+do  \
+{  \
+    if (PLog::a_level < PLog::Instance().m_log_level) break; \
+    PLog::ReqItem *item = new PLog::ReqItem(); \
+    item->level = PLog::a_level; \
+    item->file_name = __FILE__; \
+    item->func = __FUNCTION__; \
+    item->line = __LINE__; \
+    item->text.resize(1024); \
+    size_t len = 1024; \
+    len = snprintf((char *)item->text.data(), item->text.size()-1, fmt, ##__VA_ARGS__); \
+    if (len> item->text.size()-1) { \
+        item->text.resize(len+1); \
+        len = snprintf((char *)item->text.data(), item->text.size()-1, \
+                fmt, ##__VA_ARGS__); \
+    } \
+    item->text[len]='\n'; \
+    if (PLog::Instance().Add(item) != 0) delete item; \
+} while(0)
+
 #define PLOG(a_level, ...) \
 do  \
 {  \
@@ -97,6 +119,12 @@ do  \
     item->text.push_back('\n'); \
     if (PLog::Instance().Add(item) != 0) delete item; \
 } while(0)
+
+#define PLOG_DEBUG(...) PLOG(DEBUG, ##__VA_ARGS__)
+#define PLOG_INFO(...) PLOG(INFO, ##__VA_ARGS__)
+#define PLOG_WARN(...) PLOG(WARN, ##__VA_ARGS__)
+#define PLOG_ERROR(...) PLOG(ERROR, ##__VA_ARGS__)
+#define PLOG_ALERT(...) PLOG(ALERT, ##__VA_ARGS__)
 
 
 

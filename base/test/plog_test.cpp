@@ -14,9 +14,11 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    PLOG(ERROR, "wellcome");
+    PLOG_ERROR("wellcome");
     PLOG(DEBUG, "ignore this msg");
     PLOG(INFO, "hello ", "world");
+    PLOG(INFO, "my age: ", 18);
+    PLOG_RAW(INFO, "my age: %d", 18);
 
     PLog::Instance().Stop();
     return 0;
