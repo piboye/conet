@@ -17,7 +17,41 @@ DEFINE_int32(log_type, 1, "0 stderr, 1 rotate log");
 DEFINE_string(log_file, "my.log", "base log filename");
 DEFINE_int32(log_max_file_num, 10, "max file num");
 DEFINE_int32(log_max_file_size, 10, "max file size default 10 MB");
+DEFINE_string(log_level, "INFO", "log level: DEBUG, INFO, WRAN, ERROR");
 using namespace conet;
+
+static int log_level_cast(std::string  const & a_str)
+{
+    char const * str  = a_str.c_str();
+    if (NULL ==str) str = "";
+#define LOG_LEVEL_STR_CAST(level) if (strcasecmp(str, #level) == 0) return PLog::level
+    LOG_LEVEL_STR_CAST(DEBUG);
+    LOG_LEVEL_STR_CAST(INFO);
+    LOG_LEVEL_STR_CAST(WARN);
+    LOG_LEVEL_STR_CAST(ERROR);
+    LOG_LEVEL_STR_CAST(ALERT);
+#undef LOG_LEVEL_STR_CAST
+    return PLog::DEBUG;
+}
+
+static char const * get_level_str(int level)
+{
+    switch(level)
+    {
+        case PLog::DEBUG :
+            return "DEBUG";
+        case PLog::INFO :
+            return "INFO";
+        case PLog::WARN :
+            return "WARN";
+        case PLog::ERROR :
+            return "ERROR";
+        case PLog::ALERT :
+            return "ALERT";
+        default:
+            return "DEBUG";
+    }
+}
 
 PLog::PLog()
 {
@@ -28,6 +62,7 @@ PLog::PLog()
     m_work_notify = -1;
     m_main_thread = 0;
     m_log_type = STDERR_LOG;
+    m_log_level = INFO;
     m_fd = 2;
 
     m_work_notify = eventfd(0, EFD_CLOEXEC|EFD_NONBLOCK);
@@ -53,8 +88,7 @@ PLog::~PLog()
         close(m_work_notify);
         m_work_notify = -1;
     }
-    int ret = 0;
-    ret = pthread_join(m_main_thread, NULL);
+    pthread_join(m_main_thread, NULL);
 }
 
 static PLog g_plog;
@@ -94,7 +128,11 @@ int PLog::ProcLog(llist_node *queue)
         it->next = NULL;
         ReqItem *item = container_of(it, ReqItem, link_to);
         std::string out_txt;
-        LOG_FORMAT(out_txt, "[", item->file_name, ":", item->line, "][", item->func, "]: ", item->text, "\n");
+        LOG_FORMAT(out_txt,
+                "[", item->file_name, ":", item->line, "]"
+                "[", item->func, "]"
+                "[", get_level_str(item->level), "]:\t",
+                item->text);
         write(m_fd, out_txt.c_str(), out_txt.size());
         delete item;
     }
@@ -197,7 +235,7 @@ static
 int reopen(std::string const & filename)
 {
 #define RWRWRW  (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IWOTH|S_IROTH)
-    int fd = open(filename.c_str(),  O_APPEND | O_CREAT, RWRWRW);
+    int fd = open(filename.c_str(),  O_APPEND | O_CREAT | O_WRONLY, RWRWRW);
 #undef RWRWRW
     return fd;
 }
@@ -296,6 +334,13 @@ int PLog::InitRotateLog(std::string const & file_name_prefix,
     return 0;
 }
 
+int PLog::SetLogLevel(int level)
+{
+    m_log_level = level;
+    return 0;
+}
+
+
 DELAY_INIT()
 {
     int ret = 0;
@@ -305,9 +350,9 @@ DELAY_INIT()
                 FLAGS_log_max_file_size* 1024*1024);
         if (ret != 0)
         {
-            fprintf(stderr, "init plog failed");
             return -1;
         }
+        g_plog.SetLogLevel(log_level_cast(FLAGS_log_level));
         g_plog.Start();
     }
     return 0;

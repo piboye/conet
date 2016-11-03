@@ -15,7 +15,9 @@ public:
     {
         DEBUG = 1,
         INFO = 2,
-        ERROR = 3,
+        WARN = 3,
+        ERROR = 4,
+        ALERT = 5,
     };
 
     struct ReqItem
@@ -52,6 +54,7 @@ public:
     int m_max_file_num;
     int m_max_file_size;
     int64_t m_prev_check_timestamp;
+    int m_log_level;
 
     int Add(ReqItem *item);
 
@@ -72,6 +75,8 @@ public:
     static void * MainProcHelp(void *);
     int CleanUp();
 
+    int SetLogLevel(int level);
+
     int check_log();
     int check_rotate_log();
     int manage_rotate_log();
@@ -79,14 +84,16 @@ public:
 
 #define PLOG(a_level, ...) \
 do  \
-{ \
+{  \
+    if (PLog::a_level < PLog::Instance().m_log_level) break; \
     PLog::ReqItem *item = new PLog::ReqItem(); \
     item->level = PLog::a_level; \
     item->file_name = __FILE__; \
     item->func = __FUNCTION__; \
     item->line = __LINE__; \
     item->timestamp = conet::get_sys_ms(); \
-    LOG_FORMAT(item->text, #__VA_ARGS__); \
+    LOG_FORMAT(item->text, ##__VA_ARGS__); \
+    item->text.push_back('\n'); \
     PLog::Instance().Add(item); \
 } while(0)
 

@@ -14,8 +14,9 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    PLOG(INFO, "hello");
-    PLOG(INFO, "world");
+    PLOG(ERROR, "wellcome");
+    PLOG(DEBUG, "ignore this msg");
+    PLOG(INFO, "hello ", "world");
 
     PLog::Instance().Stop();
     return 0;
