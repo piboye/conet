@@ -30,7 +30,8 @@ uint64_t get_cpu_khz()
     FILE *fp = fopen("/proc/cpuinfo","r");
     if(!fp) return 1;
     char buf[4096] = {0};
-    fread(buf,1,sizeof(buf),fp);
+    size_t ret = 0;
+    ret = fread(buf, 1, sizeof(buf), fp);
     fclose(fp);
 
     char *lp = strstr(buf,"cpu MHz");
