@@ -96,13 +96,13 @@ do  \
     item->line = __LINE__; \
     item->text.resize(1024); \
     size_t len = 1024; \
-    len = snprintf((char *)item->text.data(), item->text.size()-1, fmt, ##__VA_ARGS__); \
-    if (len> item->text.size()-1) { \
+    len = snprintf((char *)item->text.data(), item->text.size()-1, fmt "\n", ##__VA_ARGS__); \
+    if (len > item->text.size()-1) { \
         item->text.resize(len+1); \
         len = snprintf((char *)item->text.data(), item->text.size()-1, \
-                fmt, ##__VA_ARGS__); \
+                fmt "\n", ##__VA_ARGS__); \
     } \
-    item->text[len]='\n'; \
+    item->text.resize(len); \
     if (PLog::Instance().Add(item) != 0) delete item; \
 } while(0)
 
