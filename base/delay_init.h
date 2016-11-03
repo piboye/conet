@@ -79,7 +79,7 @@ int __one_call_call_fun__(void(*fun)(void)) {
 #define ONCE_CALL_VAR(name) MACRO_NAME_CONCAT2(__var_once_call_, name)
 #define ONCE_CALL_WITH(name) \
 		 static void ONCE_CALL_FUNC(name)(void); \
-		 static int ONCE_CALL_VAR(name) = __one_call_call_fun__(&ONCE_CALL_FUNC(name)); \
+		 static int __attribute__((__unused__)) ONCE_CALL_VAR(name) = __one_call_call_fun__(&ONCE_CALL_FUNC(name)); \
 		 static void ONCE_CALL_FUNC(name)(void)
 
 #define ONCE_CALL ONCE_CALL_WITH(MACRO_NAME_CONCAT2(__COUNTER__,__LINE__))
