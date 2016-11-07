@@ -36,6 +36,7 @@ cc_library(
         'src/bind_this_jump.s',
         'src/fd_queue.cpp',
         'src/plog.cpp',
+        'src/base64.cpp',
     ],
 
     incs= [ 

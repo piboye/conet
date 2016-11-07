@@ -48,6 +48,25 @@
   action http_content_type {
     init_ref_str(&(parser->content_type), PTR_TO(mark),  fpc);
   }
+
+### websocket 
+  action upgrade {
+    init_ref_str(&(parser->upgrade), PTR_TO(mark),  fpc);
+
+    if (equal(parser->upgrade, ref_str("websocket")))
+    {
+        parser->websocket = 1;
+    }
+  }
+
+  action sec_websocket_key {
+    init_ref_str(&(parser->sec_websocket_key), PTR_TO(mark),  fpc);
+  }
+
+  action sec_websocket_version {
+    init_ref_str(&(parser->sec_websocket_version), PTR_TO(mark),  fpc);
+  }
+
   
   action fragment {
     init_ref_str(&(parser->fragment), PTR_TO(mark), fpc);
@@ -143,6 +162,9 @@
                  | ("Content-Length:"i " "* (digit+ >mark %http_content_length))
                  | ("Content-Type:"i   " "* (any* >mark %http_content_type))
                  | ("Host:"i   " "* (any* >mark %request_host))
+                 | ("Upgrade:"i   " "* (any* >mark %upgrade))
+                 | ("Sec-WebSocket-Key:"i   " "* (any* >mark %sec_websocket_key))
+                 | ("Sec-WebSocket-Version:"i   " "* (any* >mark %sec_websocket_version))
                  ) :> CRLF;
 
   unknown_header = (field_name ":" " "* field_value :> CRLF) -- known_header;
