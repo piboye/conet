@@ -295,23 +295,6 @@ static const uint32_t d3[256] = {
 
 #define BADCHAR 0x01FFFFFF
 
-/**
- * you can control if we use padding by commenting out this
- * next line.  However, I highly recommend you use padding and not
- * using it should only be for compatability with a 3rd party.
- * Also, 'no padding' is not tested!
- */
-#define DOPAD 1
-
-/*
- * if we aren't doing padding
- * set the pad character to NULL
- */
-#ifndef DOPAD
-#undef CHARPAD
-#define CHARPAD '\0'
-#endif
-
 int base64_encode(const char* str, int len, char *dest)
 {
     int i;
