@@ -63,12 +63,12 @@ int pb2json(const google::protobuf::Message *msg, std::string *a_out)
 		const google::protobuf::Reflection *ref = msg->GetReflection();
 		if(!ref)return -3;
         
-        if (i > 0) {
-            root.append(",");
-        }
 		const char *name = field->name().c_str();
 		if(field->is_repeated() || ref->HasField(*msg, field))
 		{
+            if (i > 0) {
+                root.append(",");
+            }
 			switch (field->cpp_type())
 			{
 
@@ -176,7 +176,7 @@ int pb2json(const google::protobuf::Message *msg, std::string *a_out)
                 root.append("\":[");
                 size_t count = ref->FieldSize(*msg,field);
                 for(size_t i = 0 ; i != count ; ++i) {
-                    AUTO_VAR(val, =, ref->GetRepeatedEnum(*msg,field, i));
+                    AUTO_VAR(val, =, ref->GetRepeatedEnum(*msg,field, i)->number());
                     char tmp[20];
                     if (i> 0)  {
                         snprintf(tmp, sizeof(tmp), ", %lu", (uint64_t) val);
@@ -187,7 +187,7 @@ int pb2json(const google::protobuf::Message *msg, std::string *a_out)
                 }
                 root.append("]"); 
             } else {
-                AUTO_VAR(val, =, ref->GetEnum(*msg,field));
+                AUTO_VAR(val, =, ref->GetEnum(*msg,field)->number());
                 char tmp[30];
                 snprintf(tmp, sizeof(tmp), "\":%lu", (uint64_t) val);
                 root.append(tmp);
@@ -224,7 +224,7 @@ int pb2json(const google::protobuf::Message *msg, Json::Value * a_root)
 		if(!ref)return -3;
         
 		const char *name = field->name().c_str();
-		if(ref->HasField(*msg, field))
+		if(field->is_repeated() || ref->HasField(*msg, field))
 		{
 			switch (field->cpp_type())
 			{
