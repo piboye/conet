@@ -35,6 +35,8 @@ cc_library(
         'src/bind_this_mgr.cpp',
         'src/bind_this_jump.s',
         'src/fd_queue.cpp',
+        'src/plog.cpp',
+        'src/base64.cpp',
     ],
 
     incs= [ 
@@ -71,7 +73,7 @@ cc_test(
         'test/string_tpl_test.cpp',
     ],
 
-    incs= [ 
+    incs= [
         "./",
     ],
 
@@ -82,6 +84,23 @@ cc_test(
          ],
 );
 
+
+
+cc_binary(
+    name = 'plog_test',
+    srcs = [
+        'test/plog_test.cpp',
+    ],
+
+    incs= [
+        "./",
+    ],
+
+    deps = [
+        ":base",
+        "//thirdparty/gflags:gflags",
+    ],
+) 
 
 
 cc_binary(

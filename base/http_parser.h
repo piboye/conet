@@ -53,16 +53,21 @@ struct http_request_t
   int method;
   int connection;
 
-  
+  struct {
+    unsigned int websocket:1;
+  };
+
   ref_str_t host;
   ref_str_t fragment;
   ref_str_t path;
   ref_str_t query_string;
   ref_str_t uri;
-  
+  ref_str_t upgrade;
 
   ref_str_t accept;
   ref_str_t content_type;
+  ref_str_t sec_websocket_key;
+  ref_str_t sec_websocket_version;
 
   int headers_num;
   struct http_header_t headers[100];

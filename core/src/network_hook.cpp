@@ -18,9 +18,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 #include <vector>
-
 #include <time.h>
-
 #include "ares_wrap.h"
 
 #include "network_hook.h"
@@ -37,6 +35,36 @@ using conet::alloc_fd_ctx;
 using conet::get_fd_ctx;
 using conet::free_fd_ctx;
 using conet::fd_ctx_t;
+
+namespace conet
+{
+
+__attribute__ ((weak)) ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt);
+
+__attribute__((weak))
+ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt);
+}
+namespace conet
+{
+void close_fd_notify_poll(int fd);
+}
+namespace conet 
+{
+__attribute__ ((weak))
+ssize_t disk_read(int fd, void *buf, size_t nbyte);
+
+__attribute__((weak))
+ssize_t disk_write(int fd, const void *buf, size_t nbyte);
+
+int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags);
+
+}
+
+
+
+
+extern "C" 
+{
 
 
 HOOK_SYS_FUNC_DEF(
@@ -166,57 +194,6 @@ HOOK_SYS_FUNC_DEF(
 
 }
 
-namespace conet
-{
-int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags)
-{
-    if( !conet::is_enable_sys_hook() )
-    {
-        return _(accept4)(fd, addr, len, flags);
-    }
-
-    int client_fd = -1;
-    fd_ctx_t *lp = get_fd_ctx( fd );
-
-    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
-    {
-        client_fd =   _(accept4)(fd, addr, len, flags);
-    } 
-    else 
-    {
-        //block call
-        struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
-        int ret = conet::co_poll( &pf,1, -1);
-        if (ret == 0) {
-            errno = ETIMEDOUT;
-            return -1;
-        }
-        if (ret <0) {
-            return -1;
-        }
-        if (pf.revents & POLLERR) {
-            return -1;
-        }
-        if (pf.revents & POLLHUP) {
-            return -1;
-        }
-        client_fd =  _(accept4)(fd, addr, len, flags);
-    }
-    if (client_fd >=0) {
-        fd_ctx_t *ctx = NULL;
-        if (flags & O_NONBLOCK) {
-            ctx = conet::alloc_fd_ctx2(client_fd, 1, true);
-        } else {
-            ctx = conet::alloc_fd_ctx(client_fd, 1);
-        }
-        if (lp) {
-            ctx->domain = lp->domain;
-        }
-    }
-    return client_fd;
-}
-}
-
 HOOK_SYS_FUNC_DEF(
     int ,connect, (int fd, const struct sockaddr *address, socklen_t address_len)
 )
@@ -276,10 +253,6 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
-namespace conet
-{
-void close_fd_notify_poll(int fd);
-}
 
 HOOK_SYS_FUNC_DEF(
     int, close, (int fd)
@@ -304,15 +277,6 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
-namespace conet 
-{
-__attribute__ ((weak))
-ssize_t disk_read(int fd, void *buf, size_t nbyte);
-
-__attribute__((weak))
-ssize_t disk_write(int fd, const void *buf, size_t nbyte);
-
-}
 
 HOOK_SYS_FUNC_DEF(
     ssize_t, read, ( int fd, void *buf, size_t nbyte )
@@ -437,14 +401,6 @@ HOOK_SYS_FUNC_DEF(
     return ret;
 }
 
-namespace conet
-{
-
-__attribute__ ((weak)) ssize_t disk_readv(int fd, const struct iovec *iov, int iovcnt);
-
-__attribute__((weak))
-ssize_t disk_writev(fd_ctx_t * ctx, int fd, const struct iovec *iov, int iovcnt);
-}
 
 HOOK_SYS_FUNC_DEF(
 ssize_t , writev,(int fd, const struct iovec *iov, int iovcnt)
@@ -1072,7 +1028,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     return conet::co_poll(NULL, 0, ms);
 }
 
-HOOK_SYS_FUNC_DEF(int, dup, (int old))
+HOOK_CPP_FUNC_DEF_NOTHROW(int, dup, (int old))
 {
 
     HOOK_SYS_FUNC( dup );
@@ -1302,4 +1258,57 @@ HOOK_SYS_FUNC_DEF(hostent *, gethostbyname2, (char const *name, int af))
     }
     
     return TLS_GET(g_ares_wrap)->gethostbyname2(name, af);
+}
+
+}
+
+namespace conet
+{
+int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags)
+{
+    if( !conet::is_enable_sys_hook() )
+    {
+        return _(accept4)(fd, addr, len, flags);
+    }
+
+    int client_fd = -1;
+    fd_ctx_t *lp = get_fd_ctx( fd );
+
+    if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+    {
+        client_fd =   _(accept4)(fd, addr, len, flags);
+    } 
+    else 
+    {
+        //block call
+        struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
+        int ret = conet::co_poll( &pf,1, -1);
+        if (ret == 0) {
+            errno = ETIMEDOUT;
+            return -1;
+        }
+        if (ret <0) {
+            return -1;
+        }
+        if (pf.revents & POLLERR) {
+            return -1;
+        }
+        if (pf.revents & POLLHUP) {
+            return -1;
+        }
+        client_fd =  _(accept4)(fd, addr, len, flags);
+    }
+    if (client_fd >=0) {
+        fd_ctx_t *ctx = NULL;
+        if (flags & O_NONBLOCK) {
+            ctx = conet::alloc_fd_ctx2(client_fd, 1, true);
+        } else {
+            ctx = conet::alloc_fd_ctx(client_fd, 1);
+        }
+        if (lp) {
+            ctx->domain = lp->domain;
+        }
+    }
+    return client_fd;
+}
 }

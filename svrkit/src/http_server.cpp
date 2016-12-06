@@ -216,8 +216,34 @@ int http_server_t::conn_proc(conn_info_t *conn)
         {
             case 1: // finished;
                 {
-                    ret = http_server_main(conn, &req, base_server, this);
-                    nparsed = 0;
+                    if (req.websocket == 1 )
+                    {
+                        if (this.websocket == 0)
+                        {
+                            // server 不支持;
+                            static char unsport_txt[] = "HTTP/1.1 404\r\n"
+                                    "Connection: close\r\n"
+                                    "Content-Length: 0\r\n"
+                                    "\r\n";
+                            write(fd, unsport_txt, sizeof(unsport_txt)-1);
+                            ret = 1;
+                            break;
+                        }
+                        websocket_conn_t * ws = new websocket_conn_t();
+                        int len = 4*1024;
+                        ws->first_len = len;
+                        ws->first_buffer = buf
+                        ws->conn_info = conn;
+                        ws->server = this;
+                        ws_conn->http_first_req = &req;
+                        ret = ws->do_handshake();
+                        ret = 1;
+                    }
+                    else
+                    {
+                        ret = http_server_main(conn, &req, base_server, this);
+                        nparsed = 0;
+                    }
                     break;
                 }
                 break;
@@ -284,6 +310,7 @@ http_server_t::http_server_t()
     tcp_server = NULL;
     extend = NULL;
     enable_keepalive = 0;
+    enable_websocket = 0;
 }
 
 http_server_t::~http_server_t()

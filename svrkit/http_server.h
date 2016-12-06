@@ -80,6 +80,29 @@ struct http_cmd_t
    }
 };
 
+struct websocket_conn_t
+{
+    // close connection when set 1
+    int to_close;
+    conn_info_t * conn_info;
+    http_request_t *http_first_req;
+    http_server_t  *server;
+    list_head link_to;
+    llist_head m_send_queue;
+
+    char * first_buffer;
+    size_t first_len;
+
+    websocket_conn_t()
+    {
+        to_close = 0;
+        INIT_LIST_HEAD(&link_to);
+        init_llist_head(&m_send_queue);
+    }
+
+    int do_handshake();
+};
+
 
 struct http_server_t: public server_base_t
 {
@@ -89,11 +112,15 @@ struct http_server_t: public server_base_t
 
     std::map<std::string, http_cmd_t*> cmd_maps;
 
-    struct {
+    struct
+    {
         unsigned int enable_keepalive:1;
+        unsigned int enable_websocket:1;
     };
 
     void *extend;
+
+    list_head m_conn_list;
 
     int registry_cmd(std::string const & name,  http_callback proc, void *arg,
         void (*free_arg)(void *) = NULL);

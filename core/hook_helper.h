@@ -28,6 +28,11 @@
     name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name); \
     extern "C"  ret_type name proto __attribute__ ((visibility ("default")));  \
     ret_type name proto \
+
+#define HOOK_CPP_FUNC_DEF_NOTHROW(ret_type, name, proto) \
+    typedef ret_type (* name##_pfn_t) proto; \
+    name##_pfn_t _(name) = (name##_pfn_t) dlsym(RTLD_NEXT, #name); \
+    ret_type name proto throw() \
  
 #define HOOK_CPP_FUNC_DEF(ret_type, name, proto) \
     typedef ret_type (* name##_pfn_t) proto; \
