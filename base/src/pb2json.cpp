@@ -67,7 +67,7 @@ int pb2json(const google::protobuf::Message *msg, std::string *a_out)
             root.append(",");
         }
 		const char *name = field->name().c_str();
-		if(ref->HasField(*msg, field))
+		if(field->is_repeated() || ref->HasField(*msg, field))
 		{
 			switch (field->cpp_type())
 			{
