@@ -148,7 +148,7 @@ void free_default_stack_pool(void *p)
     delete p1;
 }
 
-#define CACHE_LINE_SIZE 64
+#define CACHE_LINE_SIZE 64LL
 int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_size)
 {
     fixed_mempool_t * pool = &self->env->default_stack_pool;
@@ -158,7 +158,7 @@ int set_callback(coroutine_t * self, CO_MAIN_FUN * fn, void * arg, int stack_siz
         self->is_page_stack = pool->is_page_alloc;
     } else {
         // stack  group from high address to  low; align depend stack_size must be multiplies align size
-        stack_size =  (stack_size+CACHE_LINE_SIZE-1)/CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        stack_size =  stack_size & -CACHE_LINE_SIZE;
         if ((stack_size >= g_page_size) && (g_page_size > 0)) {
             stack_size = (stack_size + g_page_size -1) / g_page_size * g_page_size;
             self->stack = mmap(NULL, stack_size, PROT_READ| PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); 
