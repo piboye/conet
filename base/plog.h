@@ -9,7 +9,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include "gflags/gflags.h"
+#include "list.h"
 
+DECLARE_int32(plog_type);
+DECLARE_string(plog_file);
+DECLARE_int32(plog_max_file_num);
+DECLARE_int32(plog_max_file_size);
+DECLARE_string(plog_level);
+
+namespace conet
+{
 class PLog
 {
 public:
@@ -58,6 +68,22 @@ public:
     int64_t m_prev_check_timestamp;
     int m_log_level;
 
+    // 染色相关
+    pthread_key_t m_color_key;
+
+    struct color_cb_t
+    {
+        std::string (*cb)(void *arg);
+        void *arg;
+        llist_node link_to;
+    };
+
+    llist_head m_color_all;
+
+    color_cb_t * GetColorCb();
+    void SetColor(std::string (*cb)(void *arg), void *arg);
+    void ClearColor();
+
     int Add(ReqItem *item);
 
     static PLog & Instance();
@@ -78,6 +104,7 @@ public:
     int CleanUp();
 
     int SetLogLevel(int level);
+    int SetLogLevel(std::string const &level);
 
     int check_log();
     int check_rotate_log();
@@ -85,46 +112,65 @@ public:
 };
 
 
+// C 格式输出
 #define PLOG_RAW(a_level, fmt, ...) \
 do  \
 {  \
-    if (PLog::a_level < PLog::Instance().m_log_level) break; \
-    PLog::ReqItem *item = new PLog::ReqItem(); \
-    item->level = PLog::a_level; \
-    item->file_name = __FILE__; \
-    item->func = __FUNCTION__; \
-    item->line = __LINE__; \
-    item->text.resize(1024); \
-    size_t len = 1024; \
-    len = snprintf((char *)item->text.data(), item->text.size()-1, fmt "\n", ##__VA_ARGS__); \
-    if (len > item->text.size()-1) { \
-        item->text.resize(len+1); \
-        len = snprintf((char *)item->text.data(), item->text.size()-1, \
-                fmt "\n", ##__VA_ARGS__); \
+    if (conet::PLog::a_level < conet::PLog::Instance().m_log_level) break; \
+    conet::PLog::ReqItem *__plog_item__ = new conet::PLog::ReqItem(); \
+    __plog_item__->level = conet::PLog::a_level; \
+    __plog_item__->file_name = __FILE__; \
+    __plog_item__->func = __FUNCTION__; \
+    __plog_item__->line = __LINE__; \
+    __plog_item__->text.resize(1024); \
+    size_t __plog_len = 1024; \
+    __plog_len = snprintf((char *)__plog_item__->text.data(), __plog_item__->text.size()-1, fmt "\n", ##__VA_ARGS__); \
+    if (__plog_len > __plog_item__->text.size()-1) { \
+        __plog_item__->text.resize(__plog_len+1); \
+        __plog_len = snprintf((char *)__plog_item__->text.data(), __plog_item__->text.size()-1, \
+                fmt, ##__VA_ARGS__); \
     } \
-    item->text.resize(len); \
-    if (PLog::Instance().Add(item) != 0) delete item; \
+    __plog_item__->text.resize(__plog_len); \
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+            __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
+    __plog_item__->text.push_back('\n'); \
+    if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
+// 扩展格式   (a, b, c)
+//
 #define PLOG(a_level, ...) \
 do  \
 {  \
-    if (PLog::a_level < PLog::Instance().m_log_level) break; \
-    PLog::ReqItem *item = new PLog::ReqItem(); \
-    item->level = PLog::a_level; \
-    item->file_name = __FILE__; \
-    item->func = __FUNCTION__; \
-    item->line = __LINE__; \
-    LOG_FORMAT(item->text, ##__VA_ARGS__); \
-    item->text.push_back('\n'); \
-    if (PLog::Instance().Add(item) != 0) delete item; \
+    if (conet::PLog::a_level < conet::PLog::Instance().m_log_level) break; \
+    conet::PLog::ReqItem *__plog_item__ = new conet::PLog::ReqItem(); \
+    __plog_item__->level = conet::PLog::a_level; \
+    __plog_item__->file_name = __FILE__; \
+    __plog_item__->func = __FUNCTION__; \
+    __plog_item__->line = __LINE__; \
+    LOG_FORMAT(__plog_item__->text, ##__VA_ARGS__); \
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+        __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
+    __plog_item__->text.push_back('\n'); \
+    if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
 #define PLOG_DEBUG(...) PLOG(DEBUG, ##__VA_ARGS__)
-#define PLOG_INFO(...) PLOG(INFO, ##__VA_ARGS__)
-#define PLOG_WARN(...) PLOG(WARN, ##__VA_ARGS__)
+#define PLOG_INFO(...)  PLOG(INFO, ##__VA_ARGS__)
+#define PLOG_WARN(...)  PLOG(WARN, ##__VA_ARGS__)
 #define PLOG_ERROR(...) PLOG(ERROR, ##__VA_ARGS__)
 #define PLOG_ALERT(...) PLOG(ALERT, ##__VA_ARGS__)
+
+
+}
 
 
 

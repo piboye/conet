@@ -39,9 +39,9 @@
     { \
         type2 n = i; \
         size_t org_size = out.size(); \
-        out.resize(org_size+20); \
+        out.resize(org_size+30); \
         size_t len = 0; \
-        len = snprintf((char *)out.c_str()+org_size, 20, "%" fmt, n); \
+        len = snprintf((char *)out.c_str()+org_size, 30, "%" fmt, n); \
         out.resize(len+org_size); \
         return out; \
     }
@@ -99,7 +99,7 @@ DEFINE_LOG_FORMAT_FOR_BASE(double, double, "f")
     std::string &log_format(std::string & out, std::map<std::string, T> const &data)
     {
         out.append("{");
-        typeof(data.begin()) it = data.begin();
+        __typeof__(data.begin()) it = data.begin();
         int i = 0;
         for (; it!=data.end(); ++it)
         {
@@ -113,6 +113,7 @@ DEFINE_LOG_FORMAT_FOR_BASE(double, double, "f")
         out.append("}");
         return out;
     }
+    
 
 #define LOG_FORMAT_NAME_ELEM_IMPL(r, out, I, elem)  \
     { \
@@ -132,11 +133,12 @@ DEFINE_LOG_FORMAT_FOR_BASE(double, double, "f")
             log_format(out, elem)); \
     }
 
+
+
 #define LOG_FORMAT(__log_format_out_obj__, ...) \
     do { \
         BOOST_PP_SEQ_FOR_EACH(LOG_FORMAT_ELEM_IMPL, __log_format_out_obj__, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
     } while(0)
-
 
 #define LOG_FORMAT_STRUCT_ELEM_IMPL(r, out, I, elem) \
     __log_format_out_txt__.append( \

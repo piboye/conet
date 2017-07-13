@@ -21,6 +21,6 @@ int main(int argc, char **argv)
     PLOG(INFO, "my age: ", 18);
     PLOG_RAW(INFO, "my age: %d", 18);
 
-    PLog::Instance().Stop();
+    conet::PLog::Instance().Stop();
     return 0;
 }

@@ -21,6 +21,8 @@ DEFINE_int32(log_max_file_size, 10, "max file size default 10 MB");
 DEFINE_string(log_level, "INFO", "log level: DEBUG, INFO, WRAN, ERROR");
 using namespace conet;
 
+namespace conet
+{
 static int log_level_cast(std::string  const & a_str)
 {
     char const * str  = a_str.c_str();
@@ -54,6 +56,7 @@ static char const * get_level_str(int level)
     }
 }
 
+
 PLog::PLog()
 {
     init_llist_head(&m_request_queue);
@@ -66,12 +69,20 @@ PLog::PLog()
     m_log_level = INFO;
     m_fd = 2;
 
+    init_llist_head(&m_color_all);
+    pthread_key_create(&m_color_key, NULL);
+
     m_work_notify = eventfd(0, EFD_CLOEXEC|EFD_NONBLOCK);
     if (m_work_notify<0)
     {
         abort();
         return;
     }
+
+    m_max_file_num = 10;
+    m_max_file_size = 100*1024*1024;
+    m_prev_check_timestamp = 0;
+    m_color_key = 0;
 }
 
 PLog::~PLog()
@@ -89,6 +100,17 @@ PLog::~PLog()
     {
         close(m_work_notify);
         m_work_notify = -1;
+    }
+
+    {
+        // 删除所有的 color
+        color_cb_t *it=NULL, *next=NULL;
+        llist_for_each_entry_safe(it, next, m_color_all.first, link_to)
+        {
+            delete it;
+        }
+        m_color_all.first = NULL;
+        pthread_key_delete(m_color_key);
     }
 }
 
@@ -185,7 +207,11 @@ int PLog::MainProc()
             uint64_t num = 0;
             if (ret > 0)
             {
-                read(m_work_notify, &num, sizeof(num));
+                ret = read(m_work_notify, &num, sizeof(num));
+                if (ret < 0)
+                {
+                    continue;
+                }
             }
         }
         if (cnt % 10 == 0)
@@ -225,9 +251,9 @@ void * PLog::MainProcHelp(void * arg)
 static
 bool is_too_big(std::string const & filename, ssize_t max_size)
 {
-    struct stat st;
+    struct stat st={0};
     int ret = stat(filename.c_str(), &st);
-    if (ret)
+    if (ret != 0)
     {
         return true;
     }
@@ -272,6 +298,7 @@ int shift_file(std::string const &basename, int num)
     int ret = 0;
     if (remove(log_file) < 0 ) {
         ret =  -__LINE__;
+        return ret;
     }
     char log_file_old[1024];
     char *src=log_file_old;
@@ -280,13 +307,13 @@ int shift_file(std::string const &basename, int num)
     for (int i = num - 2; i >= 1; i--) {
         snprintf(src, sizeof(log_file) -1, "%s.%d", basename.c_str(), i);
         if (rename(src,dst) < 0 ) {
-            ret = -__LINE__-i*1000000;
+            return -__LINE__;
         }
         tmp = dst;
         dst = src;
         src = tmp;
     }
-    rename(basename.c_str(), dst);
+    ret = rename(basename.c_str(), dst);
     return ret;
 }
 
@@ -308,23 +335,37 @@ int PLog::check_rotate_log()
         manage_rotate_log();
         close(m_fd);
         m_fd = reopen(m_file_name_prefix);
+        if (m_fd < 0)
+        {
+            return -1;
+        }
     }
     return 0;
 }
 
 int PLog::manage_rotate_log()
 {
+    int ret = 0;
     int fd = open(m_lock_file.c_str(), O_CREAT|O_WRONLY, 0666);
     if (fd<0)
     {
-        shift_file(m_file_name_prefix, m_max_file_num);
-        return 0;
+        return -1;
     }
 
     if (lock_reg(fd, F_SETLK, F_WRLCK, 0, SEEK_SET, 0) >= 0)
     {
-        shift_file(m_file_name_prefix, m_max_file_num);
-        lock_reg(fd, F_SETLK, F_UNLCK, 0, SEEK_SET, 0);
+        ret = shift_file(m_file_name_prefix, m_max_file_num);
+        if (ret < 0)
+        {
+            close(fd);
+            return -1;
+        }
+        ret = lock_reg(fd, F_SETLK, F_UNLCK, 0, SEEK_SET, 0);
+        if (ret < 0)
+        {
+            close(fd);
+            return -1;
+        }
     }
     close(fd);
     return 0;
@@ -340,7 +381,16 @@ int PLog::InitRotateLog(std::string const & file_name_prefix,
     m_lock_file = m_file_name_prefix + ".lock";
 
     m_fd = reopen(m_file_name_prefix);
-    check_rotate_log();
+    if (m_fd < 0)
+    {
+        return -1;
+    }
+    int ret = 0;
+    ret = check_rotate_log();
+    if (ret != 0)
+    {
+        return -1;
+    }
     return 0;
 }
 
@@ -350,22 +400,37 @@ int PLog::SetLogLevel(int level)
     return 0;
 }
 
-
-DELAY_INIT()
+int PLog::SetLogLevel(std::string const &level)
 {
-    int ret = 0;
-    if (FLAGS_log_type == 1)
-    {
-        ret = g_plog.InitRotateLog(FLAGS_log_file, FLAGS_log_max_file_num,
-                FLAGS_log_max_file_size* 1024*1024);
-        if (ret != 0)
-        {
-            return -1;
-        }
-        g_plog.SetLogLevel(log_level_cast(FLAGS_log_level));
-        g_plog.Start();
-    }
-    return 0;
+    return SetLogLevel(log_level_cast(level));
 }
 
+PLog::color_cb_t * PLog::GetColorCb()
+{
+    color_cb_t *ptr =NULL;
+    if ((ptr = (color_cb_t *) pthread_getspecific(m_color_key)) == NULL)
+    {
+        ptr = new color_cb_t();
+        ptr->cb = NULL;
+        ptr->arg = NULL;
+        llist_add(&ptr->link_to, &m_color_all);
+        pthread_setspecific(m_color_key, ptr);
+    }
+    return ptr;
+}
 
+void PLog::SetColor(std::string (*cb)(void *arg), void *arg)
+{
+    color_cb_t *color = GetColorCb();
+    color->cb = cb;
+    color->arg = arg;
+}
+
+void PLog::ClearColor()
+{
+    color_cb_t *color = GetColorCb();
+    color->cb = NULL;
+    color->arg = NULL;
+}
+
+}
