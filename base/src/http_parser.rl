@@ -49,6 +49,14 @@
     init_ref_str(&(parser->content_type), PTR_TO(mark),  fpc);
   }
 
+  action status_code {
+    parser->status_code = atoi(PTR_TO(mark));
+  }
+
+  action reason_phrase {
+    init_ref_str(&(parser->reason_phrase), PTR_TO(mark),  fpc);
+  }
+
 ### websocket 
   action upgrade {
     init_ref_str(&(parser->upgrade), PTR_TO(mark),  fpc);
@@ -104,7 +112,14 @@
   action query_string { 
     init_ref_str(&parser->query_string, PTR_TO(query_start), fpc);
   }
-  
+
+  action http_request_type {
+    parser->http_type = 1;
+  }
+
+  action http_response_type {
+    parser->http_type = 2;
+  }
   
   action done {
     parser->body = fpc+1;
@@ -131,17 +146,21 @@
 
 # elements
   token = (ascii -- (CTL | tspecials));
+  uri_host = (alpha|digit|".")+;
+  uri_port = (":" (digit)+);
 
 # URI schemes and absolute paths
   scheme = ( alpha | digit | "+" | "-" | "." )* ;
-  absolute_uri = (scheme ":" (uchar | reserved )*);
 
   path = ( pchar+ ( "/" pchar* )* ) ;
   query = ( uchar | reserved )* %query_string ;
   param = ( pchar | "/" )* ;
   params = ( param ( ";" param )* ) ;
   rel_path = ( path? %request_path (";" params)? ) ("?" %start_query query)?;
-  absolute_path = ( "/"+ rel_path );
+
+  absolute_path = ( "/"+ rel_path ) >mark;
+
+  absolute_uri = (scheme "://" (uri_host uri_port? absolute_path? )*);
 
   Request_URI = ( "*" | absolute_uri | absolute_path ) >mark %request_uri;
   Fragment = ( uchar | reserved )* >mark %fragment;
@@ -151,12 +170,12 @@
   http_1_1 = "1.1";
   HTTP_Version = ( "HTTP/" (http_1_0 %http_version_1_0 | http_1_1 %http_version_1_1));
 
-  Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " HTTP_Version CRLF ) ;
+  Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " HTTP_Version CRLF ) %http_request_type;
 
   field_name = ( token -- ":" )+ >start_field %write_field;
 
   field_value = any* >start_value %write_value;
-  
+
   known_header = ( ("Accept:"i         " "* (any* >mark %http_accept))
                  | ("Connection:"i     " "* (any* >mark %http_connection))
                  | ("Content-Length:"i " "* (digit+ >mark %http_content_length))
@@ -168,10 +187,15 @@
                  ) :> CRLF;
 
   unknown_header = (field_name ":" " "* field_value :> CRLF) -- known_header;
-  
-  Request = Request_Line (known_header | unknown_header)* ( CRLF @done );
 
-main := Request;
+  Status_Code = (digit)+ >mark %status_code;
+  Reason_Phrase = (alpha | digit )* >mark %reason_phrase;
+  Status_Line = ( HTTP_Version " " Status_Code Reason_Phrase CRLF %http_response_type) ;
+
+  Request = Request_Line (known_header | unknown_header)* ( CRLF @done );
+  Response = Status_Line (known_header | unknown_header)* ( CRLF @done );
+
+main := (Request|Response);
 
 }%%
 

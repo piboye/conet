@@ -143,6 +143,7 @@ int PLog::ProcLog(llist_node *queue)
                 "[", get_level_str(item->level), "]: ",
                 item->text);
         write(m_fd, out_txt.c_str(), out_txt.size());
+        __sync_fetch_and_add(&m_queue_len, -1);
         delete item;
     }
     return 0;
@@ -168,10 +169,10 @@ int PLog::MainProc()
     uint64_t cnt = 0;
     while (!m_stop_flags)
     {
-        ++cnt;
-        llist_node *queue = llist_del_all(&m_request_queue);
-        if (queue)
+        if (!llist_empty(&m_request_queue))
         {
+            ++cnt;
+            llist_node *queue = llist_del_all(&m_request_queue);
             ProcLog(queue);
         }
         else

@@ -110,7 +110,7 @@ int server_worker_t::proc_server_exit()
             int wait_ms = exit_seconds *1000;
             DO_PARALLEL((server, wait_ms), {
                 int ret = 0;
-                ret = server->stop(wait_ms);
+                ret = server->stop();
                 if (ret)
                 {
                     LOG(ERROR)<<"stop rpc server failed! ";

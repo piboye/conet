@@ -227,7 +227,7 @@ int rpc_pb_server_t::start()
     return ret;
 }
 
-int rpc_pb_server_t::do_stop(int wait_ms)
+int rpc_pb_server_t::do_stop()
 {
     int ret = 0;
 
@@ -241,9 +241,9 @@ int rpc_pb_server_t::do_stop(int wait_ms)
     BEGIN_PARALLEL {
         for (auto server : m_raw_servers)
         {
-            DO_PARALLEL((server, wait_ms), {
+            DO_PARALLEL((server), {
                 int ret = 0;
-                ret = server->stop(wait_ms);
+                ret = server->stop();
                 if (ret)
                 {
                     LOG(ERROR)<<"stop server failed! ";

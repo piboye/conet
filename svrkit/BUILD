@@ -77,6 +77,7 @@ cc_library(
     ],
     deps=[
         ':tcp_server',
+        '#crypto',
     ],
 );
 

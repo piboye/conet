@@ -49,6 +49,8 @@ struct udp_server_t: public server_base_t
 
     void *extend;
 
+    int exit_wait_ms;
+
     struct udp_req_ctx_t
     {
         conn_info_t conn_info;
@@ -120,12 +122,10 @@ struct udp_server_t: public server_base_t
     virtual
     int start();
 
-    virtual int do_stop(int wait_ms);
+    virtual int clean_up();
 
-    ~udp_server_t()
-    {
-        buffer_pool.fini();
-    }
+    udp_server_t();
+    ~udp_server_t();
 };
 
 }

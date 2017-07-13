@@ -163,9 +163,8 @@ int pthread_mgr_t::pcond_event_cb(void *arg, uint64_t num)
     if (num > 0) {
         int cnt =0;
 
-        llist_node * queue = llist_del_all(&self->pcond_schedule_queue);
-
-        if ( queue ) {
+        if (!llist_empty(&self->pcond_schedule_queue)) {
+            llist_node * queue = llist_del_all(&self->pcond_schedule_queue);
             // 之前是先进后出, 倒序后, 就是先进先出了
             queue = llist_reverse_order(queue);
 

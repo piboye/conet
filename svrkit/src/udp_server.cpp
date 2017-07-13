@@ -33,6 +33,25 @@
 
 namespace conet
 {
+udp_server_t::udp_server_t()
+{
+    this->main_co = NULL;
+    this->extend = NULL;
+    this->conn_proc_cb = NULL;
+    this->cb_arg = NULL;
+    this->exit_wait_ms = 10*1000;
+    this->port = 0;
+}
+
+udp_server_t::~udp_server_t()
+{
+    if (this->main_co)
+    {
+        free_coroutine(this->main_co);
+        this->main_co = NULL;
+    }
+    buffer_pool.fini();
+}
 
 static
 int conn_proc_co(udp_server_t::udp_req_ctx_t *req)
@@ -295,7 +314,7 @@ int udp_server_t::main_proc2()
     return 0;
 }
 
-int udp_server_t::do_stop(int wait_ms)
+int udp_server_t::clean_up()
 {
     udp_server_t *server = this;
 
@@ -308,8 +327,8 @@ int udp_server_t::do_stop(int wait_ms)
     conet::free_coroutine(server->main_co);
     server->main_co = NULL;
 
-    if (wait_ms >0) {
-        for (int i=0; i< wait_ms; i+=1000) {
+    if (this->exit_wait_ms >0) {
+        for (int i=0; i< this->exit_wait_ms; i+=1000) {
             if (server->data.cur_conn_num <= 0) break;
             LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
             sleep(1);

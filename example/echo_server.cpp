@@ -82,7 +82,7 @@ struct Task
         static int proc_server_exit(void *arg)
         {
             Task *self = (Task *)(arg);
-            self->server.stop(FLAGS_server_stop_wait_seconds*1000);
+            self->server.stop();
             self->exit_finsished = 1;
             return 0;
         }

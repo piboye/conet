@@ -39,12 +39,14 @@ struct tcp_server_t: public server_base_t
     int port;
     int listen_fd;
 
+    int exit_wait_ms;
+
     //主逻辑
     coroutine_t *main_co;
 
     void *extend;
 
-    typedef int (*conn_proc_cb_t)(void *arg, conn_info_t *conn);
+    typedef int (*conn_proc_cb_t)(void *cb_arg, conn_info_t *conn);
 
     conn_proc_cb_t conn_proc_cb;
     void *cb_arg;
@@ -53,18 +55,28 @@ struct tcp_server_t: public server_base_t
 
     ObjPool<conn_info_t> conn_info_pool;
 
-
-    struct conf_t 
+    struct conf_t
     {
         int listen_backlog;
         int max_packet_size;
         uint32_t max_conn_num;
         int duplex;
+        conf_t()
+        {
+            listen_backlog = 1024;
+            max_packet_size = 4*1024;
+            max_conn_num = 1000;
+            duplex = 0;
+        }
     } conf;
 
     struct data_t
     {
         uint32_t cur_conn_num;
+        data_t()
+        {
+            cur_conn_num=0;
+        }
     } data;
 
 
@@ -77,23 +89,21 @@ struct tcp_server_t: public server_base_t
         cb_arg = arg;
     }
 
+    int main_proc_with_fd_queue();
+
+    int main_proc_help();
+
+    int conn_proc_help();
 
     int main_proc();
 
-    int main_proc2();
-    int main_proc_with_fd_queue();
-    
-
     int init(const char *ip, int port, int listen_fd=-1);
 
-    virtual
-    int start();
+    virtual int start();
+    virtual int clean_up();
 
-    virtual int do_stop(int wait_ms);
-
-    ~tcp_server_t()
-    {
-    }
+    tcp_server_t();
+    ~tcp_server_t();
 };
 
 }

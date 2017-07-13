@@ -26,6 +26,7 @@ namespace conet
     struct server_base_t
     {
         enum {
+            SERVER_NOSTART=-1,
             SERVER_START=0,
             SERVER_RUNNING=1,
             SERVER_STOPING=2,
@@ -39,13 +40,13 @@ namespace conet
 
         server_base_t()
         {
-            state = SERVER_START; 
+            state = SERVER_NOSTART;
             to_stop = 0;
         }
 
         virtual int start()=0;
 
-        int stop(int wait_ms=0)
+        virtual int stop()
         {
             this->to_stop = 1;
             if (this->state == SERVER_STOPED ||
@@ -53,12 +54,19 @@ namespace conet
                 return 0;
             }
             this->state = SERVER_STOPING;
-            return this->do_stop(wait_ms);
+            this->do_stop();
+            return 0;
         }
 
-        virtual int do_stop(int wait_ms) = 0;
+        virtual int do_stop(){ return 0;};
 
-        virtual ~server_base_t() 
+        virtual
+        bool has_stoped()
+        {
+            return state == SERVER_STOPED;
+        }
+
+        virtual ~server_base_t()
         {
 
         }
@@ -92,12 +100,12 @@ namespace conet
             return m_main_server->start();
         }
 
-        virtual int stop(int wait_ms)
+        virtual int stop()
         {
-            return m_main_server->stop(wait_ms);
+            return m_main_server->stop();
         }
 
-        virtual ~server_combine_t() 
+        virtual ~server_combine_t()
         {
             for(size_t i =0; i<m_servers.size(); ++i)
             {
@@ -107,6 +115,5 @@ namespace conet
         }
     };
 }
-
 
 #endif /* end of include guard */

@@ -32,12 +32,32 @@
 
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
-DEFINE_int32(max_packet_size, 1*4096, "default max packet size");
+DEFINE_int32(max_packet_size, 100*1024, "default max packet size");
 DEFINE_bool(enable_defer_accept, false, "enable TCP_DEFER_ACCEPT");
 DEFINE_int32(accept_num, 100, "call accept num in one loop");
 
 namespace conet
 {
+
+tcp_server_t::tcp_server_t()
+{
+    this->listen_fd = -1;
+    this->main_co = NULL;
+    this->extend = NULL;
+    this->conn_proc_cb = NULL;
+    this->cb_arg = NULL;
+    this->exit_wait_ms = 10*1000;
+    this->port = 0;
+}
+
+tcp_server_t::~tcp_server_t()
+{
+    if (this->main_co)
+    {
+        free_coroutine(this->main_co);
+        this->main_co = NULL;
+    }
+}
 
 static
 int conn_proc_co(void *)
@@ -118,7 +138,7 @@ void free_server_work_co(void *arg, void * val)
     resume(co, NULL);
 }
 
-int tcp_server_t::init(const char *ip, int port, int listen_fd)
+int tcp_server_t::init(char const *ip, int port, int listen_fd)
 {
     tcp_server_t *server = this;
     server->ip = ip;
@@ -148,7 +168,7 @@ int tcp_server_t::start()
     }
 
     this->main_co = alloc_coroutine(
-            conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc), 
+            conet::ptr_cast<co_main_func_t>(&tcp_server_t::main_proc_help), 
             this);
     //conet::set_auto_delete(this->main_co);
     conet::resume(this->main_co);
@@ -156,7 +176,7 @@ int tcp_server_t::start()
 }
 
 
-int tcp_server_t::main_proc()
+int tcp_server_t::main_proc_help()
 {
     conet::enable_sys_hook();
     conet::enable_pthread_hook();
@@ -164,7 +184,7 @@ int tcp_server_t::main_proc()
     this->state = tcp_server_t::SERVER_RUNNING;
 
     if (this->accept_fd_queue == NULL) {  
-        return this->main_proc2();
+        return this->main_proc();
     } else {
         return this->main_proc_with_fd_queue();
     }
@@ -240,7 +260,7 @@ int tcp_server_t::main_proc_with_fd_queue()
     return 0;
 }
 
-int tcp_server_t::main_proc2()
+int tcp_server_t::main_proc()
 {
     
     // 不使用 fd pool 
@@ -263,28 +283,45 @@ int tcp_server_t::main_proc2()
     } 
 
     //设置为 非阻塞, accept 的时候就不会塞住 
-    set_none_block(listen_fd, true);
-
-    listen(listen_fd, this->conf.listen_backlog); 
-
-    if (FLAGS_enable_defer_accept) { 
-        int waits = 1; // 1 seconds;
-        // 延迟 accept, 就是等客户端发了数据再accept 上套接字, 免去读等待
-        setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+    int ret = 0;
+    ret = set_none_block(listen_fd);
+    if (ret != 0)
+    {
+        LOG(ERROR)<<"set non block listen socket failed, "
+            "["<<this->ip<<":"<<this->port<<"]"
+            "[fd="<<listen_fd<<"]"
+            "[errno:"<<errno<<"]"
+            "[errmsg:"<<strerror(errno)<<"]";
+        return -1;
     }
 
-    int ret = 0;
+    listen(listen_fd, this->conf.listen_backlog);
+
+    if (FLAGS_enable_defer_accept) {
+        int waits = 1; // 1 seconds;
+        // 延迟 accept, 就是等客户端发了数据再accept 上套接字, 免去读等待
+        ret = setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
+        if (ret != 0)
+        {
+            LOG(ERROR)<<"set tcp_defer_accept socket option failed,"
+                "["<<this->ip<<":"<<this->port<<"]"
+                "[fd="<<listen_fd<<"]"
+                "[errno:"<<errno<<"]"
+                "[errmsg:"<<strerror(errno)<<"]";
+        }
+    }
+
 
     std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
 
     int accept_num = FLAGS_accept_num;
-    while (0==this->to_stop) 
+    while (0==this->to_stop)
     {
-        while (this->data.cur_conn_num >= this->conf.max_conn_num) 
+        while (this->data.cur_conn_num >= this->conf.max_conn_num)
         {
-            usleep(10000); // block 10ms
-            if (this->to_stop) 
+            usleep(10*1000); // block 10ms
+            if (this->to_stop)
             {
                 break;
             }
@@ -292,13 +329,18 @@ int tcp_server_t::main_proc2()
         struct pollfd pf = { 0 };
         pf.fd = listen_fd;
         pf.events = (POLLIN|POLLERR|POLLHUP);
-        ret = co_poll(&pf, 1, 1000);
-        if (ret == 0) continue;
+        ret = poll(&pf, 1, 1000);
+        if (ret == 0)
+        {
+            continue;
+        }
         if (ret <0) {
-            if (errno == EINTR) {
+            if (errno == EINTR)
+            {
                 continue;
             }
-            break;
+            LOG(ERROR)<<"poll listen fd failed, [ret="<<ret<<"] [errno="<<errno<<"]";
+            continue;
         }
 
         socklen_t len = sizeof(conn_info->addr);
@@ -323,6 +365,7 @@ int tcp_server_t::main_proc2()
             //memcpy(&conn_info->addr, &addr,len);
 
             conn_info->fd = fd;
+            conn_info->extend = this->cb_arg;
 
             proc_pool(this, conn_info);
             conn_info = NULL;
@@ -331,38 +374,37 @@ int tcp_server_t::main_proc2()
         }
     }
 
+    LOG(INFO)<<"tcp server stoping, ready to clean up";
+
     if (conn_info) {
         this->conn_info_pool.release(conn_info);
         conn_info = NULL;
     }
 
     close(listen_fd);
+    clean_up();
     this->state = SERVER_STOPED;
     return 0;
 }
 
-int tcp_server_t::do_stop(int wait_ms)
+int tcp_server_t::clean_up()
 {
     tcp_server_t *server = this;
-    if (NULL == server->main_co) {
+    if (NULL == server->main_co)
+    {
         LOG(ERROR)<<"tcp server stop by multi time";
         return 0;
     }
 
-    conet::wait(server->main_co);
-    free_coroutine(server->main_co);
-    server->main_co = NULL;
-    if (wait_ms >0) {
-        for (int i=0; i< wait_ms; i+=1000) {
+    if (this->exit_wait_ms >0) {
+        for (int i=0; i< this->exit_wait_ms; ++i)
+        {
             if (server->data.cur_conn_num <= 0) break;
-            LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
-            sleep(1);
-        }
-    } else {
-        while(1) {
-            if (server->data.cur_conn_num <= 0) break;
-            LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
-            sleep(1);
+            if (i%1000==0)
+            {
+                LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
+            }
+            usleep(1000);
         }
     }
 

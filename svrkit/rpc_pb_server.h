@@ -68,7 +68,7 @@ struct rpc_pb_server_t: public server_base_t
 
     int start();
 
-    virtual int do_stop(int wait_ms);
+    virtual int do_stop();
 
     virtual ~rpc_pb_server_t();
 
