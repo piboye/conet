@@ -144,6 +144,9 @@ int main(int argc, char * argv[])
         }
     }
 
+    conet::init_conet_global_env();
+    conet::init_conet_env();
+
     if (FLAGS_thread_num <= 1) {
         Task task;
         task.ip_list = ip_list;
@@ -190,6 +193,9 @@ int main(int argc, char * argv[])
 
         delete[] tasks;
     }
+
+    conet::free_conet_env();
+    conet::free_conet_global_env();
 
     return 0;
 }
