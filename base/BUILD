@@ -37,6 +37,7 @@ cc_library(
         'src/fd_queue.cpp',
         'src/plog.cpp',
         'src/base64.cpp',
+        'src/module.cpp',
     ],
 
     incs= [ 
@@ -84,6 +85,20 @@ cc_test(
          ],
 );
 
+cc_binary(
+    name='module_test',
+    srcs=[
+        "test/module_a.cpp",
+        "test/module_b.cpp",
+        "test/module_test.cpp",
+    ],
+    incs=[
+        "../",
+    ],
+    deps = [
+        ":base",
+    ]
+);
 
 
 cc_binary(

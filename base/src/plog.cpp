@@ -88,7 +88,10 @@ PLog::PLog()
 PLog::~PLog()
 {
     m_stop_flags = 1;
-    pthread_join(m_main_thread, NULL);
+    if (m_main_thread)
+    {
+        pthread_join(m_main_thread, NULL);
+    }
     CleanUp();
     if (m_fd > 2)
     {
