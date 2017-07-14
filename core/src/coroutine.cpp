@@ -34,7 +34,7 @@ void co_return(coroutine_t *co)
 {
     coroutine_env_t *env = co->env;
     if (list_empty(&env->run_queue)) {
-        LOG(FATAL)<<"co thread env run queue empty";
+        PLOG_FATAL("co thread env run queue empty");
         return ;
     }
 
@@ -294,7 +294,7 @@ void * yield(list_head *wait_to, void * val)
     coroutine_t *cur = env->curr_co;
 
     if (list_empty(&env->run_queue)) {
-       LOG(ERROR)<<"cur run queue is empty!"; 
+       PLOG_FATAL("cur run queue is empty!");
        abort();
     }
 

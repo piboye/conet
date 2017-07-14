@@ -155,7 +155,7 @@ void init_poll_wait_item(poll_wait_item_t *self, poll_ctx_t *ctx, int pos)
 {
     if (self->poll_ctx != NULL)
     {
-        LOG(FATAL)<<"this fd, has been polled by other";
+        LOG_FATAL("this fd, has been polled by other");
         exit(1);
     }
     self->poll_ctx = ctx;
@@ -194,14 +194,14 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
         ev.data.ptr = wait_item;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wait_item->fd,  &ev);
         if (ret) {
-            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]";
+            PLOG_ERROR(" epoll_ctl_del failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         }
         return;
     }
 
     int nfds = (int) poll_ctx->nfds;
     if ( (pos < 0) || ( nfds <= pos) ) {
-        LOG(ERROR)<<"error fd ctx [pos:"<<pos<<"]";
+        PLOG_ERROR("error fd ctx [pos:", pos, "]");
         return;
     }
 
@@ -280,13 +280,13 @@ void  init_poll_ctx(poll_ctx_t *self,
                 ev.data.ptr = wait_item;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
                 if (ret) {
-                    LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_add [fd:"<<fd<<"]";
+                    PLOG_ERROR("epoll_ctl_add failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
                 }
             } else {
-                LOG(ERROR)<<"get wait item failed, [fd:"<<fd<<"]";
+                PLOG_ERROR("get wait item failed, [fd=", fd, "]");
             }
         } else {
-            LOG(ERROR)<<"error fd, [fd:"<<fd<<"]";
+            PLOG_ERROR("error fd, [fd=", fd, "]");
         }
     }
 

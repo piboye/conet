@@ -32,7 +32,7 @@ namespace conet
         int ret = 0;
         ret = time_mgr_t::instance().start();
         if (ret) {
-            LOG(FATAL)<<"init time mgr failed! [ret:"<<ret<<"]";
+            PLOG_FATAL("init time mgr failed! [ret=", ret, "]");
             return -1;
         }
         g_coroutine_envs = new coroutine_env_t*[102400];
@@ -44,7 +44,7 @@ namespace conet
         int ret = 0;
         ret = time_mgr_t::instance().stop();
         if (ret) {
-            LOG(FATAL)<<"free time mgr failed! [ret:"<<ret<<"]";
+            PLOG_FATAL("free time mgr failed! [ret=", ret, "]");
             return -1;
         }
         delete g_coroutine_envs;
@@ -64,7 +64,7 @@ namespace conet
     int init_conet_env()
     {
         if (g_coroutine_env) {
-            LOG(FATAL)<<"duplicate init coroutine env";
+            PLOG_FATAL("duplicate init coroutine env");
             return -1;
         }
         uint64_t tid = get_local_tid();
@@ -78,7 +78,7 @@ namespace conet
     int free_conet_env()
     {
         if (NULL == g_coroutine_env) {
-            LOG(FATAL)<<"coroutine env don't init , free is bug!";
+            PLOG_FATAL("coroutine env don't init , free is bug!");
             return -1;
         }
 

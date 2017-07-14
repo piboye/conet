@@ -143,10 +143,10 @@ int create_timer_fd()
     int timerfd = -1;
     timerfd = timerfd_create(CLOCK_MONOTONIC,  TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
-        LOG(ERROR)<<"timerfd_create failed, "
-            "[ret:"<<timerfd<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]"
+        PLOG_ERROR("timerfd_create failed, "
+            "[ret:", timerfd, "]"
+            "[errno:", errno, "]"
+            "[errmsg:", strerror(errno), "]")
             ;
         return -1;
     }
@@ -160,11 +160,11 @@ int create_timer_fd()
 
     ret = timerfd_settime(timerfd, 0, &ts, NULL);
     if (ret < 0) {
-        LOG(ERROR)<<"timerfd_settime failed, "
-            "[ret:"<<ret<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]"
-            ;
+        PLOG_ERROR("timerfd_settime failed, "
+            "[ret:", ret, "]"
+            "[errno:", errno, "]"
+            "[errmsg:", strerror(errno), "]"
+            );
         return -3;
     }
 
@@ -196,13 +196,13 @@ int timewheel_task(void *arg)
             break;
        }
        if (ret != sizeof(cnt)) {
-          LOG(ERROR)<<" timewheel timerfd read failed, "
-               "[ret:"<<ret<<"]"
-               "[timerfd:"<<timerfd<<"]"
-               "[poll event:"<<pf.revents<<"]"
-               "[errno:"<<errno<<"]"
-               "[errmsg:"<<strerror(errno)<<"]"
-               ;
+          PLOG_ERROR(" timewheel timerfd read failed, "
+               "[ret=", ret, "]"
+               "[timerfd=", timerfd, "]"
+               "[poll event=", pf.revents, "]"
+               "[errno=", errno, "]"
+               "[errmsg=", strerror(errno), "]"
+               );
            continue;
        }
 
@@ -222,8 +222,7 @@ static int timewheel_task2(void *arg)
     timewheel_t *tw = (timewheel_t *)arg;
     int evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (evfd < 0) {
-        LOG(FATAL)<<"create eventfd failed! [ret:"<<evfd<<"]"
-            ;
+        LOG_FATAL("create eventfd failed! [ret=", evfd, "]");
         return -1;
     }
 
@@ -244,13 +243,13 @@ static int timewheel_task2(void *arg)
        ret = syscall(SYS_read, evfd, &cnt, sizeof(cnt)); 
        if (tw->stop_flag) break;
        if (ret != sizeof(cnt)) {
-          LOG(ERROR)<<" timewheel eventfd read failed, "
-               "[ret:"<<ret<<"]"
-               "[timerfd:"<<evfd<<"]"
-               "[poll event:"<<pf.revents<<"]"
-               "[errno:"<<errno<<"]"
-               "[errmsg:"<<strerror(errno)<<"]"
-               ;
+          PLOG_ERROR(" timewheel eventfd read failed, "
+               "[ret=", ret, "]"
+               "[timerfd=", evfd, "]"
+               "[poll event=", pf.revents, "]"
+               "[errno=", errno, "]"
+               "[errmsg=", strerror(errno), "]"
+               );
            continue;
        }
 

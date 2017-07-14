@@ -16,7 +16,7 @@
  * =====================================================================================
  */
 #include <stdlib.h>
-#include "glog/logging.h"
+#include "base/plog.h"
 #include "base/defer.h"
 #include <sys/timerfd.h>
 #include <sys/syscall.h>
@@ -85,11 +85,11 @@ int create_timer_fd()
     int timerfd = -1;
     timerfd = timerfd_create(CLOCK_MONOTONIC,  TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
-        LOG(ERROR)<<"timerfd_create failed, "
-            "[ret:"<<timerfd<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]"
-            ;
+        PLOG_ERROR("timerfd_create failed, "
+            "[ret=", timerfd, "]"
+            "[errno=", errno, "]"
+            "[errmsg=", strerror(errno), "]"
+            );
         return -1;
     }
     int ret = 0; 
@@ -102,11 +102,11 @@ int create_timer_fd()
 
     ret = timerfd_settime(timerfd, 0, &ts, NULL);
     if (ret < 0) {
-        LOG(ERROR)<<"timerfd_settime failed, "
-            "[ret:"<<ret<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]"
-            ;
+        PLOG_ERROR("timerfd_settime failed, "
+            "[ret=", ret, "]"
+            "[errno=", errno, "]"
+            "[errmsg=", strerror(errno), "]"
+            );
         return -3;
     }
 
@@ -119,7 +119,7 @@ void * time_mgr_t::main_proc()
     int timerfd= -1;
     timerfd = create_timer_fd();
     if (timerfd < 0) {
-        LOG(FATAL)<<"create timer fd failed!";
+        PLOG_FATAL("create timer fd failed!");
         return NULL;
     }
 
@@ -143,14 +143,15 @@ void * time_mgr_t::main_proc()
 
         struct pollfd pf = { fd: timerfd, events: POLLIN | POLLERR | POLLHUP };
         ret = poll(&pf, 1, -1);
-        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt)); 
+        ret = syscall(SYS_read, timerfd, &cnt, sizeof(cnt));
         if (ret != sizeof(cnt))
         {
-            LOG(ERROR)<<"read timerfd failed."
-                "[ret:"<<ret<<"]"
-                "[timerfd:"<<timerfd<<"]"
-                "[errno:"<<errno<<"]"
-                "[errmsg:"<<strerror(errno)<<"]"
+            PLOG_ERROR("read timerfd failed."
+                "[ret:", ret, "]"
+                "[timerfd:", timerfd, "]"
+                "[errno:", errno, "]"
+                "[errmsg:", strerror(errno), "]"
+                )
                 ;
             continue;
         }
@@ -204,11 +205,10 @@ void time_mgr_t::check_timeout()
             ret = write(t->event_fd, &val, sizeof(val));
             if (ret != 8)
             {
-                LOG(ERROR)<<" write event [fd:"<<t->event_fd<<"] failed!"
-                    "[ret:"<<ret<<"]"
-                    "[errno:"<<errno<<"]"
-                    "[errmsg:"<<strerror(errno)<<"]"
-                    ;
+                PLOG_ERROR(" write event [fd:", t->event_fd, "] failed!"
+                    "[ret:", ret, "]"
+                    "[errno:", errno, "]"
+                    "[errmsg:", strerror(errno), "]");
                 list_move(&t->link_to, &timeout_notify_dequeue);
                 continue;
             }
@@ -234,7 +234,7 @@ int time_mgr_t::start()
 
     SCOPE_LOCK(this_mutex);
     if (tid) {
-        LOG(ERROR)<<"gettimeofday thread has started!";
+        PLOG_ERROR("gettimeofday thread has started!");
         return -1;
     }
     tid = new pthread_t();
@@ -248,7 +248,7 @@ int time_mgr_t::stop()
 {
     SCOPE_LOCK(this_mutex);
     if (NULL == tid) {
-        LOG(ERROR)<<"gettimeofday thread not started!";
+        PLOG_ERROR("gettimeofday thread not started!");
         return -1;
     }
 

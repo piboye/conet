@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include "conet_all.h"
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 
 #include <netdb.h>
 
@@ -39,10 +39,10 @@ int t(void *arg)
     {
         hostent * host = gethostbyname(FLAGS_name.c_str());
         if (host) {
-            LOG(INFO)<<host->h_name;
+            PLOG_INFO(host->h_name);
         }
         else {
-            LOG(ERROR)<<"parse "<<FLAGS_name<<" failed!";
+            PLOG_ERROR("parse ", FLAGS_name, " failed!");
         }
     }
     ++g_finish_cnt;
@@ -54,7 +54,6 @@ int t(void *arg)
 int main(int argc, char * argv[])
 {
   gflags::ParseCommandLineFlags(&argc, &argv, false); 
-  google::InitGoogleLogging(argv[0]);
 
   for (int i= 0; i< (int) FLAGS_task_num; ++i)
   {

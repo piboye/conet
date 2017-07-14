@@ -129,7 +129,7 @@ CONET_DEF_TLS_VAR_HELP_DEF(g_wait_item_mgr);
 poll_wait_item_t * get_wait_item(int fd) 
 {
     if (fd < 0) {
-        LOG(FATAL)<<"error [fd:"<<fd<<"]";
+        PLOG_FATAL("error [fd=", fd, "]");
         abort();
         return NULL;
     }
@@ -189,7 +189,7 @@ void close_fd_notify_poll(int fd)
         //epoll_ctl 参数顺序出现过错误， 一定要注意
         int ret = epoll_ctl(ep_ctx->m_epoll_fd, EPOLL_CTL_DEL, fd, &ev);
         if (ret) {
-            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"] [events:"<<events<<"]";
+            PLOG_ERROR("epoll_ctl del failed, ", (ret, fd, events, errno), " [errmsg=", strerror(errno),"]");
         }
     }
 }
@@ -206,7 +206,7 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
         wait_item->wait_events= ev.events;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
         if (ret) {
-            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
+            PLOG_ERROR(" epoll_ctl mod failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         }
 
     } else {
@@ -214,7 +214,7 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
         ev.events = events;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
         if (ret) {
-            LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_del [fd:"<<fd<<"]"<<"[events:"<<events;
+            PLOG_ERROR(" epoll_ctl del failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         }
     }
     return;
@@ -269,7 +269,7 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
     int pos = wait_item->pos;
     if (unlikely((pos < 0) || ( nfds <= pos))) {
         clear_invalid_event(wait_item, events, epoll_fd);
-        LOG(ERROR)<<"error [fd:"<<fd<<"] ctx [pos:"<<pos<<"]";
+        PLOG_ERROR("error [fd=", fd, "] ctx [pos=", pos, "]");
         abort();
         return;
     }
@@ -345,18 +345,18 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
         int fd= fds[i].fd;
         fds[i].revents = 0;
         if( fd < 0) {
-            LOG(FATAL)<<"error fd, [fd:"<<fd<<"]";
+            PLOG_FATAL("error fd, [fd=", fd, "]");
             abort();
         }
 
         poll_wait_item_t *wait_item = get_wait_item(fd);
         if (NULL == wait_item) {
-            LOG(FATAL)<<"get wait item failed, [fd:"<<fd<<"]";
+            PLOG_FATAL("get wait item failed, [fd=", fd, "]");
             abort();
         }
 
         if (wait_item->poll_ctx != NULL) {
-            LOG(FATAL)<<"[fd:"<<fd<<", has been polled by other";
+            PLOG_FATAL("[fd=", fd, "], has been polled by other");
             abort();
         }
 
@@ -375,7 +375,7 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
                 wait_item->wait_events = events;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
                 if (ret) {
-                    LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_mod [fd:"<<fd<<"]";
+                    PLOG_ERROR(" epoll_ctl_mod failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
                 }
             } 
         } else {
@@ -383,7 +383,7 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             wait_item->wait_events = ev.events;
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             if (ret) {
-                LOG_SYS_CALL(epoll_ctl, ret)<<" epoll_ctl_add [fd:"<<fd<<"]";
+                PLOG_ERROR(" epoll_ctl_add failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
             }
         }
     }
