@@ -17,7 +17,7 @@
  */
 #include <stdlib.h>
 #include "rpc_pb_client_duplex.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 #include "cmd_base.h"
 
 namespace conet
@@ -216,20 +216,20 @@ namespace conet
                 while (1)
                 {
                     if (data == NULL || packet_len <=0) {
-                        LOG(ERROR)<<"[rpc_pb_client] nodata";
+                        PLOG_ERROR("[rpc_pb_client] nodata");
                         return 0;
                     }
 
                     if (!resp_base.ParseFromArray(data, packet_len)) {
-                        LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
+                        PLOG_ERROR("[rpc_pb_client] parse respose failed");
                         return -6;
                     }
                     uint64_t seq_id = resp_base.seq_id();
 
                     conet::IntMap::Node * node = m_client->m_in_queue.find(seq_id);
                     if (node == NULL) {
-                        LOG(ERROR)<<"rpc_pb_client get rsp node failed, seq_id:"
-                            <<seq_id<<" rsp:"<<resp_base.ShortDebugString();
+                        PLOG_ERROR("rpc_pb_client get rsp node failed, "
+                                "[seq_id=" ,seq_id, "] [rsp=", resp_base.ShortDebugString());
                         return -7;
                     }
 
@@ -278,18 +278,18 @@ namespace conet
                         if (errno == EINTR) {
                             continue;
                         }
-                        LOG(ERROR)<<"poll failed, ret:"<<ret;
+                        PLOG_ERROR("poll failed, ", (ret));
                         break;
                     }
 
                     if ((pf.revents & POLLERR) || (pf.revents &POLLHUP)) {
-                        LOG(ERROR)<<"poll failed, ret:"<<ret;
+                        PLOG_ERROR("poll failed, ", (ret));
                         break;
                     }
 
                     ret = read_rsp(stream);
                     if (ret) {
-                        LOG(ERROR)<<"read rsp failed, ret:"<<ret;
+                        PLOG_ERROR("read rsp failed, ", (ret));
                         break;
                     }
                 }

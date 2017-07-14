@@ -17,7 +17,7 @@
  */
 #include "channel.h"
 #include "base/net_tool.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -142,7 +142,7 @@ int channel_t::do_read_co(void *arg)
             ret = cb(cb_arg, read_buff, ret);
             if (ret < 0)
             {  // 出错了
-                LOG(ERROR)<<"call rpc callback failed! [ret:"<<ret<<"]";
+                PLOG_ERROR("call rpc callback failed! [ret=", ret, "]");
                 self->to_stop = 1;
                 break;
             } 
@@ -193,13 +193,13 @@ int channel_t::do_write_co(void *arg)
 
             if (ret<=0)
             {
-                LOG(ERROR)<<"channel send data failed!"
-                        "[fd:"<<fd<<"]"
-                        "[data len:"<<out_data->len<<"]"
-                        "[ret:"<<ret<<"]"
-                        "[errorno:"<<errno<<"]"
-                        "[strerr:"<<strerror(errno)<<"]"
-                        ;
+                PLOG_ERROR("channel send data failed!"
+                        "[fd:",fd,"]"
+                        "[data len:",out_data->len,"]"
+                        "[ret:",ret,"]"
+                        "[errorno:",errno,"]"
+                        "[strerr:",strerror(errno),"]"
+                        );
                 break ;
             }
         }

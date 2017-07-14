@@ -20,7 +20,7 @@
 #include <stdarg.h>
 
 #include "http_server.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 
 #include "base/auto_var.h"
 #include "base/http_parser.h"
@@ -136,7 +136,7 @@ int http_server_main(conn_info_t *conn, http_request_t *req,
 
     http_cmd_t *cmd = http_server->get_http_cmd(path);
     if (cmd == NULL) {
-        LOG(ERROR)<<"no found path cmd, [path:"<<path<<"]";
+        PLOG_ERROR("no found path cmd, ", (path));
         ctx.to_close = 1;
         resp.keepalive = 0;
         response_to(&resp, 404, "");
@@ -149,7 +149,7 @@ int http_server_main(conn_info_t *conn, http_request_t *req,
 
     ret = output_response(&resp, conn->fd);
     if (ret <=0) {
-        LOG(ERROR)<<"send response failed [ret="<<ret<<"]";
+        PLOG_ERROR("send response failed, ", (ret));
         return -1;
     }
     if (!http_server->enable_client_close  && (resp.keepalive == 0 || ctx.to_close))
@@ -190,7 +190,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
         if (cnt > 0) {
             if (len - nparsed <=0)
             {
-                LOG(INFO)<<"packet too long, [fd="<<fd<<"] [len="<<len<<"] [nparsed="<<nparsed<<"]";
+                PLOG_INFO("packet too long, [fd=",fd,"] [len=",len,"] [nparsed=",nparsed,"]");
                 ret = -2;
                 break;
             }
@@ -201,11 +201,11 @@ int http_server_t::conn_proc(conn_info_t *conn)
                     break;
                 }
                 ret = -2;
-                LOG(INFO)<<"recv failed [ret="<<recved<<"] [fd="<<fd<<"] [errno="<<errno<<"]";
+                PLOG_INFO("recv failed [ret=",recved,"] [fd=",fd,"] [errno=",errno,"]");
                 break;
             }
             if (recved < 0) {
-                LOG(INFO)<<"recv failed [ret="<<recved<<"] [fd="<<fd<<"] [errno="<<errno<<"]";
+                PLOG_INFO("recv failed [ret=",recved,"] [fd=",fd,"] [errno=",errno,"]");
                 ret = -2;
                 break;
             }
@@ -448,7 +448,7 @@ int websocket_conn_t::do_main()
        ret = this->cb.do_new(this->cb.arg, this);
        if (ret != 0)
        {
-           LOG(ERROR)<<"websocket conn init failed, [ret="<<ret<<"]";
+           PLOG_ERROR("websocket conn init failed,", (ret));
            // 不需要后续处理了
            return 0;
        }
@@ -495,7 +495,7 @@ int websocket_conn_t::do_main()
        ret = poll(&pf, 1, poll_interval);
        if (ret <0)
        {
-           LOG(ERROR)<<"poll error, [ret="<<ret<<"]";
+           PLOG_ERROR("poll error, ", (ret));
            break;
        }
        else if (ret > 0)
@@ -507,12 +507,12 @@ int websocket_conn_t::do_main()
                if (ret <0)
                {
                    // socket 出错
-                   LOG(ERROR)<<"read  data error, [ret="<<ret<<"]";
+                   PLOG_ERROR("read  data error, ", (ret));
                    break;
                }
                if (ret == 0)
                {
-                   LOG(INFO)<<"close read by app client, [ret="<<ret<<"]";
+                   PLOG_INFO("close read by app client, ", (ret));
                    // 关闭了读
                    read_stop = 1;
                    decr_ref();
@@ -525,7 +525,7 @@ int websocket_conn_t::do_main()
                if (ret <0)
                {
                    // socket 出错了
-                   LOG(ERROR)<<"write  data error, [ret="<<ret<<"]";
+                   PLOG_ERROR("write  data error, ", (ret));
                    break;
                }
            }
@@ -536,7 +536,7 @@ int websocket_conn_t::do_main()
            ++idle_cnt;
            if (idle_cnt * poll_interval >= this->max_idle_time * 1000)
            {
-               LOG(INFO)<<"conn idle too much, would close, "<<idle_cnt<<" seconds, [fd="<<fd<<"]";
+               PLOG_INFO("conn idle too much, would close, ",idle_cnt," seconds, [fd=",fd,"]");
                break;
            }
        }
@@ -547,7 +547,7 @@ int websocket_conn_t::do_main()
        this->cb.do_close(this->cb.arg, this);
    }
 
-   LOG(INFO)<<"websocket conn exit, [fd="<<fd<<"]";
+   PLOG_INFO("websocket conn exit,", (fd));
    return 0;
 }
 
@@ -568,16 +568,13 @@ int websocket_conn_t::do_write()
             //中断打断, 下次继续
             return 0;
         }
-        LOG(ERROR)<<"write data failed, "
-            "[ret="<<ret<<"]"
-            "[errmsg="<<strerror(errno)<<"]"
-            ;
+        PLOG_ERROR("write data failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         return -1;
     }
 
     send_pos += ret;
 
-    LOG(INFO)<<"send data [len="<<send_pos<<"]";
+    PLOG_INFO("send data [len=", send_pos, "]");
     if (send_pos >= (int32_t)data->size())
     {
         delete data;
@@ -625,7 +622,7 @@ int websocket_conn_t::do_read()
     int64_t rest_len = this->max_buf_len - this->data_pos;
     if (rest_len <= 0)
     {
-        LOG(ERROR)<<"websocket packet too big, buff is full, [buff_size="<<max_buf_len<<"]";
+        PLOG_ERROR("websocket packet too big, buff is full, [buff_size=", max_buf_len, "]");
         return -1;
     }
     ret = recv(fd, this->buffer+this->data_pos,
@@ -637,16 +634,13 @@ int websocket_conn_t::do_read()
             //中断打断, 下次继续
             return 1;
         }
-        LOG(ERROR)<<"read data failed, "
-            "[ret="<<ret<<"]"
-            "[errmsg="<<strerror(errno)<<"]"
-            ;
+        PLOG_ERROR("read data failed, ",(fd, ret, errno), "[errmsg=", strerror(errno),"]");
         return -1;
     }
 
     if (ret == 0)
     {
-        LOG(INFO)<<"app has close conn, [fd="<<fd<<"]";
+        PLOG_INFO("app has close conn,", (fd));
         return 0;
     }
 
@@ -755,14 +749,14 @@ int websocket_conn_t::do_read()
             ret = this->do_proc_pkg(&req_package);
             if (ret <0)
             {
-                LOG(ERROR)<<"do proc frame failed! [ret="<<ret<<"]";
+                PLOG_ERROR("do proc frame failed!", (ret));
                 return -1;
             }
             prev_data_pos+=req_package.payload_len;
         }
     }
 
-    LOG(INFO)<<"leave read packet proc";
+    PLOG_INFO("leave read packet proc");
 
     return 1;
 }
@@ -781,7 +775,7 @@ int websocket_conn_t::do_proc_pkg(ws_packet_t *pkg)
 
     if (opcode == 0x0 || pkg->head.FIN == 0)
     {
-        LOG(ERROR)<<"package is divide, unsupport would closed! [fd="<<fd<<"]";
+        PLOG_ERROR("package is divide, unsupport would closed!", (fd));
         this->to_close = 1;
         return 0;
     }

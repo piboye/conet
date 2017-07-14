@@ -22,10 +22,10 @@
 #include "server_common.h"
 #include <pthread.h>
 
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/ip_list.h"
 #include "base/net_tool.h"
+#include "base/plog.h"
 
 namespace conet
 {
@@ -77,7 +77,7 @@ namespace conet
 
             int rpc_listen_fd = conet::create_tcp_socket(ip_port.port, ip_port.ip.c_str(), true);
             if (rpc_listen_fd<0) {
-                LOG(ERROR)<<"listen to ["<<ip_port.ip<<":"<<ip_port.port<<"failed!";
+                PLOG_ERROR("listen to [",ip_port.ip,":",ip_port.port,"failed!");
                 return -1;
             }
 

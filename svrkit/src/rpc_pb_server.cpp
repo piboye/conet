@@ -31,7 +31,7 @@
 #include "base/obj_pool.h"
 
 #include "cmd_base.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 #include "channel.h"
 
 #include "core/parallel.h"
@@ -77,14 +77,14 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
         if (ret)
         {
             // parse cmd base head failed;
-            LOG(ERROR)<<"parse cmd base failed, fd:"<<conn->fd<<", ret:"<<ret;
+            PLOG_ERROR("parse cmd base failed, [fd=", conn->fd, "] [ret=", ret, "]");
             *olen = 0;
             break;
         }
 
 
         if (cmd_base.type != CmdBase::REQUEST_TYPE) {
-            LOG(ERROR)<<"request type["<<cmd_base.type<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
+            PLOG_ERROR("request [type=", cmd_base.type, "] error, require [REQUEST_TYPE=", CmdBase::REQUEST_TYPE, "]");
             *olen = 0;
             break;
         }
@@ -95,7 +95,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
             cmd = base_server->get_rpc_pb_cmd(cmd_id);
             if (NULL == cmd) {
                 // not unsuppend cmd;
-                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
+                PLOG_ERROR("unsuppend [cmd_id=",cmd_id, "]");
 
                 cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
 
@@ -105,7 +105,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
                 init_ref_str(&cmd_base.errmsg, errmsg);
                 ret = serialize_cmd_base_impl(out, olen, &cmd_base, NULL, 0);
                 if (ret < 0) {
-                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                    PLOG_ERROR("send resp failed!, ", (fd, ret));
                 }
                 break;
             }
@@ -116,14 +116,14 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
                 // not unsuppend cmd;
                 std::string cmd_name_s;
                 ref_str_to(&cmd_name, &cmd_name_s);
-                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name_s;
+                PLOG_ERROR("unsuppend [cmd=", cmd_name_s, "]");
 
                 cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
                 errmsg ="unsuppored cmd:"+cmd_name_s;
                 init_ref_str(&cmd_base.errmsg, errmsg);
                 ret = serialize_cmd_base_impl(out,olen, &cmd_base, NULL, 0);
                 if (ret < 0) {
-                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                    PLOG_ERROR("serialize cmd base failed!, ", (fd, ret));
                 }
                 break;
             }
@@ -145,7 +145,7 @@ static int proc_udp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn, char con
         }
         if (ret <0) {
             // serialize data failed;
-            LOG(ERROR)<<"serialize resp failed!, fd:"<<fd<<", ret:"<<ret;
+            PLOG_ERROR("serialize resp failed!, ", (fd, ret));
             break;
         } 
     } while(0);
@@ -246,13 +246,13 @@ int rpc_pb_server_t::do_stop()
                 ret = server->stop();
                 if (ret)
                 {
-                    LOG(ERROR)<<"stop server failed! ";
+                    PLOG_ERROR("stop server failed! ");
                 }
             });
         }
     } WAIT_ALL_PARALLEL();
 
-    LOG(INFO)<<"stop rpc finished";
+    PLOG_INFO("stop rpc finished");
     return ret;
 }
 
@@ -338,16 +338,16 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                     break;
                 } 
             } else {
-                LOG(ERROR)<<"read 4 byte pack failed, fd:"<<fd<<", ret:"<<ret;
+                PLOG_ERROR("read 4 byte pack failed, ", (ret, fd));
             }
             ret  = -1;
             break;
         }
 
         if ((data == NULL) || (packet_len <=0)) {
-            LOG(ERROR)<<"recv data failed, fd:"<<fd<<", ret:"<<ret;
+            PLOG_ERROR("recv data failed, ", (ret , fd));
             ret = -2;
-            break;        
+            break;
         }
 
         cmd_base.init();
@@ -356,13 +356,12 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         if (ret)
         {
             // parse cmd base head failed;
-            LOG(ERROR)<<"parse cmd base failed, fd:"<<fd<<", ret:"<<ret;
+            PLOG_ERROR("parse cmd base failed, ", (ret, fd));
             break;
         }
-        
 
         if (cmd_base.type != CmdBase::REQUEST_TYPE) {
-            LOG(ERROR)<<"request type["<<cmd_base.type<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
+            PLOG_ERROR("request [type=", cmd_base.type, "] error, require [REQUEST_TYPE=", CmdBase::REQUEST_TYPE, "]");
             break;
         }
 
@@ -372,7 +371,7 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
             cmd = base_server->get_rpc_pb_cmd(cmd_id);
             if (NULL == cmd) {
                 // not unsuppend cmd;
-                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
+                PLOG_ERROR("unsuppend [cmd_id=", cmd_id, "]");
 
                 cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
 
@@ -382,7 +381,7 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                 init_ref_str(&cmd_base.errmsg, errmsg);
                 ret = server->send_pb(fd, &cmd_base);
                 if (ret <= 0) {
-                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                    PLOG_ERROR("send resp failed!, ", (ret, fd));
                 }
                 break;
             }
@@ -394,14 +393,14 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
                 // not unsuppend cmd;
                 std::string cmd_name_s;
                 ref_str_to(&cmd_name, &cmd_name_s);
-                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name_s;
+                PLOG_ERROR("unsuppend [cmd=", cmd_name_s, "]");
 
                 cmd_base.ret = CmdBase::ERR_UNSUPPORED_CMD;
                 errmsg ="unsuppored cmd:"+cmd_name_s;
                 init_ref_str(&cmd_base.errmsg, errmsg);
                 ret = server->send_pb(fd, &cmd_base);
                 if (ret <= 0) {
-                    LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+                    PLOG_ERROR("send resp failed!,", (ret, fd));
                 }
                 break;
             }
@@ -423,7 +422,7 @@ static int proc_tcp_rpc_pb(rpc_pb_server_t * server, conn_info_t *conn)
         }
         if (ret <=0) {
             // send data failed;
-            LOG(ERROR)<<"send resp failed!, fd:"<<fd<<", ret:"<<ret;
+            PLOG_ERROR("send resp failed!, ", (ret, fd));
             break; 
         }
         if (ctx.to_close) {
@@ -620,13 +619,13 @@ public:
         if (ret)
         {
             // parse cmd base head failed;
-            LOG(ERROR)<<"parse cmd base failed";
+            PLOG_ERROR("parse cmd base failed");
             return -1;
         }
 
 
         if (cmd_base->type != CmdBase::REQUEST_TYPE) {
-            LOG(ERROR)<<"request type["<<cmd_base->type<<"] error, require REQUEST_TYPE:"<<CmdBase::REQUEST_TYPE;
+            PLOG_ERROR("request [type=", cmd_base->type, "] error, require [REQUEST_TYPE=", CmdBase::REQUEST_TYPE, "]");
             return -2;
         }
 
@@ -636,7 +635,7 @@ public:
             cmd = server->base_server->get_rpc_pb_cmd(cmd_id);
             if (NULL == cmd) {
                 // not unsuppend cmd;
-                LOG(ERROR)<< "unsuppend cmd id:"<<cmd_id;
+                PLOG_ERROR("unsuppend ", (cmd_id));
 
                 cmd_base->ret = CmdBase::ERR_UNSUPPORED_CMD;
 
@@ -644,7 +643,7 @@ public:
                 append_to_str(cmd_id, &errmsg);
                 ret = send_rpc_rsp(this->ch, cmd_base.release(), -2, &errmsg, NULL);
                 if (ret <= 0) {
-                    LOG(ERROR)<<"send resp failed!";
+                    PLOG_ERROR("send resp failed!");
                 }
                 return -3;
             }
@@ -656,13 +655,13 @@ public:
                 // not unsuppend cmd;
                 std::string cmd_name_s;
                 ref_str_to(&cmd_name, &cmd_name_s);
-                LOG(ERROR)<< "unsuppend cmd:"<<cmd_name_s;
+                PLOG_ERROR("unsuppend [cmd=", cmd_name_s, "]");
 
                 cmd_base->ret = CmdBase::ERR_UNSUPPORED_CMD;
                 errmsg ="unsuppored cmd:"+cmd_name_s;
                 ret = send_rpc_rsp(this->ch, cmd_base.release(), -2, &errmsg, NULL);
                 if (ret <= 0) {
-                    LOG(ERROR)<<"send resp failed!";
+                    PLOG_ERROR("send resp failed!");
                 }
                 return -3;
             }

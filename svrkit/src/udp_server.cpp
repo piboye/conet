@@ -24,7 +24,7 @@
 #include "conet_all.h"
 #include "udp_server.h"
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 
 #include "base/net_tool.h"
 #include "base/ptr_cast.h"
@@ -171,7 +171,7 @@ int udp_server_t::init(const char *ip, int port, int fd)
 int udp_server_t::start()
 {
     if (this->main_co) {
-        LOG(ERROR)<<"has been start";
+        PLOG_ERROR("has been start");
         return 0;
     }
 
@@ -217,12 +217,12 @@ static int do_send_data(void * arg)
                 (sockaddr *) &out_data->dst_addr, sizeof(out_data->dst_addr));
             if (ret<0)
             {
-                LOG(ERROR)<<"udp send data failed!"
-                        "[ip:"<<server->ip<<"]"
-                        "[port:"<<server->port<<"]"
-                        "[data len:"<<out_data->len<<"]"
-                        "[ret:"<<ret<<"]"
-                        ;
+                PLOG_ERROR("udp send data failed!"
+                        "[ip:",server->ip,"]"
+                        "[port:",server->port,"]"
+                        "[data len:",out_data->len,"]"
+                        "[ret:",ret,"]"
+                        );
             }
             server->buffer_pool.free(out_data->data);
             list_del(&out_data->link_to);
@@ -242,10 +242,10 @@ int udp_server_t::main_proc2()
     if (udp_socket <0) 
     {
         this->state = SERVER_STOPED;
-        LOG(ERROR)<<"create listen socket failed, "
-            "["<<this->ip<<":"<<this->port<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]";
+        PLOG_ERROR("create listen socket failed, "
+            "[",this->ip,":",this->port,"]"
+            "[errno:",errno,"]"
+            "[errmsg:",strerror(errno),"]");
         return -1;
     }
     this->udp_socket = udp_socket;
@@ -319,7 +319,7 @@ int udp_server_t::clean_up()
     udp_server_t *server = this;
 
     if (NULL == server->main_co) {
-        LOG(ERROR)<<"udp server stop by multi time";
+        PLOG_ERROR("udp server stop by multi time");
         return 0;
     }
 
@@ -330,13 +330,13 @@ int udp_server_t::clean_up()
     if (this->exit_wait_ms >0) {
         for (int i=0; i< this->exit_wait_ms; i+=1000) {
             if (server->data.cur_conn_num <= 0) break;
-            LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
+            PLOG_INFO("wait server[",server->ip,":",server->port , "] conn exit");
             sleep(1);
         }
     } else {
         while(1) {
             if (server->data.cur_conn_num <= 0) break;
-            LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
+            PLOG_INFO("wait server[",server->ip,":",server->port , "] conn exit");
             sleep(1);
         }
     }
@@ -344,8 +344,7 @@ int udp_server_t::clean_up()
     server->state = SERVER_STOPED;
 
     if (server->data.cur_conn_num > 0) {
-        LOG(ERROR)<<"server["<<server->ip<<":"<<server->port
-            <<"] exit, but leak conn num:"<<server->data.cur_conn_num; 
+        PLOG_ERROR("server[",server->ip,":",server->port ,"] exit, but leak conn num:",server->data.cur_conn_num);
         return -1;
     }
     return 0;

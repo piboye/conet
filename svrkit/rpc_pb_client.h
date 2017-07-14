@@ -29,7 +29,7 @@
 #include "base/ip_list.h"
 #include "load_balance.h"
 #include "base/obj_pool.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 
 namespace conet
 {
@@ -61,7 +61,7 @@ int rpc_pb_udp_call(int fd,
         ReqT const *req, RespT *a_rsp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
     if (fd <0) {
-        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"]";
+        PLOG_ERROR("[rpc_pb_client] errr fd [fd=", fd, "]");
         return -3;
     }
 
@@ -82,7 +82,7 @@ int rpc_pb_udp_call(int fd,
 
     if (a_rsp && rsp.len >0) {
         if (!a_rsp->ParseFromArray(rsp.data, rsp.len)) {
-            LOG(ERROR)<<"[rpc_pb_client] paser response msg failed!";
+            PLOG_ERROR("[rpc_pb_client] paser response msg failed!");
             return -7;
         }
     }
@@ -96,7 +96,7 @@ int rpc_pb_call(int fd,
         ReqT const *req, RespT *a_rsp, int *retcode, std::string *errmsg=NULL, int timeout=1000)
 {
     if (fd <0) {
-        LOG(ERROR)<<"[rpc_pb_client] errr fd [fd:"<<fd<<"]";
+        PLOG_ERROR("[rpc_pb_client] errr fd [fd=", fd, "]");
         return -3;
     }
 
@@ -117,7 +117,7 @@ int rpc_pb_call(int fd,
 
     if (a_rsp && rsp.len >0) {
         if (!a_rsp->ParseFromArray(rsp.data, rsp.len)) {
-            LOG(ERROR)<<"[rpc_pb_client] paser response msg failed!";
+            PLOG_ERROR("[rpc_pb_client] paser response msg failed!");
             return -7;
         }
     }

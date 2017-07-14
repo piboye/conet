@@ -19,7 +19,7 @@
 #include "stat_mgr.h"
 #include "base/pb2sqlite.h"
 #include "tls.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 #include "base/auto_var.h"
 
 namespace conet
@@ -29,7 +29,7 @@ bool StatMgr::reg(std::string const &name, get_stat_func_t * get_stat)
 {
     if (m_stat_items.find(name) != m_stat_items.end())
     {
-        LOG(ERROR)<<"conflict stat item [name:"<<name<<"]";
+        PLOG_ERROR("conflict stat item [name=", name, "]");
         return false;
     }
     StatItem * item = new StatItem();
@@ -46,7 +46,7 @@ bool StatMgr::unreg(std::string const &name)
 {
     AUTO_VAR(it , = , m_stat_items.find(name));
     if (it == m_stat_items.end()) {
-        LOG(ERROR)<<"noexist stat item [name:"<<name<<"]";
+        PLOG_ERROR("noexist stat item [name=", name, "]");
         return false;
     }
 

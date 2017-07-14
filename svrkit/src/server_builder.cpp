@@ -26,6 +26,7 @@
 #include <sched.h>
 #include "core/parallel.h"
 #include "base/defer.h"
+#include "base/plog.h"
 
 namespace conet
 {
@@ -55,9 +56,9 @@ void* server_worker_t::main(void * arg)
         pthread_t tid = pthread_self();
         ret = pthread_setaffinity_np(tid, sizeof(cpu_set_t), self->cpu_affinity);
         if (ret) {
-            LOG(ERROR)<<"set tid:"<<tid<<" to  cpu:"<<" affinity failed, ret:"<<ret;
+            PLOG_ERROR("set affinity failed , ", (tid, ret));
         } else {
-            LOG(INFO)<<"set tid:"<<tid<<" to  cpu:"<<" affinity success";
+            PLOG_INFO("set affinity success, ", (tid));
         }
     }
 
@@ -79,7 +80,7 @@ void* server_worker_t::main(void * arg)
         ret = self->rpc_servers[i]->start();
         if (ret)
         {
-            LOG(ERROR)<<"error start";
+            PLOG_ERROR("error start");
         }
     }
 
@@ -113,7 +114,7 @@ int server_worker_t::proc_server_exit()
                 ret = server->stop();
                 if (ret)
                 {
-                    LOG(ERROR)<<"stop rpc server failed! ";
+                    PLOG_ERROR("stop rpc server failed! ");
                 }
             });
         }
@@ -180,7 +181,7 @@ server_group_t * server_group_t::build(ServerGroup const &conf)
             server->cpu_affinitys.push_back(mask);
         } else {
             // 格式有问题
-            LOG(FATAL)<<"cpu mask error format :"<<txt;
+            PLOG_FATAL("cpu mask error format=", txt);
             abort();
         }
     }
@@ -224,7 +225,7 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
     pthread_mutex_unlock(&g_server_work_mutex);
     if (ret<0)
     {
-        LOG(ERROR)<<"find [server-name:"<<server_name<<"] failed!";
+        PLOG_ERROR("find [server_name=", server_name, "] failed!");
         delete server;
         delete server_base;
         return NULL;
@@ -249,7 +250,7 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         }
         if (ret)  {
             delete tcp_server;
-            LOG(FATAL)<<"listen ["<<tcp_conf.ip()<<":"<<tcp_conf.port()<<"failed!";
+            PLOG_FATAL("listen [", tcp_conf.ip(), ":", tcp_conf.port(), "] failed!");
             return NULL;
         }
         tcp_server->conf.max_conn_num = tcp_conf.max_conn_num();
@@ -285,7 +286,7 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         }
         if (ret)  {
             delete udp_server;
-            LOG(FATAL)<<"listen ["<<udp_conf.ip()<<":"<<udp_conf.port()<<"failed!";
+            PLOG_FATAL("listen [", udp_conf.ip(), ":", udp_conf.port(), "failed!");
             return NULL;
         }
         udp_server->conf.max_conn_num = udp_conf.max_conn_num();
@@ -312,7 +313,7 @@ rpc_pb_server_t *server_worker_t::build_rpc_server(RpcServer const & conf)
         }
         if (ret)  {
             delete tcp_server;
-            LOG(FATAL)<<"listen ["<<ip<<":"<<port<<"failed!";
+            PLOG_FATAL("listen failed, ", (ip, port));
             return NULL;
         }
         tcp_server->conf.max_conn_num = http_conf.max_conn_num();

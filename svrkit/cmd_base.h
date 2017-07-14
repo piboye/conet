@@ -23,7 +23,7 @@
 #include <string.h>
 #include "base/net_tool.h"
 #include "google/protobuf/message.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 
 namespace conet
 {
@@ -168,7 +168,7 @@ int send_cmd_base(int fd, PacketStream *ps,  cmd_base_t *cmd_base, google::proto
 
         if (pb_buff.left - rsp_len<=0) 
         {
-            LOG(ERROR)<<"pb_buff.left:"<<pb_buff.left<<", rsp_len:"<<rsp_len;
+            PLOG_ERROR("pb_buff.left=", pb_buff.left, ", rsp_len=", rsp_len);
             return -2;
         }
 

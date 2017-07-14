@@ -21,7 +21,7 @@
 
 #include <errno.h>
 #include "rpc_pb_client.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 #include "base/obj_pool.h"
 #include "base/tls.h"
 #include "base/ptr_cast.h"
@@ -85,7 +85,7 @@ int rpc_pb_call_impl(int fd,
     ps_pool->release(stream);
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] send request failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        PLOG_ERROR("[rpc_pb_client] send request failed, ", (fd, ret, errno), "[errmsg=", strerror(errno), "]");
         return -4;
     }
 
@@ -107,7 +107,7 @@ int rpc_pb_call_impl(int fd,
     }
     if (!(pf.revents &POLLIN))
     {
-        LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
+        PLOG_ERROR("poll write failed, [events=", pf.revents, "]");
         return -1;
     }
 
@@ -120,7 +120,7 @@ int rpc_pb_call_impl(int fd,
     
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] recv response failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        PLOG_ERROR("[rpc_pb_client] recv response failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         return -5;
     }
 
@@ -130,7 +130,7 @@ int rpc_pb_call_impl(int fd,
 
     if (ret) 
     {
-        LOG(ERROR)<<"[rpc_pb_client] parse response failed, [fd:"<<fd<<"][ret:"<<ret<<"]";
+        PLOG_ERROR("[rpc_pb_client] parse response failed, ", (fd, ret));
         return -6;
     }
 
@@ -169,7 +169,7 @@ int rpc_pb_call_udp_impl(int fd,
     ps_pool->release(stream);
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] send request failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        PLOG_ERROR("[rpc_pb_client] send request failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         return -4;
     }
 
@@ -191,7 +191,7 @@ int rpc_pb_call_udp_impl(int fd,
     }
     if (!(pf.revents &POLLIN))
     {
-        LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
+        PLOG_ERROR("poll write failed, [events:", pf.revents, "]");
         return -1;
     }
 
@@ -203,7 +203,7 @@ int rpc_pb_call_udp_impl(int fd,
     ret = recv(fd, stream->buff, stream->max_size, 0);
 
     if (ret <=0) {
-        LOG(ERROR)<<"[rpc_pb_client] recv response failed, [fd:"<<fd<<"][ret:"<<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+        PLOG_ERROR("[rpc_pb_client] recv response failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
         return -5;
     }
     packet_len = ret;
@@ -215,7 +215,7 @@ int rpc_pb_call_udp_impl(int fd,
 
     if (ret) 
     {
-        LOG(ERROR)<<"[rpc_pb_client] parse response failed, [fd:"<<fd<<"][ret:"<<ret<<"]";
+        PLOG_ERROR("[rpc_pb_client] parse response failed, ", (fd, ret));
         return -6;
     }
 

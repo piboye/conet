@@ -57,7 +57,7 @@ public:
     {
         parse_ip_list(iplist,  &m_ip_list);
         if (m_ip_list.empty()) {
-            LOG(ERROR)<<"iplist is empty!";
+            PLOG_ERROR("iplist is empty!");
             return -1;
         }
         for (size_t i = 0; i< m_ip_list.size(); ++i) 
@@ -143,8 +143,7 @@ public:
         ret = send_pb_obj(m_fd, req_base, &out_buf, ctx->timeout);
 
         if (ret <=0) {
-            LOG(ERROR)<<"[rpc_pb_client] send request failed, [ret:"
-                <<ret<<"][errno:"<<errno<<"]"<<strerror(errno)<<"]";
+            PLOG_ERROR("[rpc_pb_client] send request failed, ", (m_fd, ret, errno), "[errmsg=", strerror(errno),"]");
             delete ctx;
             return -4;
         }
@@ -157,13 +156,12 @@ public:
         ret = stream.read_packet(&data, &packet_len, timeout);
 
         if (ret <=0) {
-            LOG(ERROR)<<"[rpc_pb_client] recv respose failed, [ret:"
-                <<ret<<"][errno:"<<errno<<"][strerr:"<<strerror(errno)<<"]";
+            PLOG_ERROR("[rpc_pb_client] recv respose failed, ", (m_fd, ret, errno), "[errmsg=", strerror(errno),"]");
             return -5;
         }
 
         if (!resp_base.ParseFromArray(data, packet_len)) {
-            LOG(ERROR)<<"[rpc_pb_client] parse respose failed";
+            PLOG_ERROR("[rpc_pb_client] parse respose failed");
             return -6;
         }
 

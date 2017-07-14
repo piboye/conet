@@ -29,7 +29,6 @@
 #include <vector>
 #include <fstream>
 
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/delay_init.h"
 #include "base/net_tool.h"
@@ -42,6 +41,7 @@
 #include "core/conet_all.h"
 #include "base/string_tpl.h"
 #include "base/string2number.h"
+#include "base/plog.h"
 
 
 namespace conet
@@ -80,10 +80,9 @@ std::string get_default_conf()
     std::string errmsg;
     ret = string_tpl(RESOURCE_svrkit_default_server_conf, datas, &data, &errmsg);
     if (ret) {
-        LOG(ERROR)<<"load default conf failed, "
-            "[ret:"<<ret<<"][msg:"<<errmsg<<"]";
+        PLOG_ERROR("load default conf failed, ", (ret, errmsg));
     } else {
-        LOG(INFO)<<"load default conf:"<<data<<"]";
+        PLOG_INFO("load default [conf=", data, "]");
     }
     return data;
 }
@@ -102,7 +101,7 @@ int get_conf_data(std::string const & conf_file, std::string *data)
     fs.open(conf_file.c_str(), std::fstream::in);
     if (!fs.is_open())
     {
-        LOG(ERROR)<<"open conf file "<<conf_file<<" failed!";
+        PLOG_ERROR("open conf [file=", conf_file, " failed!");
         return -1;
     }
     std::string line;
@@ -123,9 +122,6 @@ void fini_google_lib()
     // 清理protobuf 库的内存
     google::protobuf::ShutdownProtobufLibrary();
 
-    // 清理glog 库内存
-    google::ShutdownGoogleLogging();
-
     // 清理gflags 库内存
     gflags::ShutDownCommandLineFlags();
 }
@@ -134,13 +130,13 @@ static int call_delay_init()
 {
     // delay init
     delay_init::call_all_level();
-    LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
-        <<" success:"<<delay_init::success_cnt
-        <<", failed:"<<delay_init::failed_cnt;
+    PLOG_INFO("delay init total:", delay_init::total_cnt
+        ," success:",delay_init::success_cnt
+        ,", failed:",delay_init::failed_cnt);
 
     if(delay_init::failed_cnt>0)
     {
-        LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+        PLOG_ERROR("delay init failed, failed num=", delay_init::failed_cnt);
         return 1;
     }
     return 0;
@@ -151,8 +147,6 @@ int main(int argc, char * argv[])
     int ret = 0;
 
     ret = gflags::ParseCommandLineFlags(&argc, &argv, false);
-    google::InitGoogleLogging(argv[0]);
-
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -170,7 +164,7 @@ int main(int argc, char * argv[])
 
 
     if (conet::can_reuse_port()) {
-        LOG(INFO)<<"can reuse port, very_good";
+        PLOG_INFO("can reuse port, very_good");
     }
 
     std::string data;
@@ -183,9 +177,7 @@ int main(int argc, char * argv[])
     ret = json2pb(data, &conf, &errmsg);
     if (ret)
     {
-        LOG(ERROR)<<"parse conf file failed! "
-            "[error:"<<errmsg<<"]"
-            "[ret:"<<ret<<"]";
+        PLOG_ERROR("parse conf file failed! ", (ret, errmsg));
         return 2;
     }
 
@@ -198,7 +190,7 @@ int main(int argc, char * argv[])
     {
         conet::free_conet_env();
         conet::free_conet_global_env();
-        LOG(ERROR)<<"build server failed!";
+        PLOG_ERROR("build server failed!");
         return 3;
     }
 
@@ -213,13 +205,13 @@ int main(int argc, char * argv[])
         {
            exit_finished = 1;
            CO_RUN((exit_finished), {
-                LOG(INFO)<<"server ready exit!";
+                PLOG_INFO("server ready exit!");
                 int ret = 0;
                 ret = g_server_container->stop(FLAGS_stop_wait_seconds);
                 if (ret) {
-                    LOG(ERROR)<<"server exit failed, [ret:"<<ret<<"]!";
+                    PLOG_ERROR("server exit failed, [ret=", ret, "]!");
                 } else {
-                    LOG(INFO)<<"server exit success!";
+                    PLOG_INFO("server exit success!");
                 }
                 exit_finished = 2;
            });

@@ -24,7 +24,7 @@
 #include "conet_all.h"
 #include "tcp_server.h"
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "base/plog.h"
 
 #include "base/net_tool.h"
 #include "base/ptr_cast.h"
@@ -163,7 +163,7 @@ int tcp_server_t::init(char const *ip, int port, int listen_fd)
 int tcp_server_t::start()
 {
     if (this->main_co) {
-        LOG(ERROR)<<"has been start";
+        PLOG_ERROR("has been start");
         return 0;
     }
 
@@ -272,10 +272,10 @@ int tcp_server_t::main_proc()
         if (listen_fd <0) 
         {
             this->state = SERVER_STOPED;
-            LOG(ERROR)<<"create listen socket failed, "
-                "["<<this->ip<<":"<<this->port<<"]"
-                "[errno:"<<errno<<"]"
-                "[errmsg:"<<strerror(errno)<<"]";
+            PLOG_ERROR("create listen socket failed, "
+                "[",this->ip,":",this->port,"]"
+                "[errno:",errno,"]"
+                "[errmsg:",strerror(errno),"]");
             return -1;
         }
 
@@ -287,11 +287,11 @@ int tcp_server_t::main_proc()
     ret = set_none_block(listen_fd);
     if (ret != 0)
     {
-        LOG(ERROR)<<"set non block listen socket failed, "
-            "["<<this->ip<<":"<<this->port<<"]"
-            "[fd="<<listen_fd<<"]"
-            "[errno:"<<errno<<"]"
-            "[errmsg:"<<strerror(errno)<<"]";
+        PLOG_ERROR("set non block listen socket failed, "
+            "[",this->ip,":",this->port,"]"
+            "[fd=",listen_fd,"]"
+            "[errno:",errno,"]"
+            "[errmsg:",strerror(errno),"]");
         return -1;
     }
 
@@ -303,11 +303,11 @@ int tcp_server_t::main_proc()
         ret = setsockopt(listen_fd, IPPROTO_IP, TCP_DEFER_ACCEPT, &waits, sizeof(waits));
         if (ret != 0)
         {
-            LOG(ERROR)<<"set tcp_defer_accept socket option failed,"
-                "["<<this->ip<<":"<<this->port<<"]"
-                "[fd="<<listen_fd<<"]"
-                "[errno:"<<errno<<"]"
-                "[errmsg:"<<strerror(errno)<<"]";
+            PLOG_ERROR("set tcp_defer_accept socket option failed,"
+                "[",this->ip,":",this->port,"]"
+                "[fd=",listen_fd,"]"
+                "[errno:",errno,"]"
+                "[errmsg:",strerror(errno),"]");
         }
     }
 
@@ -339,7 +339,7 @@ int tcp_server_t::main_proc()
             {
                 continue;
             }
-            LOG(ERROR)<<"poll listen fd failed, [ret="<<ret<<"] [errno="<<errno<<"]";
+            PLOG_ERROR("poll listen fd failed, ", (listen_fd, ret, errno), "[errmsg=", strerror(errno),"]");
             continue;
         }
 
@@ -374,7 +374,7 @@ int tcp_server_t::main_proc()
         }
     }
 
-    LOG(INFO)<<"tcp server stoping, ready to clean up";
+    PLOG_INFO("tcp server stoping, ready to clean up");
 
     if (conn_info) {
         this->conn_info_pool.release(conn_info);
@@ -392,7 +392,7 @@ int tcp_server_t::clean_up()
     tcp_server_t *server = this;
     if (NULL == server->main_co)
     {
-        LOG(ERROR)<<"tcp server stop by multi time";
+        PLOG_ERROR("tcp server stop by multi time");
         return 0;
     }
 
@@ -402,7 +402,7 @@ int tcp_server_t::clean_up()
             if (server->data.cur_conn_num <= 0) break;
             if (i%1000==0)
             {
-                LOG(INFO)<<"wait server["<<server->ip<<":"<<server->port << "] conn exit";
+                PLOG_INFO("wait server[",server->ip,":",server->port , "] conn exit");
             }
             usleep(1000);
         }
@@ -413,8 +413,8 @@ int tcp_server_t::clean_up()
     server->state = SERVER_STOPED;
 
     if (server->data.cur_conn_num > 0) {
-        LOG(ERROR)<<"server["<<server->ip<<":"<<server->port
-            <<"] exit, but leak conn num:"<<server->data.cur_conn_num; 
+        PLOG_ERROR("server[",server->ip,":",server->port
+            ,"] exit, but leak conn num:",server->data.cur_conn_num);
         return -1;
     }
     return 0;

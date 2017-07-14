@@ -20,7 +20,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "glog/logging.h"
+#include "base/plog.h"
 
 #include "rpc_pb_server_base.h"
 #include "rpc_pb_server_base_impl.h"
@@ -78,8 +78,8 @@ int global_registry_cmd(std::string const &server_name, rpc_pb_cmd_t  *cmd)
 
     if (server_map->find(method_name) != server_map->end())
     {
-        LOG(FATAL)<<"duplicate cmd:"<<method_name<<" has been registried!"
-            <<" in [server:"<<server_name<<"]";
+        PLOG_FATAL("duplicate [cmd=", method_name, "] has been registried!"
+            " in [server=", server_name, "]");
         return -1;
     }
     server_map->insert(std::make_pair(method_name, cmd));
@@ -124,14 +124,14 @@ rpc_pb_cmd_t * rpc_pb_server_base_t::get_rpc_pb_cmd(uint64_t cmd_id)
 int rpc_pb_server_base_t::get_global_server_cmd(std::string const & server_name)
 {
     if (NULL == g_server_cmd_maps) {
-        LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";
+        PLOG_ERROR("no cmd has been registried in [server=", server_name, "]");
         return -1;
     }
 
     auto server_map = (*g_server_cmd_maps)[server_name];
     if (server_map == NULL)
     {
-        LOG(ERROR)<<"no cmd has been registried in [server:"<<server_name<<"]";
+        PLOG_ERROR("no cmd has been registried in [server=", server_name, "]");
         return -2;
     }
     AUTO_VAR(it, = , server_map->begin());
@@ -322,15 +322,15 @@ int rpc_pb_call_cb(rpc_pb_cmd_t *self, rpc_pb_ctx_t *ctx,
 
     if (ret != 0 && FLAGS_log_failed_rpc)
     {
-        LOG(ERROR)<<"rpc call failed, "
-            "[method_name:"<<self->method_name<<"]"
-            "[cmd_id:"<<self->cmd_id<<"]"
-            "[seq_id:"<<ctx->cmd_base.seq_id<<"]"
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<*errmsg<<"]"
-            "[req:"<<req1->ShortDebugString()<<"]"
-            "[rsp:"<<rsp1->ShortDebugString()<<"]"
-            ;
+        PLOG_ERROR("rpc call failed, "
+            "[method_name=",self->method_name,"]"
+            "[cmd_id:",self->cmd_id,"]"
+            "[seq_id:",ctx->cmd_base.seq_id,"]"
+            "[ret:",ret,"]"
+            "[errmsg:",*errmsg,"]"
+            "[req:",req1->ShortDebugString(),"]"
+            "[rsp:",rsp1->ShortDebugString(),"]"
+            );
     }
     return ret;
 }
