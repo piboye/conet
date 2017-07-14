@@ -21,7 +21,7 @@
 #include <sys/syscall.h>
 #include "tls.h"
 #include "list.h"
-#include "thirdparty/glog/logging.h"
+#include "../plog.h"
 
 #define gettid() syscall(__NR_gettid)
 #define TLS_OUT_OF_INDEXES          0xffffffff
@@ -88,7 +88,7 @@ int tls_onexit_add(void *arg, void (*free_fn)(void *))
     pthread_once(&g_pthread_atexit_control_once, pthread_atexit_init);
     if (g_pthread_atexit_key == (pthread_key_t) TLS_OUT_OF_INDEXES)
     {
-        LOG(ERROR)<<"_pthread_atexit_key("<<g_pthread_atexit_key<<") invalid";
+        PLOG_ERROR("pthread_atexit_key(", g_pthread_atexit_key, ") invalid");
         return (-1);
     }
 

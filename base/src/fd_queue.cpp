@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <string.h>
-#include "glog/logging.h"
+#include "../plog.h"
 
 #include "fd_queue.h"
 // 因为 fd 不能在多个进程间简单传递， 这个实现意义不大
@@ -50,7 +50,7 @@ namespace conet
     bool FdQueue::push_fd(int fd)
     {
         if (fd <0)  {
-            LOG(ERROR)<<"error [fd:"<<fd<<"]";
+            PLOG_ERROR("error, ", (fd));
             return false;
         }
 

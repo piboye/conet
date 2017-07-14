@@ -30,6 +30,7 @@ public:
         WARN = 3,
         ERROR = 4,
         ALERT = 5,
+        FATAL = 6,
     };
 
     struct ReqItem
@@ -168,6 +169,7 @@ do  \
 #define PLOG_WARN(...)  PLOG(WARN, ##__VA_ARGS__)
 #define PLOG_ERROR(...) PLOG(ERROR, ##__VA_ARGS__)
 #define PLOG_ALERT(...) PLOG(ALERT, ##__VA_ARGS__)
+#define PLOG_FATAL(...) PLOG(FATAL, ##__VA_ARGS__)
 
 
 }

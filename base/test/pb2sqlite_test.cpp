@@ -21,7 +21,7 @@
 #include "base/test/test.pb.h"
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "../plog.h"
 
 
 
@@ -39,7 +39,7 @@ int main(int argc, char * argv[])
   ret = db.init("./test.db", "test");
   if (ret)
   {
-      LOG(ERROR)<<"init db failed!";
+      PLOG_ERROR("init db failed!");
       return 0;
   }
 
@@ -55,7 +55,7 @@ int main(int argc, char * argv[])
   db.get_all(w, &result);
   for (size_t i=0; i<result.size(); ++i)
   {
-    LOG(INFO)<<result[i]->DebugString();
+    PLOG_INFO(result[i]->DebugString());
   }
 
   return 0;

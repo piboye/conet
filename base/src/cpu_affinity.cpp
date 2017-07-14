@@ -20,7 +20,7 @@
 #include "cpu_affinity.h"
 #include <sys/types.h>
 #include <unistd.h>
-#include "glog/logging.h"
+#include "plog.h"
 #include <vector>
 #include <string>
 #include <pthread.h>
@@ -97,9 +97,9 @@ namespace conet
         pid_t pid = getpid();
         ret = sched_setaffinity(pid, sizeof(mask), &mask);
         if (ret) {
-            LOG(ERROR)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity failed, ret:"<<ret;
+            PLOG_ERROR("set [pid=", pid, "] to  [cpu=", cpu_id, "] affinity failed, [ret=", ret, "]");
         } else {
-            LOG(INFO)<<"set pid:"<<pid<<" to  cpu:"<<cpu_id<<" affinity success";
+            PLOG_INFO("set [pid=", pid, "] to  [cpu=", cpu_id, "] affinity success");
         }
         return ret;
     }
@@ -113,9 +113,9 @@ namespace conet
         pthread_t tid = pthread_self();
         ret = pthread_setaffinity_np(tid, sizeof(mask), &mask);
         if (ret) {
-            LOG(ERROR)<<"set tid:"<<tid<<" to  cpu:"<<cpu_id<<" affinity failed, ret:"<<ret;
+            PLOG_ERROR("set [tid=", tid, "] to  [cpu=", cpu_id, "] affinity failed, [ret=", ret, "]");
         } else {
-            LOG(INFO)<<"set tid:"<<tid<<" to  cpu:"<<cpu_id<<" affinity success";
+            PLOG_INFO("set [tid=", tid, "] to  [cpu=", cpu_id, "] affinity success");
         }
         return ret;
     }

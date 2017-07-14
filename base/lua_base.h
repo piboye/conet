@@ -31,6 +31,7 @@ extern "C"
 #include <sstream>
 #include <string>
 #include <assert.h>
+#include "plog.h"
 
 namespace conet
 {
@@ -48,7 +49,7 @@ public:
         //luaopen_string(state_);
         //luaopen_math(state_);
         if (luaL_loadfile(state_, file_name_.c_str())) {
-            LOG(ERROR)<<"cannot load configuration file:"<<file_name_;
+            PLOG_ERROR("cannot load configuration file:", file_name_);
             close();
             return false;
         }
@@ -68,7 +69,7 @@ public:
     {
       if(NULL == state_) return false;
       if(lua_pcall(state_, 0, 0, 0)){
-         LOG(ERROR)<<"cannot run configuration file: %s", file_name_;
+         PLOG_ERROR("cannot run configuration file: ", file_name_);
          close();
          return false;
       }
@@ -93,7 +94,7 @@ class LuaConf: public LuaBase
             if(NULL==name || NULL == state_) return T();
             lua_getglobal(state_, name);
             if (!lua_isstring(state_, -1)){
-                LOG(ERROR)<<"should be a string";
+                PLOG_ERROR("should be a string");
                 return T();
             }
 
@@ -112,7 +113,7 @@ int LuaConf::get<int>(char const* name){
     if(NULL==name || NULL == state_) return 0;
     lua_getglobal(state_, name);
     if (!lua_isnumber(state_, -1)) {
-        LOG(ERROR)<<"should be a number";
+        PLOG_ERROR("should be a number");
         return 0;
     }
 
@@ -126,7 +127,7 @@ double LuaConf::get<double>(char const* name) {
     if(NULL==name || NULL == state_) return 0;
     lua_getglobal(state_, name);
     if (!lua_isnumber(state_, -1)) {
-        LOG(ERROR)<<"should be a number";
+        PLOG_ERROR("should be a number");
         return 0;
     }
 
@@ -140,7 +141,7 @@ std::string LuaConf::get<std::string>(char const* name) {
     if(NULL==name || NULL == state_) return std::string();
     lua_getglobal(state_, name);
     if (!lua_isstring(state_, -1)) {
-        LOG(ERROR)<<"should be a string";
+        PLOG_ERROR("should be a string");
         return std::string();
     }
 

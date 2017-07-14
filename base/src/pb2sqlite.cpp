@@ -9,10 +9,10 @@
 #include <string>
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h> 
+#include <inttypes.h>
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "../plog.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/descriptor.h"
 #include "pb2sqlite.h"
@@ -50,13 +50,13 @@ int PB2Map(
         const FieldDescriptor* field = fields[i];
         if (!field->is_repeated() && !reflection->HasField(message, field)) {
             if (field->is_required()) {
-                LOG(ERROR)<<("missed required field " + field->full_name() + ".");
+                PLOG_ERROR("missed required field ", field->full_name(), ".");
                 return -1;
             }
             continue;
         }
         if (field->is_repeated()) {
-            LOG(ERROR)<<"unsupported repeated field, [field_name:"<<field->full_name()<<"]";
+            PLOG_ERROR("unsupported repeated field, [field_name:", field->full_name(), "]");
             return -1;
         }
 
@@ -87,8 +87,7 @@ int PB2Map(
             }
 #undef CASE_FIELD_TYPE
         default:
-        	LOG(FATAL)<<"unspported [type:"<<field->cpp_type()<<"] [field_name:"<<field->full_name()<<"]";
-
+        	PLOG_FATAL("unspported [type:", field->cpp_type(), "] [field_name:", field->full_name(), "]");
         }
     }
     return 0;
@@ -127,13 +126,13 @@ int pb2sql_row(
         const FieldDescriptor* field = fields[i];
         if (!field->is_repeated() && !reflection->HasField(message, field)) {
             if (field->is_required()) {
-                LOG(ERROR)<<("missed required field " + field->full_name() + ".");
+                PLOG_ERROR("missed required field ", field->full_name(),  ".");
                 return -1;
             }
             continue;
         }
         if (field->is_repeated()) {
-            LOG(ERROR)<<"unsupported repeated field, [field_name:"<<field->full_name()<<"]";
+            PLOG_ERROR("unsupported repeated field, [field_name:", field->full_name(), "]");
             return -1;
         }
 
@@ -174,7 +173,7 @@ int pb2sql_row(
         }
 #undef CASE_FIELD_TYPE
         default:
-        	LOG(FATAL)<<"unspported [type:"<<field->cpp_type()<<"] [field_name:"<<field->full_name()<<"]";
+        	PLOG_FATAL("unspported [type:", field->cpp_type(), "] [field_name:", field->full_name(), "]");
         }
     }
     return 0;
@@ -227,11 +226,11 @@ int sqlite2pb(
         const google::protobuf::FieldDescriptor* field =  descriptor->FindFieldByName(field_name);
 
         if (field == NULL)  {
-            LOG(ERROR)<<"sqlite result with unkown [field_name:"<<field_name<<"], pb nomatch";
+            PLOG_ERROR("sqlite result with unkown [field_name:", field_name, "], pb nomatch");
             continue;
         }
         if (field->is_repeated()) {
-            LOG(ERROR)<<"unsupported repeated [field_name:"<<field_name<<"]";
+            PLOG_ERROR("unsupported repeated [field_name:", field_name, "]");
             return -1;
         }
 
@@ -259,7 +258,7 @@ int sqlite2pb(
 			}
 	        default:
 	        {
-	        	LOG(FATAL)<<"unspported [type:"<<field->cpp_type()<<"] [field_name:"<<field_name<<"]";
+	        	PLOG_FATAL("unspported [type:", field->cpp_type(), "] [field_name:", field_name, "]");
 	        }
         }
     }
@@ -274,7 +273,7 @@ int Pb2Sqlite::insert(google::protobuf::Message const & message)
 	int ret = 0;
 	ret = pb2sql_row(message, &field_names, &value_list);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string query;
@@ -283,11 +282,7 @@ int Pb2Sqlite::insert(google::protobuf::Message const & message)
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.insert failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.insert failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -304,7 +299,7 @@ int Pb2Sqlite::replace(google::protobuf::Message const &msg)
 	int ret = 0;
 	ret = pb2sql_row(msg, &field_names, &value_list);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite.replace failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite.replace failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string query;
@@ -313,11 +308,7 @@ int Pb2Sqlite::replace(google::protobuf::Message const &msg)
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.replace failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.replace failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -346,7 +337,7 @@ int Pb2Sqlite::update(google::protobuf::Message const & wheres, google::protobuf
 	std::map<std::string, std::string> datas;
 	ret = PB2Map(msg, &datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string set_values;
@@ -356,7 +347,7 @@ int Pb2Sqlite::update(google::protobuf::Message const & wheres, google::protobuf
 	std::map<std::string, std::string> where_datas;
 	ret = PB2Map(wheres, &datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string where_values;
@@ -367,11 +358,7 @@ int Pb2Sqlite::update(google::protobuf::Message const & wheres, google::protobuf
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.update failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.update failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -388,7 +375,7 @@ int Pb2Sqlite::insert_or_update(google::protobuf::Message const &msg)
 	std::map<std::string, std::string> datas;
 	ret = PB2Map(msg, &datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string set_values;
@@ -396,7 +383,7 @@ int Pb2Sqlite::insert_or_update(google::protobuf::Message const &msg)
 
 	ret = pb2sql_row(msg, &field_names, &value_list);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string query;
@@ -406,11 +393,7 @@ int Pb2Sqlite::insert_or_update(google::protobuf::Message const &msg)
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.insert_or_update failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.insert_or_update failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -427,7 +410,7 @@ int Pb2Sqlite::update(uint64_t id, google::protobuf::Message const &msg)
 	std::map<std::string, std::string> datas;
 	ret = PB2Map(msg, &datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite.pb2map failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite.pb2map failed [ret:", ret, "]");
 		return -1;
 	}
 	std::string set_values;
@@ -439,11 +422,7 @@ int Pb2Sqlite::update(uint64_t id, google::protobuf::Message const &msg)
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.update failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.update failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -463,11 +442,7 @@ int Pb2Sqlite::remove(uint64_t id)
 
     ret = sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errmsg);
 	if (ret!= 0) {
-		LOG(ERROR)<<"Pb2Sqlite.update failed, "
-            "[ret:"<<ret<<"]"
-            "[errmsg:"<<errmsg<<"]"
-            "[sql:"<<query<<"]"
-            ;
+		PLOG_ERROR("Pb2Sqlite.update failed, ", (ret, errmsg, query));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -490,7 +465,7 @@ int Pb2Sqlite::get(uint64_t id, google::protobuf::Message *out)
     ret = sqlite3_exec(m_db, query.c_str(), &sqlite2pb, &data, &errmsg);
 
 	if (ret) {
-		LOG(ERROR)<<"pb2sqlite.get failed [ret:"<<ret<<"][errmsg:"<<errmsg<<"]";
+		PLOG_ERROR("pb2sqlite.get failed, ", (ret, errmsg));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -512,7 +487,7 @@ int Pb2Sqlite::get(google::protobuf::Message const & wheres, google::protobuf::M
 	std::map<std::string, std::string> where_datas;
 	ret = PB2Map(wheres, &where_datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite.pb2map failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite.pb2map failed [ret=", ret, "]");
 		return -1;
 	}
 	std::string where_values;
@@ -529,7 +504,7 @@ int Pb2Sqlite::get(google::protobuf::Message const & wheres, google::protobuf::M
     ret = sqlite3_exec(m_db, query.c_str(), sqlite2pb, &data, &errmsg);
 
 	if (ret) {
-		LOG(ERROR)<<"pb2sqlite.get failed [ret:"<<ret<<"][errmsg:"<<errmsg<<"]";
+		PLOG_ERROR("pb2sqlite.get failed, ", (ret, errmsg));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -550,7 +525,7 @@ int Pb2Sqlite::get_all(google::protobuf::Message const & wheres, std::vector<goo
 	std::map<std::string, std::string> where_datas;
 	ret = PB2Map(wheres, &where_datas);
 	if (ret) {
-		LOG(ERROR)<<"Pb2Sqlite.pb2map failed [ret:"<<ret<<"]";
+		PLOG_ERROR("Pb2Sqlite.pb2map failed [ret=", ret, "]");
 		return -1;
 	}
 	std::string where_values;
@@ -567,7 +542,7 @@ int Pb2Sqlite::get_all(google::protobuf::Message const & wheres, std::vector<goo
     ret = sqlite3_exec(m_db, query.c_str(), sqlite2pb, &data, &errmsg);
 
 	if (ret) {
-		LOG(ERROR)<<"pb2sqlite.get failed [ret:"<<ret<<"][errmsg:"<<errmsg<<"]";
+		PLOG_ERROR("pb2sqlite.get failed, ", (ret, errmsg));
         sqlite3_free(errmsg);
 		return -1;
 	}
@@ -586,10 +561,9 @@ int Pb2Sqlite::init(
     int rc = 0;
     rc = sqlite3_open(file_name.c_str(), &m_db);
     if (rc) {
-        LOG(ERROR)<<"init sqlite3 ["<<file_name<<"] failed,"
-            "[ret:"<<rc<<"]"
-            "[errmsg:"<<sqlite3_errmsg(m_db)<<"]"
-        ;
+        PLOG_ERROR("init sqlite3 [", file_name, "] failed,"
+            "[ret:", rc, "]"
+            "[errmsg:", sqlite3_errmsg(m_db), "]");
         return -1;
     }
     m_hold_db = 1;
@@ -608,11 +582,10 @@ int Pb2Sqlite::create_table(const char * sql)
 {
 
     char * errmsg = NULL;
-    int rc = 0;
-    rc = sqlite3_exec(m_db, sql, NULL, 0, &errmsg);
-    if (rc) {
-        LOG(ERROR)<<"create table failed, [sql:"<<sql<<"]"
-            "[errmsg:"<<errmsg<<"]";
+    int ret = 0;
+    ret = sqlite3_exec(m_db, sql, NULL, 0, &errmsg);
+    if (ret) {
+        PLOG_ERROR("create table failed, ", (ret, errmsg, sql));
 
         sqlite3_free(errmsg);
         return -1;
@@ -645,7 +618,7 @@ int Descriptor2SqlType(
     for (size_t i = 0; i < fields.size(); i++) {
         const FieldDescriptor* field = fields[i];
         if (field->is_repeated()) {
-            LOG(ERROR)<<"unsupported repeated field, [field_name:"<<field->full_name()<<"]";
+            PLOG_ERROR("unsupported repeated field, [field_name:", field->full_name(), "]");
             return -1;
         }
 
@@ -672,7 +645,7 @@ int Descriptor2SqlType(
 
 #undef CASE_FIELD_TYPE
         default:
-        	LOG(FATAL)<<"unspported [type:"<<field->cpp_type()<<"] [field_name:"<<field->full_name()<<"]";
+        	PLOG_FATAL("unspported [type:", field->cpp_type(), "] [field_name:", field->full_name(), "]");
 
         }
     }

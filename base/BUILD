@@ -52,7 +52,6 @@ cc_library(
         "//thirdparty/jsoncpp:jsoncpp",
         "//thirdparty/protobuf:protobuf",
         "//thirdparty/sqlite:sqlite3",
-        "//thirdparty/glog:glog",
     ],
 );
 

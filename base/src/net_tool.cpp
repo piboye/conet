@@ -34,7 +34,7 @@
 #include <string>
 #include <algorithm>
 
-#include "glog/logging.h"
+#include "../plog.h"
 #include "time_helper.h"
 #include "net_tool.h"
 
@@ -69,7 +69,7 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
     }
     if (!(pf.revents &POLLOUT))
     {
-        LOG(ERROR)<<"poll write failed, [events:"<<pf.revents<<"]";
+        PLOG_ERROR("poll write failed, [events:", pf.revents, "]");
         return -1;
     }
     //ret = syscall(SYS_write, fd, (const char*)buf, nbyte);
@@ -143,7 +143,7 @@ ssize_t read_timeout(int fd, void *buf, size_t nbyte, int timeout, int has_data=
     }
     if (!(pf.revents & POLLIN))
     {
-        LOG(ERROR)<<"poll read failed, [events:"<<pf.revents<<"]";
+        PLOG_ERROR("poll read failed, [events:", pf.revents, "]");
         return -1;
     }
 
@@ -428,7 +428,7 @@ int PacketStream::read_packet(char **pack, int * pack_len, int timeout, int a_ha
     len = ntohl(*(uint32_t *)(buff));
 
     if ((int32_t) len <=0) {
-         LOG(ERROR)<<"error len:"<<len<<" recv len:"<<cur_len;
+         PLOG_ERROR("error len:", len, " recv len:", cur_len);
          return -1;
     }
     if ((int32_t) len + 4 >  max_size) return -4;

@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include "delay_init.h"
 #include "macro_help.h"
+#include "plog.h"
 
-#ifndef LOG
-#define ENABLE_DELAY_INIT_CPP_LOG
-#define LOG(level, format, ...)
-#endif //LOG
 
 namespace delay_init {
 
@@ -24,7 +21,7 @@ static int call_file_list(file_node *file_list) {
     if (file_list->called) {
         return 0;
     }
-    LOG(DEBUG, "delay_init in file: %s", file_list->file_name);
+    PLOG_DEBUG("delay_init in file:", file_list->file_name);
     int ret = 0;
     list_head *q = NULL;
     list_for_each(q, &file_list->depend_list) {
@@ -41,7 +38,7 @@ static int call_file_list(file_node *file_list) {
         callback init = st->init;
         if (init) {
             if (0 == st->called) {
-                LOG(DEBUG, "call delay init func:%s", st->info);
+                PLOG_DEBUG("call delay init func:", st->info);
                 ret += init();
                 ++st->called;
                 ++called_cnt;
@@ -58,9 +55,10 @@ static int call_file_list(file_node *file_list) {
 
 int call_in_level(int level) {
     if (level < 0 || INIT_LEVEL_NUM - 1 < level) {
-        LOG(ERROR, "error init level [%d] group", level);
+        PLOG_ERROR("error init ", (level), " group");
         return -1;
-    }LOG(DEBUG, "delay_init in level: %d", level);
+    }
+    PLOG_DEBUG("delay_init in ", (level));
     int ret = 0;
     list_head *q = NULL;
     list_for_each(q, &g_delay_init_list_head[level]) {

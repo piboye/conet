@@ -19,7 +19,7 @@
 #ifndef __LUA_BIND_H__
 #define __LUA_BIND_H__
 
-#include "thirdparty/glog/logging.h"
+#include "plog.h"
 
 extern "C"
 {
@@ -33,7 +33,7 @@ namespace conet
 template<typename T>
 T lua_get_param(lua_State *state, int index)
 {
-    LOG(ERROR)<<"parement type unsupport type";
+    PLOG_ERROR("parement type unsupport type");
     return T();
 }
 
@@ -41,7 +41,7 @@ template <>
 int lua_get_param<int>(lua_State *state, int index)
 {
     if (!lua_isnumber(state, index)) {
-        LOG(ERROR)<<"lua argument should be a number";
+        PLOG_ERROR("lua argument should be a number");
         return 0;
     }
 
@@ -53,7 +53,7 @@ template <>
 bool lua_get_param<bool>(lua_State *state, int index)
 {
     if (!lua_isboolean(state, index)){
-        LOG(ERROR)<<"lua argument should be a boolean";
+        PLOG_ERROR("lua argument should be a boolean");
         return 0;
     }
 
@@ -65,7 +65,7 @@ template <>
 double lua_get_param<double>(lua_State *state, int index)
 {
     if (!lua_isnumber(state, index)) {
-        LOG(ERROR)<<"lua argument should be a number";
+        PLOG_ERROR("lua argument should be a number");
         return 0;
     }
 
@@ -77,7 +77,7 @@ template <>
 char const * lua_get_param<char const*>(lua_State *state, int index)
 {
     if (!lua_isstring(state, index)){
-        LOG(ERROR)<<"lua argument should be a string";
+        PLOG_ERROR("lua argument should be a string");
         return "";
     }
 
@@ -89,7 +89,7 @@ template <>
 std::string lua_get_param<std::string >(lua_State *state, int index)
 {
     if (!lua_isstring(state, index)){
-        LOG(ERROR)<<"lua argument should be a string";
+        PLOG_ERROR("lua argument should be a string");
         return std::string();
     }
 
@@ -101,7 +101,7 @@ std::string lua_get_param<std::string >(lua_State *state, int index)
 template<typename T>
 int lua_set_result(lua_State *state, T value)
 {
-    LOG(ERROR)<<"parement type unsupport type";
+    PLOG_ERROR("parement type unsupport type");
     return 0;
 }
 
