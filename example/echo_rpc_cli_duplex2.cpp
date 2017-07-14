@@ -22,7 +22,7 @@
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client_duplex.h"
 #include "thirdparty/gflags/gflags.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 #include "core/conet_all.h"
 
 #include "base/net_tool.h"
@@ -55,7 +55,7 @@ int proc_send(void *arg)
         int retcode=0;
         ret = task->client->rpc_call(3,  NULL, NULL, &retcode, NULL, 1000);
         if (ret || retcode) {
-            LOG(ERROR)<<"ret:"<<ret<<", retcode:"<<retcode<<"";
+            PLOG_ERROR((ret, retcode));
             continue;
         }
         //if (i %100 == 99) usleep(10000);
@@ -77,7 +77,7 @@ class Main: public Coroutine
             int ret = 0;
             ret = client->init(FLAGS_server_addr.c_str());
             if (ret) {
-                LOG(ERROR)<<"init server address "<<FLAGS_server_addr<<" failed!, ret:"<<ret;
+                PLOG_ERROR("init server address ",FLAGS_server_addr," failed!, ret:",ret);
                 exit = 1;
                 return -1;
             }
@@ -101,7 +101,6 @@ class Main: public Coroutine
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     Main c1;
     c1.resume();

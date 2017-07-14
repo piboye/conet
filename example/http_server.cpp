@@ -22,9 +22,9 @@
 #include <string.h>
 #include <unistd.h>
 #include "svrkit/http_server.h"
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/ip_list.h"
+#include "base/plog.h"
 
 DEFINE_string(server_addr, "127.0.0.1:8080", "server address");
 
@@ -45,7 +45,6 @@ int proc_hello(void *arg, http_ctx_t *ctx,
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     tcp_server_t tcp_server;
     int ret = 0;

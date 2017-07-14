@@ -22,9 +22,9 @@
 #include <unistd.h>
 #include "svrkit/rpc_pb_server.h"
 #include "example/echo_rpc.pb.h"
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/delay_init.h"
+#include "base/plog.h"
 
 using namespace conet;
 
@@ -63,7 +63,7 @@ int proc_echo_impl(void *arg, rpc_pb_ctx_t *ctx,
         EchoReq *req, EchoResp *resp, std::string *errmsg) 
 {
     resp->set_msg(req->msg()); 
-    LOG(INFO)<<req->msg();
+    PLOG_INFO(req->msg());
     return 0;
 }
 

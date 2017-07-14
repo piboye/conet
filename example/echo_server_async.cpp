@@ -23,9 +23,9 @@
 #include <queue>
 
 #include "svrkit/incl/server_base.h"
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
 
+#include "base/plog.h"
 #include "base/incl/ip_list.h"
 #include "base/incl/ref_str.h"
 #include "core/incl/conet_all.h"
@@ -76,7 +76,7 @@ int read_co(void *arg)
         ctx->write_queue.push(data);
     } while(1);
     ctx->exit = 1;
-    LOG(ERROR)<<"read num:"<<num;
+    PLOG_ERROR("read num=", num);
     return 0;
 }
 
@@ -110,7 +110,7 @@ int write_co(void *arg)
         num+=ret;
         ctx->read_queue.push(data);
     } while(1);
-    LOG(ERROR)<<"write num:"<<num;
+    PLOG_ERROR("write num=", num);
     return 0;
 }
 
@@ -148,7 +148,6 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr, &ip_list);

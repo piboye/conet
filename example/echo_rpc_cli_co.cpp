@@ -22,7 +22,7 @@
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 #include "core/conet_all.h"
 
 #include "base/net_tool.h"
@@ -93,14 +93,14 @@ int proc_send(void *arg)
         }
 
         if (ret) {
-            LOG(ERROR)<<"ret:"<<ret;
+            PLOG_ERROR((ret));
             close(fd);
             fd = task->lb->get();
             continue;
         }
 
         if (retcode)
-            LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg "<<errmsg<<" resposne:"<<resp.DebugString();;
+            PLOG_ERROR("ret_code:",retcode," errmsg ",errmsg," resposne:",resp.DebugString());
     }
     if (fd >= 0) close(fd);
     ++g_finish_task_num;
@@ -111,21 +111,20 @@ task_t *tasks = NULL;
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     delay_init::call_all_level();
-    LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
-        <<" success:"<<delay_init::success_cnt
-        <<", failed:"<<delay_init::failed_cnt;
+    PLOG_INFO("delay init total:",delay_init::total_cnt
+        ," success:",delay_init::success_cnt
+        ,", failed:",delay_init::failed_cnt);
 
     if(delay_init::failed_cnt>0)
     {
-        LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+        PLOG_ERROR("delay init failed, failed num:", delay_init::failed_cnt);
         return 1;
     }
 
     if (prepare_data(FLAGS_data_file.c_str())) {
-        LOG(ERROR)<<"read data failed!";
+        PLOG_ERROR("read data failed!");
         return 1;
     }
 

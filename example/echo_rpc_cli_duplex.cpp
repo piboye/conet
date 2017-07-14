@@ -22,7 +22,7 @@
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client_duplex.h"
 #include "thirdparty/gflags/gflags.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 #include "core/conet_all.h"
 
 #include "base/net_tool.h"
@@ -77,9 +77,9 @@ int proc_send(void *arg)
         int retcode=0;
         ret = task->client->rpc_call(2, &req, &resp, &retcode, NULL, 1000);
         if (ret || retcode) {
-                LOG(ERROR)<<"ret:"<<ret;
+                PLOG_ERROR("ret:", ret);
             if (retcode)
-            LOG(ERROR)<<"ret_code:"<<retcode<<" resposne:"<<resp.DebugString();;
+            PLOG_ERROR("ret_code:",retcode," resposne:",resp.DebugString());
             continue;
         }
         //if (i %100 == 99) usleep(10000);
@@ -101,7 +101,7 @@ class Main: public Coroutine
             int ret = 0;
             ret = client->init(FLAGS_server_addr.c_str());
             if (ret) {
-                LOG(ERROR)<<"init server address "<<FLAGS_server_addr<<" failed!, ret:"<<ret;
+                PLOG_ERROR("init server address ",FLAGS_server_addr," failed!, ret:",ret);
                 exit = 1;
                 return -1;
             }
@@ -125,10 +125,9 @@ class Main: public Coroutine
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     if (prepare_data(FLAGS_data_file.c_str())) {
-        LOG(ERROR)<<"read data failed!";
+        PLOG_ERROR("read data failed!");
         return 1;
     }
 

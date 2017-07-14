@@ -24,6 +24,7 @@
 #include "thirdparty/gflags/gflags.h"
 #include "base/net_tool.h"
 #include "base/ip_list.h"
+#include "base/plog.h"
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 
@@ -32,13 +33,12 @@ using namespace conet;
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr,  &ip_list);
 
     if (ip_list.size() <=0) {
-        LOG(ERROR)<<"error server addr:"<<FLAGS_server_addr;
+        PLOG_ERROR("error server addr:", FLAGS_server_addr);
         return 1;
     }
 

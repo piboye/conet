@@ -21,8 +21,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "svrkit/tcp_server.h"
-#include "thirdparty/glog/logging.h"
 #include "thirdparty/gflags/gflags.h"
+#include "base/plog.h"
 #include "base/cpu_affinity.h"
 #include "base/delay_init.h"
 #include "base/ip_list.h"
@@ -98,7 +98,7 @@ struct Task
 
             ret = self->server.init(self->ip_list[0].ip.c_str(), self->ip_list[0].port);
             if (ret) {
-                LOG(ERROR)<<"init server faile! [ret:"<<ret<<"]";
+                PLOG_ERROR("init server faile!", (ret));
                 return NULL;
             }
             self->server.set_conn_cb(proc_echo, NULL);
@@ -118,7 +118,6 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr, &ip_list);
@@ -133,13 +132,13 @@ int main(int argc, char * argv[])
     {
         // delay init
         delay_init::call_all_level();
-        LOG(INFO)<<"delay init total:"<<delay_init::total_cnt
-                <<" success:"<<delay_init::success_cnt
-                <<", failed:"<<delay_init::failed_cnt;
+        PLOG_INFO("delay init total:",delay_init::total_cnt
+                ," success:",delay_init::success_cnt
+                ,", failed:",delay_init::failed_cnt);
 
         if(delay_init::failed_cnt>0)
         {
-            LOG(ERROR)<<"delay init failed, failed num:"<<delay_init::failed_cnt;
+            PLOG_ERROR("delay init failed, failed num:",delay_init::failed_cnt);
             return 1;
         }
     }

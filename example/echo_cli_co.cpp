@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include "core/conet_all.h"
 #include "thirdparty/gflags/gflags.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 
 #include "base/ip_list.h"
 #include "base/net_tool.h"
@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
     }
 
     if (prepare_data(FLAGS_data_file.c_str())) {
-        LOG(ERROR)<<"read data failed!";
+        PLOG_ERROR("read data failed!");
         return 1;
     }
 

@@ -22,7 +22,7 @@
 #include "example/echo_rpc.pb.h"
 #include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
-#include "thirdparty/glog/logging.h"
+#include "base/plog.h"
 #include "core/conet_all.h"
 
 #include "base/net_tool.h"
@@ -56,7 +56,7 @@ int proc_send(void *arg)
         if (fd < 0) break;
         ret = conet::rpc_pb_call(fd, cmd_id, (google::protobuf::Message *)NULL, (google::protobuf::Message *)NULL, &retcode, &errmsg);
         if (ret) {
-            LOG(ERROR)<<"ret:"<<ret;
+            PLOG_ERROR((ret));
             close(fd);
             fd = task->lb->get();
             continue;
@@ -65,7 +65,7 @@ int proc_send(void *arg)
         if (retcode) {
             close(fd);
             fd = task->lb->get();
-            LOG(ERROR)<<"ret_code:"<<retcode<<" errmsg:"<<errmsg;
+            PLOG_ERROR((retcode, errmsg));
         }
     }
     if (fd >= 0) close(fd);
@@ -77,7 +77,6 @@ task_t *tasks = NULL;
 int main(int argc, char * argv[])
 {
     gflags::ParseCommandLineFlags(&argc, &argv, false); 
-    google::InitGoogleLogging(argv[0]);
 
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);
