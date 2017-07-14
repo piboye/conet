@@ -87,6 +87,8 @@ public:
 
     int Add(ReqItem *item);
 
+    int AddFast(ReqItem *item);
+
     static PLog & Instance();
     PLog();
     ~PLog();
@@ -139,7 +141,10 @@ do  \
             __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
     } \
     __plog_item__->text.push_back('\n'); \
-    if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
+    if (conet::PLog::FATAL == conet::PLog::a_level) { \
+        conet::PLog::Instance().AddFast(__plog_item__); \
+        abort();\
+    } else if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
 // 扩展格式   (a, b, c)
@@ -161,7 +166,10 @@ do  \
         __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
     } \
     __plog_item__->text.push_back('\n'); \
-    if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
+    if (conet::PLog::FATAL == conet::PLog::a_level) { \
+        conet::PLog::Instance().AddFast(__plog_item__); \
+        abort();\
+    } else if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
 #define PLOG_DEBUG(...) PLOG(DEBUG, ##__VA_ARGS__)

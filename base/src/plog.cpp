@@ -146,6 +146,37 @@ int PLog::Add(ReqItem *item)
     return 0;
 }
 
+int PLog::AddFast(ReqItem *item)
+{
+    gettimeofday(&item->timestamp, NULL);
+    item->thread_id = syscall(__NR_gettid);
+    item->link_to.next = NULL;
+
+    struct tm *tl = localtime(&item->timestamp.tv_sec);
+
+    char tm_txt[100]={0};
+    char tm_rest[20]={0};
+    strftime(tm_txt, 100, "[%Y%m%d %H:%M:%S ", tl);
+    snprintf(tm_rest, 20, "%06d", (int)item->timestamp.tv_usec);
+    std::string out_txt;
+    LOG_FORMAT(out_txt, tm_txt, tm_rest, "]"
+            "(", item->thread_id, ")"
+            "[", item->file_name, ":", item->line, "]"
+            "[", item->func, "]"
+            "[", get_level_str(item->level), "]: ",
+            item->text);
+    if (m_fd != 2)
+    {
+        write(2, out_txt.c_str(), out_txt.size());
+    }
+    if (m_fd >= 0)
+    {
+        write(m_fd, out_txt.c_str(), out_txt.size());
+    }
+    delete item;
+    return 0;
+}
+
 int PLog::ProcLog(llist_node *queue)
 {
     queue = llist_reverse_order(queue);
