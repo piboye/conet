@@ -36,6 +36,8 @@ module_mgr_t::module_mgr_t()
     m_module_num = 0;
     m_init_succ_num = 0;
     m_fin_succ_num = 0;
+    m_argc = 0;
+    m_argv = NULL;
 
     int num = sizeof(m_level)/sizeof(list_head);
     for(int i=0; i<num; ++i)
@@ -211,7 +213,7 @@ int module_mgr_t::init_all_modules(int *argc, char ***argv)
 int module_mgr_t::init_all_modules()
 {
     int ret = 0;
-    if (m_init_called || m_init_called)
+    if (m_init_called || m_fin_called)
     {
         return 0;
     }
