@@ -138,7 +138,7 @@ public:\
 // 创建Closure
 #define NewClosure(return_type, param, ...) \
     BOOST_PP_IF(BOOST_PP_GREATER(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__) , 1), \
-            NewClosureWithCopy, NewClosureRaw) \
+            NewClosureWithRef, NewClosureRaw) \
             (return_type, param, __VA_ARGS__)
 
 
