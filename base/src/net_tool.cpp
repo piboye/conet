@@ -34,6 +34,7 @@
 #include <string>
 #include <algorithm>
 
+#include <sys/uio.h>
 #include "../plog.h"
 #include "time_helper.h"
 #include "net_tool.h"

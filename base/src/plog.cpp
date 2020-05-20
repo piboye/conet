@@ -113,7 +113,7 @@ PLog::~PLog()
             delete it;
         }
         m_color_all.first = NULL;
-        pthread_key_delete(m_color_key);
+        if (m_color_key) pthread_key_delete(m_color_key);
     }
 }
 

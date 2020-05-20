@@ -478,7 +478,7 @@ public:
         m_arg = arg;
         m_fn = fn;
         m_ms = ms;
-        m_inter = m_inter;
+        m_inter = 0;
         m_exit_flag = 0;
 
         init_timeout_handle(&m_tm,  &TimeoutHandle::timeout_cb, this);
