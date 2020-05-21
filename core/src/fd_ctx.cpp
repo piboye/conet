@@ -65,7 +65,7 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
     delete mgr;
 }
 
-fd_ctx_mgr_t g_fd_ctx_mgr[1024000];
+static fd_ctx_mgr_t *g_fd_ctx_mgr = NULL;
 
 static inline
 void expand(fd_ctx_mgr_t *mgr, int need_size)
@@ -75,9 +75,11 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
         size +=10000;
     }
 
-    fd_ctx_t ** fds=  new fd_ctx_t * [size+1];
-    memset(fds, 0, (size+1) *sizeof(void *));
-    memcpy(fds, mgr->fds, (mgr->size+1) * sizeof(void *) ); 
+    fd_ctx_t ** fds=  new fd_ctx_t * [size];
+    memset(fds, 0, (size) *sizeof(void *));
+    if (mgr->size > 0) {
+    	memcpy(fds, mgr->fds, (mgr->size) * sizeof(void *) ); 
+    }
     mgr->fds = fds;
     mgr->size = size;
 }
@@ -99,16 +101,30 @@ int get_default_fd_ctx_size()
 }
 
 
+fd_ctx_mgr_t * get_fd_ctx_mgr()
+{
+	if (!g_fd_ctx_mgr) {
+		g_fd_ctx_mgr = create_fd_ctx_mgr(get_default_fd_ctx_size());
+	}
+
+	return g_fd_ctx_mgr;
+}
+
+int init_fd_ctx_env() {
+   get_fd_ctx_mgr();
+   return 0;
+}
+
 fd_ctx_t *get_fd_ctx(int fd, int type)
 {
     if (fd <0) return NULL;
 
-    fd_ctx_mgr_t *mgr = g_fd_ctx_mgr;
+    fd_ctx_mgr_t *mgr = get_fd_ctx_mgr();
 
-    if (fd >  mgr->size) {
-        assert("!too many fd");
-        exit(1);
+    if (fd >= mgr->size ) {
+        expand(mgr, fd+1);
     }
+
     fd_ctx_t *ctx =   mgr->fds[fd];
     if (NULL == ctx) {
         /*
@@ -148,10 +164,10 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
         return NULL;
     }
 
-    fd_ctx_mgr_t *mgr = g_fd_ctx_mgr;
+    fd_ctx_mgr_t *mgr = get_fd_ctx_mgr();
 
     if (fd >= mgr->size ) {
-        expand(mgr, fd);
+        expand(mgr, fd+1);
     }
 
     fd_ctx_t * d = mgr->fds[fd];
@@ -189,7 +205,7 @@ int free_fd_ctx(int fd)
 {
     if (fd <0) return -1;
 
-    fd_ctx_mgr_t *mgr = g_fd_ctx_mgr;
+    fd_ctx_mgr_t *mgr = get_fd_ctx_mgr();
 
     if (fd > mgr->size ) {
         return -2;

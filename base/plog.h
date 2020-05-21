@@ -172,13 +172,22 @@ do  \
     } else if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
+/*
 #define PLOG_DEBUG(...) PLOG(DEBUG, ##__VA_ARGS__)
 #define PLOG_INFO(...)  PLOG(INFO, ##__VA_ARGS__)
 #define PLOG_WARN(...)  PLOG(WARN, ##__VA_ARGS__)
 #define PLOG_ERROR(...) PLOG(ERROR, ##__VA_ARGS__)
 #define PLOG_ALERT(...) PLOG(ALERT, ##__VA_ARGS__)
 #define PLOG_FATAL(...) PLOG(FATAL, ##__VA_ARGS__)
+*/
 
+
+#define PLOG_DEBUG(...)
+#define PLOG_INFO(...)
+#define PLOG_WARN(...)
+#define PLOG_ERROR(...)
+#define PLOG_ALERT(...)
+#define PLOG_FATAL(...)
 
 }
 

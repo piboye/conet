@@ -95,6 +95,7 @@ void conet_tls_##var_name##_fini(void *arg) \
   { \
     fini_exp; \
   } \
+  var_name = NULL; \
   return; \
 } \
 inline \

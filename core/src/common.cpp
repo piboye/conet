@@ -24,6 +24,7 @@
 #include "./common.h"
 #include "./time_mgr.h"
 #include "coroutine_env.h"
+#include "fd_ctx.h"
 #include "log.h"
 namespace conet
 {
@@ -36,6 +37,8 @@ namespace conet
             return -1;
         }
         g_coroutine_envs = new coroutine_env_t*[102400];
+
+	conet::init_fd_ctx_env();
         return 0;
     }
 

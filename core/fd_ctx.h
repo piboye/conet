@@ -46,6 +46,8 @@ struct fd_ctx_t
     int domain;
 };
 
+int init_fd_ctx_env();
+
 
 fd_ctx_t * alloc_fd_ctx(int fd, int type=1);
 

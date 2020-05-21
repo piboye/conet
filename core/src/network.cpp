@@ -87,21 +87,24 @@ struct poll_wait_item_mgr_t
 
     poll_wait_item_mgr_t() 
     {
-        this->size = get_default_size(); 
-        wait_items = (poll_wait_item_t **) new poll_wait_item_t *[size+1];
-        memset(wait_items, 0, (size+1)*sizeof(void *));
+        this->size = get_default_size()+1; 
+        wait_items = (poll_wait_item_t **) new poll_wait_item_t *[this->size];
+        memset(wait_items, 0, (this->size)*sizeof(void *));
+	this->wait_items = wait_items;
     }
 
     int expand(int need_size)
     {
-        int new_size = size;
+        int new_size = this->size;
         while (new_size <= need_size) {
             new_size +=10000;
         }
 
-        poll_wait_item_t **ws = (poll_wait_item_t **) new poll_wait_item_t *[new_size+1];
-        memset(ws, 0, (new_size+1)*sizeof(void *));
-        memcpy(ws, this->wait_items, (this->size+1) * sizeof(void *) ); 
+        poll_wait_item_t **ws = (poll_wait_item_t **) new poll_wait_item_t *[new_size];
+        memset(ws, 0, (new_size)*sizeof(void *));
+	if (this->size > 0) {
+           memcpy(ws, this->wait_items, (this->size) * sizeof(void *)); 
+	}
 
         delete [] this->wait_items;
         this->wait_items = ws;
@@ -111,13 +114,16 @@ struct poll_wait_item_mgr_t
 
     ~poll_wait_item_mgr_t()
     {
-        for(int i=0;i<= this->size; ++i) 
+        for(int i=0; i< this->size; ++i) 
         {
             if (this->wait_items[i]) {
                 delete this->wait_items[i];
+		this->wait_items[i] = NULL;
             }
         }
-        delete [] (this->wait_items);
+        delete [] this->wait_items;
+	this->wait_items = NULL;
+	this->size = 0;
     }
 };
 
@@ -125,6 +131,7 @@ int poll_wait_item_mgr_t::default_size = 0;
 
 __thread  poll_wait_item_mgr_t * g_wait_item_mgr = NULL;
 CONET_DEF_TLS_VAR_HELP_DEF(g_wait_item_mgr);
+
 
 poll_wait_item_t * get_wait_item(int fd) 
 {
@@ -138,7 +145,7 @@ poll_wait_item_t * get_wait_item(int fd)
 
     if ( fd >= mgr->size)
     {
-        mgr->expand(fd);
+        mgr->expand(fd+1);
     }
 
     poll_wait_item_t *wait_item = mgr->wait_items[fd];
@@ -149,6 +156,24 @@ poll_wait_item_t * get_wait_item(int fd)
     }
     return wait_item;
 }
+
+void free_wait_item(int fd) {
+    if (fd < 0) {
+        abort();
+	return;
+    }
+
+    poll_wait_item_mgr_t *mgr = TLS_GET(g_wait_item_mgr);
+
+    poll_wait_item_t *wait_item = mgr->wait_items[fd];
+    if (NULL == wait_item )
+    {
+       return ;
+    }
+
+    delete wait_item;
+    mgr->wait_items[fd] = NULL;
+}	
 
 struct poll_ctx_t
 {
@@ -175,9 +200,17 @@ struct poll_ctx_t
 epoll_ctx_t * get_epoll_ctx();
 
 
+
 void close_fd_notify_poll(int fd)
 {
+    if (!g_wait_item_mgr) {
+	return;
+    }
+
     poll_wait_item_t *wait_item = get_wait_item(fd);
+    if (!wait_item) {
+	return;
+    }
     if (wait_item && wait_item->wait_events)  
     {
         epoll_ctx_t *ep_ctx = get_epoll_ctx();
@@ -192,6 +225,8 @@ void close_fd_notify_poll(int fd)
             PLOG_ERROR("epoll_ctl del failed, ", (ret, fd, events, errno), " [errmsg=", strerror(errno),"]");
         }
     }
+
+    free_wait_item(fd);
 }
 
 void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll_fd)
@@ -264,12 +299,11 @@ void fd_notify_events_to_poll(poll_wait_item_t *wait_item, uint32_t events, list
         return;
     }
 
-    int fd = wait_item->fd;
     int nfds = (int) poll_ctx->nfds;
     int pos = wait_item->pos;
     if (unlikely((pos < 0) || ( nfds <= pos))) {
         clear_invalid_event(wait_item, events, epoll_fd);
-        PLOG_ERROR("error [fd=", fd, "] ctx [pos=", pos, "]");
+        PLOG_ERROR("error [fd=", wait_item->fd, "] ctx [pos=", pos, "]");
         abort();
         return;
     }

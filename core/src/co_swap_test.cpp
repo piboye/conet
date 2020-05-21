@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "conet_all.h"
 #include "gflags/gflags.h"
+#include "../base/module.h"
 
 using namespace conet;
 
@@ -56,6 +57,9 @@ DEFINE_int32(num, 1000000, "swap num");
 int main(int argc, char * argv[])
 {
   gflags::ParseCommandLineFlags(&argc, &argv, false); 
+  InitAllModule(argc, argv);
+  conet::init_conet_global_env();
+  conet::init_conet_env();
   g_co = conet::alloc_coroutine(&t2,  (void *)(uint64_t)FLAGS_num);
   resume(g_co, NULL);
   //conet::print_stacktrace(g_co, 2);

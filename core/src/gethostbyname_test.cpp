@@ -21,6 +21,7 @@
 #include "conet_all.h"
 #include "gflags/gflags.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 #include <netdb.h>
 
@@ -54,6 +55,7 @@ int t(void *arg)
 int main(int argc, char * argv[])
 {
   gflags::ParseCommandLineFlags(&argc, &argv, false); 
+  InitAllModule(argc, argv);
 
   for (int i= 0; i< (int) FLAGS_task_num; ++i)
   {

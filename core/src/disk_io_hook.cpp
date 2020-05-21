@@ -35,7 +35,7 @@
 #include <stdarg.h>
 
 #include "coroutine.h"
-#include "coroutine_impl.h"
+//#include "coroutine_impl.h"
 #include "fd_ctx.h"
 #include "network_hook.h"
 #include "hook_helper.h"
