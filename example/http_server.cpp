@@ -25,6 +25,7 @@
 #include "thirdparty/gflags/gflags.h"
 #include "base/ip_list.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 DEFINE_string(server_addr, "127.0.0.1:8080", "server address");
 
@@ -44,7 +45,7 @@ int proc_hello(void *arg, http_ctx_t *ctx,
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+    InitAllModule(argc, argv);
 
     tcp_server_t tcp_server;
     int ret = 0;

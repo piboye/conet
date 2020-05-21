@@ -54,7 +54,6 @@ int t(void *arg)
 
 int main(int argc, char * argv[])
 {
-  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   InitAllModule(argc, argv);
   conet::init_conet_global_env();
   conet::init_conet_env();
@@ -69,7 +68,6 @@ int main(int argc, char * argv[])
   while (g_finish_cnt < FLAGS_task_num) {
       conet::dispatch();
   }
-  //t(NULL);
   return 0;
 }
 

@@ -20,15 +20,12 @@
 
 #include "base/test/test.pb.h"
 
-#include "gflags/gflags.h"
 #include "../plog.h"
-
-
+#include "module.h"
 
 int main(int argc, char * argv[])
 {
-    
-  gflags::ParseCommandLineFlags(&argc, &argv, false); 
+  InitAllModule(argc, argv);
 
   conet::Pb2Sqlite db;
 

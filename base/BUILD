@@ -23,7 +23,6 @@ cc_library(
         'src/http_parser.cpp',
         'src/url_encode.cpp',
         'src/bobhash.cpp',
-        'src/delay_init.cpp',
         'src/pb2json.cpp',
         'src/pbc.cpp',
         'src/murmurhash3.cpp',

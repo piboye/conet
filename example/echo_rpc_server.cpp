@@ -23,8 +23,8 @@
 #include "svrkit/rpc_pb_server.h"
 #include "example/echo_rpc.pb.h"
 #include "thirdparty/gflags/gflags.h"
-#include "base/delay_init.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 using namespace conet;
 
@@ -50,7 +50,7 @@ class EchoServer
 
 EchoServer echo_server;
 
-DELAY_INIT()
+DEFINE_MODULE(echo_server)
 {
     std::string a;
     echo_server.m_pre="fuck:";

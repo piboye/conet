@@ -27,6 +27,8 @@
 
 #include "base/net_tool.h"
 
+#include "base/module.h"
+
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
 DEFINE_int32(send_num, 100000, "send num per task");
@@ -100,7 +102,8 @@ class Main: public Coroutine
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+
+    InitAllModule(argc, argv);
 
     Main c1;
     c1.resume();

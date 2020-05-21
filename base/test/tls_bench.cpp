@@ -19,6 +19,7 @@
 #include "tls.h"
 
 #include "gflags/gflags.h"
+#include "module.h"
 
 DEFINE_int32(num, 100000000, "swap num");
 
@@ -29,7 +30,7 @@ CONET_DEF_TLS_VAR_HELP_DEF(g_i);
 int main(int argc, char * argv[])
 {
     
-  gflags::ParseCommandLineFlags(&argc, &argv, false); 
+  InitAllModule(argc, argv);
   for(uint64_t i = (uint64_t)FLAGS_num; i > 0; --i)
   {
       ++*TLS_GET(g_i); 

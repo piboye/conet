@@ -30,7 +30,6 @@
 #include <fstream>
 
 #include "thirdparty/gflags/gflags.h"
-#include "base/delay_init.h"
 #include "base/net_tool.h"
 #include "server_common.h"
 #include "server_builder.h"
@@ -42,6 +41,7 @@
 #include "base/string_tpl.h"
 #include "base/string2number.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 
 namespace conet
@@ -126,27 +126,11 @@ void fini_google_lib()
     gflags::ShutDownCommandLineFlags();
 }
 
-static int call_delay_init()
-{
-    // delay init
-    delay_init::call_all_level();
-    PLOG_INFO("delay init total:", delay_init::total_cnt
-        ," success:",delay_init::success_cnt
-        ,", failed:",delay_init::failed_cnt);
-
-    if(delay_init::failed_cnt>0)
-    {
-        PLOG_ERROR("delay init failed, failed num=", delay_init::failed_cnt);
-        return 1;
-    }
-    return 0;
-}
-
 int main(int argc, char * argv[])
 {
     int ret = 0;
 
-    ret = gflags::ParseCommandLineFlags(&argc, &argv, false);
+    InitAllModule(argc, argv);
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -155,13 +139,6 @@ int main(int argc, char * argv[])
 
     mallopt(M_MMAP_THRESHOLD, 1024*1024); // 1MB，防止频繁mmap
     mallopt(M_TRIM_THRESHOLD, 8*1024*1024); // 8MB，防止频繁brk
-
-    ret = call_delay_init();
-    if (ret)
-    {
-        return 1;
-    }
-
 
     if (conet::can_reuse_port()) {
         PLOG_INFO("can reuse port, very_good");
@@ -228,7 +205,5 @@ int main(int argc, char * argv[])
 
 
     fini_google_lib();
-
-    conet::call_server_fini_func();
     return 0;
 }

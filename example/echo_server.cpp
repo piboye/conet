@@ -24,7 +24,7 @@
 #include "thirdparty/gflags/gflags.h"
 #include "base/plog.h"
 #include "base/cpu_affinity.h"
-#include "base/delay_init.h"
+#include "base/module.h"
 #include "base/ip_list.h"
 #include "base/net_tool.h"
 
@@ -117,7 +117,8 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+
+    InitAllModule(argc, argv);
 
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr, &ip_list);
@@ -128,20 +129,6 @@ int main(int argc, char * argv[])
 
     std::vector<int> cpu_set;
     parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
-
-    {
-        // delay init
-        delay_init::call_all_level();
-        PLOG_INFO("delay init total:",delay_init::total_cnt
-                ," success:",delay_init::success_cnt
-                ,", failed:",delay_init::failed_cnt);
-
-        if(delay_init::failed_cnt>0)
-        {
-            PLOG_ERROR("delay init failed, failed num:",delay_init::failed_cnt);
-            return 1;
-        }
-    }
 
     conet::init_conet_global_env();
     conet::init_conet_env();

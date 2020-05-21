@@ -27,6 +27,8 @@
 #include "base/ref_str.h"
 #include "core/conet_all.h"
 
+#include "base/module.h"
+
 //using namespace conet;
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 DEFINE_int32(task_num, 10, "concurrent task num");
@@ -177,7 +179,7 @@ int prepare_data(char const *file)
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+    InitAllModule(argc, argv);
 
     int num = FLAGS_task_num;
 

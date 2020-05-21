@@ -22,6 +22,7 @@
 
 #include "gflags/gflags.h"
 #include "time_helper.h"
+#include "module.h"
 
 DEFINE_int32(num, 1000000, "num");
 DEFINE_bool(sys_ms, false, "use gettimeofday to get ms");
@@ -30,7 +31,7 @@ DEFINE_bool(sys_ms, false, "use gettimeofday to get ms");
 int main(int argc, char * argv[])
 {
     
-  gflags::ParseCommandLineFlags(&argc, &argv, false); 
+  InitAllModule(argc, argv);
   if (FLAGS_sys_ms)
   {
       for(uint64_t i = (uint64_t)FLAGS_num; i > 0; --i)

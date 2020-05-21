@@ -24,6 +24,7 @@
 
 #include "core/conet_all.h"
 #include "thirdparty/gflags/gflags.h"
+#include "base/module.h"
 
 DEFINE_string(out_file, "2.txt", "output file name");
 
@@ -43,7 +44,7 @@ int proc(void *arg)
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+    InitAllModule(argc, argv);
     conet::coroutine_t *co = conet::alloc_coroutine(proc, NULL); 
     conet::resume(co);
     while (conet::get_epoll_pend_task_num() >0) {

@@ -3,10 +3,7 @@
 
 int main(int argc, char *argv[])
 {
-    //conet::PLog::Instance().Start();
-    InitAllModule(&argc, &argv);
-
+    InitAllModule(argc, argv);
     FinAllModule();
-    //conet::PLog::Instance().Stop();
     return 0;
 }

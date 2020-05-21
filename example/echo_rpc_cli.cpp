@@ -22,12 +22,14 @@
 #include "svrkit/rpc_pb_client.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/net_tool.h"
+#include "base/module.h"
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+
+    InitAllModule(argc, argv);
 
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);

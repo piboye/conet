@@ -25,6 +25,7 @@
 #include "base/net_tool.h"
 #include "base/ip_list.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
 
@@ -32,8 +33,8 @@ using namespace conet;
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
 
+    InitAllModule(argc, argv);
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr,  &ip_list);
 

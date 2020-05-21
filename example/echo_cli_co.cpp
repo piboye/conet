@@ -24,6 +24,7 @@
 
 #include "base/ip_list.h"
 #include "base/net_tool.h"
+#include "base/module.h"
 
 //using namespace conet;
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
@@ -89,7 +90,7 @@ int proc_send(void *arg)
 
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
+    InitAllModule(argc, argv);
 
     int num = FLAGS_task_num;
 

@@ -10,10 +10,8 @@
 #include "../plog.h"
 #include "../time_helper.h"
 #include "thirdparty/gflags/gflags.h"
-#include "delay_init.h"
 #include "time_helper.h"
 #include <sys/syscall.h>
-#include "module.h"
 
 DEFINE_int32(log_type, 1, "0 stderr, 1 rotate log");
 DEFINE_string(log_file, "my.log", "base log filename");
@@ -466,12 +464,6 @@ void PLog::ClearColor()
     color_cb_t *color = GetColorCb();
     color->cb = NULL;
     color->arg = NULL;
-}
-
-
-DEFINE_MODULE(plog) {
-    g_plog.Start();
-    return 0;
 }
 
 }

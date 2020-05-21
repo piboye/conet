@@ -27,7 +27,7 @@
 
 #include "base/net_tool.h"
 #include "base/defer.h"
-#include "base/delay_init.h"
+#include "base/module.h"
 
 
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
@@ -110,18 +110,7 @@ int proc_send(void *arg)
 task_t *tasks = NULL;
 int main(int argc, char * argv[])
 {
-    gflags::ParseCommandLineFlags(&argc, &argv, false); 
-
-    delay_init::call_all_level();
-    PLOG_INFO("delay init total:",delay_init::total_cnt
-        ," success:",delay_init::success_cnt
-        ,", failed:",delay_init::failed_cnt);
-
-    if(delay_init::failed_cnt>0)
-    {
-        PLOG_ERROR("delay init failed, failed num:", delay_init::failed_cnt);
-        return 1;
-    }
+    InitAllModule(argc, argv);
 
     if (prepare_data(FLAGS_data_file.c_str())) {
         PLOG_ERROR("read data failed!");

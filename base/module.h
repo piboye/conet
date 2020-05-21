@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "macro_help.h"
 
 namespace conet
 {
@@ -105,44 +106,45 @@ private:
 };
 
 #define InitAllModule(argc, argv) \
-    conet::module::module_mgr_t::instance().init_all_modules()
+    conet::module::module_mgr_t::instance().init_all_modules(&argc, &argv)
 
 #define FinAllModule() \
     conet::module::module_mgr_t::instance().fin_all_modules()
 
 
 #define MODULE_INIT() \
-    static conet::module::module_func_item g_module_init_item_var_##__LINE__##_; \
-    static int g_module_init_help_func_##__LINE__##_(); \
-    static int g_module_init_func_##__LINE__##_(conet::module::module_node_t *); \
-    static int g_module_init_item_help_var_##__LINE__##_ = g_module_init_help_func_##__LINE__##_(); \
-    static int g_module_init_help_func_##__LINE__##_() { \
-        g_module_init_item_var_##__LINE__##_.func = & g_module_init_func_##__LINE__##_; \
-        g_module_init_item_var_##__LINE__##_.file_name = __FILE__; \
-        g_module_init_item_var_##__LINE__##_.line_no = __LINE__; \
-        list_add_tail(& g_module_init_item_var_##__LINE__##_.link_to, &g_module_node_var_.init_list); \
+    static conet::module::module_func_item BOOST_PP_CAT(g_module_init_item_var_, __LINE__); \
+    static int BOOST_PP_CAT(g_module_init_help_func_, __LINE__) (); \
+    static int BOOST_PP_CAT(g_module_init_func_, __LINE__)(conet::module::module_node_t *); \
+    static int BOOST_PP_CAT(g_module_init_item_help_var_, __LINE__) = \
+               BOOST_PP_CAT(g_module_init_help_func_, __LINE__)(); \
+    static int BOOST_PP_CAT(g_module_init_help_func_, __LINE__)() { \
+        BOOST_PP_CAT(g_module_init_item_var_, __LINE__).func = & BOOST_PP_CAT(g_module_init_func_, __LINE__); \
+        BOOST_PP_CAT(g_module_init_item_var_, __LINE__).file_name = __FILE__; \
+        BOOST_PP_CAT(g_module_init_item_var_, __LINE__).line_no = __LINE__; \
+        list_add_tail(& BOOST_PP_CAT(g_module_init_item_var_, __LINE__).link_to, &g_module_node_var_.init_list); \
         return 1;  \
     } \
-    static int g_module_init_func_##__LINE__##_(conet::module::module_node_t *self) \
+    static int BOOST_PP_CAT(g_module_init_func_,__LINE__)(conet::module::module_node_t *self) \
 
 #define MODULE_FIN() \
-    static conet::module::module_func_item g_module_fin_item_var_##__LINE__##_; \
-    static int g_module_fin_help_func_##__LINE__##_(); \
-    static int g_module_fin_func_##__LINE__##_(conet::module::module_node_t *); \
-    static int g_module_fin_item_help_var_##__LINE__##_ = g_module_fin_help_func_##__LINE__##_(); \
-    static int g_module_fin_help_func_##__LINE__##_() { \
-        g_module_fin_item_var_##__LINE__##_.func = & g_module_fin_func_##__LINE__##_; \
-        g_module_fin_item_var_##__LINE__##_.file_name = __FILE__; \
-        g_module_fin_item_var_##__LINE__##_.line_no = __LINE__; \
-        list_add_tail(& g_module_fin_item_var_##__LINE__##_.link_to, &g_module_node_var_.fin_list); \
+    static BOOST_PP_CAT(conet::module::module_func_item g_module_fin_item_var_, __LINE__); \
+    static int BOOST_PP_CAT(g_module_fin_help_func_, __LINE__)(); \
+    static int BOOST_PP_CAT(g_module_fin_func_, __LINE__)(conet::module::module_node_t *); \
+    static int BOOST_PP_CAT(g_module_fin_item_help_var_, __LINE__) = BOOST_PP_CAT(g_module_fin_help_func_, __LINE__)(); \
+    static int BOOST_PP_CAT(g_module_fin_help_func_, __LINE__)() { \
+        BOOST_PP_CAT(g_module_fin_item_var_, __LINE__).func = & BOOST_PP_CAT(g_module_fin_func_, __LINE__); \
+        BOOST_PP_CAT(g_module_fin_item_var_, __LINE__).file_name = __FILE__; \
+        BOOST_PP_CAT(g_module_fin_item_var_, __LINE__).line_no = __LINE__; \
+        list_add_tail(& BOOST_PP_CAT(g_module_fin_item_var_, __LINE__).link_to, &g_module_node_var_.fin_list); \
         return 1;  \
     } \
-    static int g_module_fin_func_##__LINE__##_(conet::module::module_node_t *self) \
+    static int BOOST_PP_CAT(g_module_fin_func_, __LINE__)(conet::module::module_node_t *self) \
 
 
 #define DEFINE_MODULE_HELP(name, level) \
     static conet::module::module_node_t g_module_node_var_; \
-    static int g_define_module_help_func_##__LINE__##_(){ \
+    static int BOOST_PP_CAT(g_define_module_help_func_, __LINE__)(){ \
         conet::module::module_node_t & m =  g_module_node_var_; \
         m.file_name = __FILE__; \
         m.line_no = __LINE__; \
@@ -150,7 +152,7 @@ private:
         conet::module::module_mgr_t::instance().reg_module(&m, level); \
         return 1; \
     } \
-    static int g_define_module_help_var_##__LINE__##_ = g_define_module_help_func_##__LINE__##_(); \
+    static int BOOST_PP_CAT(g_define_module_help_var_, __LINE__) = BOOST_PP_CAT(g_define_module_help_func_, __LINE__)(); \
     MODULE_INIT() \
 
 
@@ -163,12 +165,12 @@ private:
 #define DEFINE_MODULE_WITH_LEVEL(name, level) DEFINE_MODULE_HELP(#name, level)
 
 #define USING_MODULE(name)  \
-    static int g_using_module_help_func_##__LINE__##_(){ \
+    static int BOOST_PP_CAT(g_using_module_help_func_, __LINE__)(){ \
         conet::module::module_node_t & m =  g_module_node_var_; \
         m.depend_names.push_back(#name); \
         return 1; \
     } \
-    static int g_using_module_help_var_##__LINE__##_ = g_using_module_help_func_##__LINE__##_() \
+    static int BOOST_PP_CAT(g_using_module_help_var_, __LINE__) = BOOST_PP_CAT(g_using_module_help_func_, __LINE__)() \
 
 }
 }

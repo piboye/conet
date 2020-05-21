@@ -56,7 +56,6 @@ DEFINE_int32(num, 1000000, "swap num");
 
 int main(int argc, char * argv[])
 {
-  gflags::ParseCommandLineFlags(&argc, &argv, false); 
   InitAllModule(argc, argv);
   conet::init_conet_global_env();
   conet::init_conet_env();

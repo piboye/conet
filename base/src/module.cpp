@@ -172,6 +172,13 @@ int module_mgr_t::call_module_init(module_node_t *n)
                     " [ret=",ret, "]"
                     );
             return -1;
+        } else {
+            PLOG_INFO("call module init func success,"
+                    " [module=", n->module_name, "]"
+                    " [init.filename=", item->file_name, "]"
+                    " [init.lineno=", item->line_no, "]"
+                    );
+
         }
     }
 
@@ -217,6 +224,9 @@ int module_mgr_t::init_all_modules()
     {
         return 0;
     }
+    
+    gflags::ParseCommandLineFlags(m_argc, m_argv, false);
+    conet::PLog::Instance().Start();
 
     if (!m_calc_called)
     {
@@ -227,6 +237,7 @@ int module_mgr_t::init_all_modules()
             return -1;
         }
     }
+
 
     if (!m_init_called)
     {
@@ -263,6 +274,13 @@ int module_mgr_t::call_module_fin(module_node_t *n)
                     " [ret=",ret, "]"
                     );
             ret1 = ret;
+        } else {
+            PLOG_INFO("call module fin func success,"
+                    " [module=", n->module_name, "]"
+                    " [fin.filename=", item->file_name, "]"
+                    " [fin.lineno=", item->line_no, "]"
+                    );
+
         }
     }
 
@@ -294,6 +312,7 @@ int module_mgr_t::fin_all_modules()
         }
     }
 
+    conet::PLog::Instance().Stop();
     return 0;
 }
 
