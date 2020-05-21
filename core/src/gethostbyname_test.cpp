@@ -40,7 +40,7 @@ int t(void *arg)
     {
         hostent * host = gethostbyname(FLAGS_name.c_str());
         if (host) {
-            PLOG_INFO(host->h_name);
+            PLOG_INFO("host:", host->h_name);
         }
         else {
             PLOG_ERROR("parse ", FLAGS_name, " failed!");
@@ -56,6 +56,8 @@ int main(int argc, char * argv[])
 {
   gflags::ParseCommandLineFlags(&argc, &argv, false); 
   InitAllModule(argc, argv);
+  conet::init_conet_global_env();
+  conet::init_conet_env();
 
   for (int i= 0; i< (int) FLAGS_task_num; ++i)
   {

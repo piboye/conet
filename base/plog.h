@@ -113,7 +113,14 @@ public:
     int check_rotate_log();
     int manage_rotate_log();
 };
-
+/*
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+            __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
+ */
 
 // C 格式输出
 #define PLOG_RAW(a_level, fmt, ...) \
@@ -134,18 +141,24 @@ do  \
                 fmt, ##__VA_ARGS__); \
     } \
     __plog_item__->text.resize(__plog_len); \
-    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
-    if (__plog_color_cb)  \
-    {  \
-       if (__plog_color_cb->cb) \
-            __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
-    } \
     __plog_item__->text.push_back('\n'); \
     if (conet::PLog::FATAL == conet::PLog::a_level) { \
         conet::PLog::Instance().AddFast(__plog_item__); \
         abort();\
     } else if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
+
+
+
+/*
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+        __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
+*/
+
 
 // 扩展格式   (a, b, c)
 //
@@ -159,12 +172,6 @@ do  \
     __plog_item__->func = __FUNCTION__; \
     __plog_item__->line = __LINE__; \
     LOG_FORMAT(__plog_item__->text, ##__VA_ARGS__); \
-    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
-    if (__plog_color_cb)  \
-    {  \
-       if (__plog_color_cb->cb) \
-        __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
-    } \
     __plog_item__->text.push_back('\n'); \
     if (conet::PLog::FATAL == conet::PLog::a_level) { \
         conet::PLog::Instance().AddFast(__plog_item__); \
@@ -172,22 +179,13 @@ do  \
     } else if (conet::PLog::Instance().Add(__plog_item__) != 0) delete __plog_item__; \
 } while(0)
 
-/*
 #define PLOG_DEBUG(...) PLOG(DEBUG, ##__VA_ARGS__)
 #define PLOG_INFO(...)  PLOG(INFO, ##__VA_ARGS__)
 #define PLOG_WARN(...)  PLOG(WARN, ##__VA_ARGS__)
 #define PLOG_ERROR(...) PLOG(ERROR, ##__VA_ARGS__)
 #define PLOG_ALERT(...) PLOG(ALERT, ##__VA_ARGS__)
 #define PLOG_FATAL(...) PLOG(FATAL, ##__VA_ARGS__)
-*/
 
-
-#define PLOG_DEBUG(...)
-#define PLOG_INFO(...)
-#define PLOG_WARN(...)
-#define PLOG_ERROR(...)
-#define PLOG_ALERT(...)
-#define PLOG_FATAL(...)
 
 }
 
