@@ -15,6 +15,8 @@ gen_rule(
 cc_library(
     name="base",
     srcs = [
+        'src/plog.cpp',
+        'src/module.cpp',
         'src/pb2sqlite.cpp',
         'src/net_tool.cpp',
         'src/tls.cpp',
@@ -34,9 +36,7 @@ cc_library(
         'src/bind_this_mgr.cpp',
         'src/bind_this_jump.s',
         'src/fd_queue.cpp',
-        'src/plog.cpp',
         'src/base64.cpp',
-        'src/module.cpp',
     ],
 
     incs= [ 

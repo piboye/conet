@@ -20,6 +20,7 @@ DECLARE_string(plog_level);
 
 namespace conet
 {
+
 class PLog
 {
 public:
@@ -113,14 +114,6 @@ public:
     int check_rotate_log();
     int manage_rotate_log();
 };
-/*
-    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
-    if (__plog_color_cb)  \
-    {  \
-       if (__plog_color_cb->cb) \
-            __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
-    } \
- */
 
 // C 格式输出
 #define PLOG_RAW(a_level, fmt, ...) \
@@ -134,13 +127,19 @@ do  \
     __plog_item__->line = __LINE__; \
     __plog_item__->text.resize(1024); \
     size_t __plog_len = 1024; \
-    __plog_len = snprintf((char *)__plog_item__->text.data(), __plog_item__->text.size()-1, fmt "\n", ##__VA_ARGS__); \
+    __plog_len = snprintf((char *)__plog_item__->text.data(), __plog_item__->text.size()-1, fmt, ##__VA_ARGS__); \
     if (__plog_len > __plog_item__->text.size()-1) { \
         __plog_item__->text.resize(__plog_len+1); \
         __plog_len = snprintf((char *)__plog_item__->text.data(), __plog_item__->text.size()-1, \
                 fmt, ##__VA_ARGS__); \
     } \
     __plog_item__->text.resize(__plog_len); \
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+            __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
     __plog_item__->text.push_back('\n'); \
     if (conet::PLog::FATAL == conet::PLog::a_level) { \
         conet::PLog::Instance().AddFast(__plog_item__); \
@@ -150,14 +149,7 @@ do  \
 
 
 
-/*
-    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
-    if (__plog_color_cb)  \
-    {  \
-       if (__plog_color_cb->cb) \
-        __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
-    } \
-*/
+
 
 
 // 扩展格式   (a, b, c)
@@ -172,6 +164,12 @@ do  \
     __plog_item__->func = __FUNCTION__; \
     __plog_item__->line = __LINE__; \
     LOG_FORMAT(__plog_item__->text, ##__VA_ARGS__); \
+    conet::PLog::color_cb_t * __plog_color_cb = conet::PLog::Instance().GetColorCb();  \
+    if (__plog_color_cb)  \
+    {  \
+       if (__plog_color_cb->cb) \
+        __plog_item__->text.append(__plog_color_cb->cb(__plog_color_cb->arg)); \
+    } \
     __plog_item__->text.push_back('\n'); \
     if (conet::PLog::FATAL == conet::PLog::a_level) { \
         conet::PLog::Instance().AddFast(__plog_item__); \

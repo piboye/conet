@@ -13,6 +13,8 @@
 #include "time_helper.h"
 #include <sys/syscall.h>
 
+#define OUT_OF_INDEXES          0xfffffff
+
 DEFINE_int32(log_type, 1, "0 stderr, 1 rotate log");
 DEFINE_string(log_file, "my.log", "base log filename");
 DEFINE_int32(log_max_file_num, 10, "max file num");
@@ -67,9 +69,14 @@ PLog::PLog()
     m_log_type = STDERR_LOG;
     m_log_level = INFO;
     m_fd = 2;
+    m_color_key = OUT_OF_INDEXES;
 
     init_llist_head(&m_color_all);
-    pthread_key_create(&m_color_key, NULL);
+    pthread_key_create(&this->m_color_key, NULL);
+    if (this->m_color_key == 0) {
+        printf("create plog color key is zero!\n");
+        pthread_key_create(&this->m_color_key, NULL);
+    }
 
     m_work_notify = eventfd(0, EFD_CLOEXEC|EFD_NONBLOCK);
     if (m_work_notify<0)
@@ -81,7 +88,6 @@ PLog::PLog()
     m_max_file_num = 10;
     m_max_file_size = 100*1024*1024;
     m_prev_check_timestamp = 0;
-    m_color_key = 0;
 }
 
 PLog::~PLog()
@@ -440,30 +446,46 @@ int PLog::SetLogLevel(std::string const &level)
 
 PLog::color_cb_t * PLog::GetColorCb()
 {
-    color_cb_t *ptr =NULL;
-    if ((ptr = (color_cb_t *) pthread_getspecific(m_color_key)) == NULL)
-    {
-        ptr = new color_cb_t();
-        ptr->cb = NULL;
-        ptr->arg = NULL;
-        llist_add(&ptr->link_to, &m_color_all);
-        pthread_setspecific(m_color_key, ptr);
+    if (m_color_key == OUT_OF_INDEXES || !m_color_key) {
+        return NULL;
     }
+
+    color_cb_t *ptr =NULL;
+
+    ptr = (color_cb_t *) pthread_getspecific(m_color_key);
     return ptr;
 }
 
 void PLog::SetColor(std::string (*cb)(void *arg), void *arg)
 {
-    color_cb_t *color = GetColorCb();
-    color->cb = cb;
-    color->arg = arg;
+    if (m_color_key == OUT_OF_INDEXES || !m_color_key) {
+        return;
+    }
+
+    color_cb_t *ptr = (color_cb_t *) pthread_getspecific(m_color_key);
+
+    if (ptr == NULL)
+    {
+        ptr = new color_cb_t();
+        ptr->cb = NULL;
+        ptr->arg = NULL;
+        ptr->link_to.next = NULL;
+        llist_add(&ptr->link_to, &m_color_all);
+        pthread_setspecific(m_color_key, ptr);
+    }
+    if (ptr) {
+        ptr->cb = cb;
+        ptr->arg = arg;
+    } 
 }
 
 void PLog::ClearColor()
 {
     color_cb_t *color = GetColorCb();
-    color->cb = NULL;
-    color->arg = NULL;
+    if (color) {
+        color->cb = NULL;
+        color->arg = NULL;
+    }
 }
 
 }
