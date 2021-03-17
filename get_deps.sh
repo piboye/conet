@@ -9,7 +9,7 @@ echo "get blade"
 which blade
 if (( $? != 0 ))
 then
-    git clone https://github.com/chen3feng/typhoon-blade.git blade/
+    git clone --branch 1.1.3 https://github.com/chen3feng/typhoon-blade.git blade/
     (cd blade; ./install)
     . ~/bin/bladefunctions
 fi
