@@ -28,9 +28,14 @@
 #include "log.h"
 namespace conet
 {
+    static int g_cenv_inited = 0; 
     int init_conet_global_env()
     {
         int ret = 0;
+	if (g_cenv_inited) {
+	   return 0;
+	}
+	g_cenv_inited = 1;
         ret = time_mgr_t::instance().start();
         if (ret) {
             PLOG_FATAL("init time mgr failed! [ret=", ret, "]");
@@ -67,8 +72,8 @@ namespace conet
     int init_conet_env()
     {
         if (g_coroutine_env) {
-            PLOG_FATAL("duplicate init coroutine env");
-            return -1;
+            PLOG_INFO("duplicate init coroutine env");
+            return 0;
         }
         uint64_t tid = get_local_tid();
         coroutine_env_t *env = new coroutine_env_t();
@@ -81,7 +86,7 @@ namespace conet
     int free_conet_env()
     {
         if (NULL == g_coroutine_env) {
-            PLOG_FATAL("coroutine env don't init , free is bug!");
+            //PLOG_FATAL("coroutine env don't init , free is bug!");
             return -1;
         }
 
@@ -91,5 +96,9 @@ namespace conet
         g_coroutine_envs[tid] = NULL;
         return 0;
     }
+
+    static int init_cg_env=conet::init_conet_global_env();
+    static int init_c_env=conet::init_conet_env();
 }
+
 
