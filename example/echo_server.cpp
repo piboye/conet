@@ -117,6 +117,8 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {
+    conet::init_conet_global_env();
+    conet::init_conet_env();
 
     InitAllModule(argc, argv);
 
@@ -130,8 +132,6 @@ int main(int argc, char * argv[])
     std::vector<int> cpu_set;
     parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
 
-    conet::init_conet_global_env();
-    conet::init_conet_env();
 
     if (FLAGS_thread_num <= 1) {
         Task task;

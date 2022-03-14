@@ -129,6 +129,8 @@ void fini_google_lib()
 int main(int argc, char * argv[])
 {
     int ret = 0;
+    conet::init_conet_global_env();
+    conet::init_conet_env();
 
     InitAllModule(argc, argv);
 
@@ -158,8 +160,6 @@ int main(int argc, char * argv[])
         return 2;
     }
 
-    conet::init_conet_global_env();
-    conet::init_conet_env();
 
 
     g_server_container = ServerBuilder::build(conf);
