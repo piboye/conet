@@ -200,8 +200,8 @@ int main(int argc, char * argv[])
     delete g_server_container;
     g_server_container = NULL;
 
-    conet::free_conet_env();
-    conet::free_conet_global_env();
+    //conet::free_conet_env();
+    //conet::free_conet_global_env();
 
 
     fini_google_lib();
