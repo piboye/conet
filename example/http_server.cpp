@@ -68,7 +68,6 @@ int main(int argc, char * argv[])
 
     g_server.init(&tcp_server);
 
-
     //conet::init_conet_global_env();
     //conet::init_conet_env();
 
@@ -77,7 +76,7 @@ int main(int argc, char * argv[])
         conet::dispatch();
     }
 
-    conet::free_conet_env();
-    conet::free_conet_global_env();
+    //conet::free_conet_env();
+    //conet::free_conet_global_env();
     return 0;
 }

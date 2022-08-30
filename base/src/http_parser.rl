@@ -37,7 +37,8 @@
     init_ref_str(&parser->accept, PTR_TO(mark), fpc);
   }
   action http_connection {
-      if (*(parser->mark) == 'K') {
+      char ch = *(parser->mark);
+      if (ch == 'K' || ch == 'k') {
           parser->connection = CONNECTION_KEEPALIVE; 
       }
   }

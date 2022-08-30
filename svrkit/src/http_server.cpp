@@ -85,7 +85,7 @@ int output_response(http_response_t *resp, int fd)
     }
 
     if (resp->keepalive) {
-        out.append("Connection: Keep-Alive\r\n");
+        out.append("Connection: keep-alive\r\n");
     } else {
         out.append("Connection: close\r\n");
     }
