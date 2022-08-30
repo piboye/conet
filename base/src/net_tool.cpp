@@ -185,7 +185,7 @@ int read_data(int fd, char *buff, size_t len)
     size_t cur_len =0;
     while (cur_len < len)
     {
-        ret = read(fd, &buff[cur_len], len-cur_len);
+        ret = recv(fd, &buff[cur_len], len-cur_len, 0);
         if (ret <= 0) {
             return ret;
         }
@@ -470,7 +470,7 @@ int PacketStream::read_packet(char **pack, int * pack_len)
     }
 
     while (cur_len < (int) sizeof(len)) {
-        ret = read(fd, buff+cur_len, max_size-cur_len);
+        ret = recv(fd, buff+cur_len, max_size-cur_len, 0);
         if (ret <= 0) {
             return ret;
         } 
@@ -489,7 +489,7 @@ int PacketStream::read_packet(char **pack, int * pack_len)
     if ((int32_t) len + 4 >  max_size) return -4;
 
     while (cur_len - 4 < (int) len) {
-        ret = read(fd, buff+cur_len, max_size-cur_len);
+        ret = recv(fd, buff+cur_len, max_size-cur_len, 0);
         if (ret <= 0) {
             return ret;
         } 

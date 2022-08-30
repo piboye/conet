@@ -77,9 +77,9 @@ int proc_send(void *arg)
 
     for (int i=0, len = task->data->size(); i<len; ++i) {
         std::string * send_data = task->data->at(i); 
-        ret = write(fd, send_data->c_str(), send_data->size());
+        ret = send(fd, send_data->c_str(), send_data->size(), 0);
         if (ret <= 0) break;
-        ret = read(fd, rbuff, 1024);
+        ret = recv(fd, rbuff, 1024, 0);
         if (ret <=0) break;
     }
     ++g_finish_task_num;

@@ -237,7 +237,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
                                 "Connection: close\r\n"
                                 "Contente-Length: 0\r\n"
                                 "\r\n";
-                            write(fd, unsupport_txt, sizeof(unsupport_txt)-1);
+                            send(fd, unsupport_txt, sizeof(unsupport_txt)-1, 0);
                             ret = 1;
                             break;
                         }
@@ -426,7 +426,7 @@ int websocket_conn_t::do_handshake()
     std::string rsp_txt(handshake_rsp_1, sizeof(handshake_rsp_1)-1);
     rsp_txt.append(server_key_txt, server_key_len);
     rsp_txt+="\r\n\r\n";
-    ret = write(fd, rsp_txt.data(), rsp_txt.size());
+    ret = send(fd, rsp_txt.data(), rsp_txt.size(), 0);
     if (ret < (int) (rsp_txt.size()))
     {
         return -2;

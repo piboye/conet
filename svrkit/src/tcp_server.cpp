@@ -295,6 +295,18 @@ int tcp_server_t::main_proc()
         return -1;
     }
 
+/*
+    int busy_poll = 1000;
+    ret = setsockopt(listen_fd, SOL_SOCKET, SO_BUSY_POLL, &busy_poll,sizeof(busy_poll));
+    if (ret != 0)    {
+        PLOG_ERROR("set busy poll in listen socket failed, "
+            "[",this->ip,":",this->port,"]"
+            "[fd=",listen_fd,"]"
+            "[errno:",errno,"]"
+            "[errmsg:",strerror(errno),"]");
+    }
+    */
+
     listen(listen_fd, this->conf.listen_backlog);
 
     if (FLAGS_enable_defer_accept) {

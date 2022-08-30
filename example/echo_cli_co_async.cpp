@@ -67,7 +67,7 @@ int read_co(void *arg)
     int cnt = 0;
     do
     {
-        ret = read(ctx->rfd,  buff, size);
+        ret = recv(ctx->rfd,  buff, size, 0);
         if (ret <=0) {
             printf("read1 num:%d\n", num);
             break;
@@ -104,7 +104,7 @@ int write_co(void *arg)
 
         size = data->size();
 
-        ret = write(ctx->wfd,  buff, size);
+        ret = send(ctx->wfd,  buff, size, 0);
         if (ret <=0) {
             break;
         }

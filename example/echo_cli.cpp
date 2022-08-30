@@ -39,11 +39,11 @@ int main(int argc, char const* argv[])
     char rbuff[1024];
     while( (ret = getline(&line, &len, stdin)) >= 0) {
         if (ret == 0) continue;
-        ret = write(fd, line, ret);
+        ret = send(fd, line, ret, 0);
         if (ret <= 0) break;
-        ret = read(fd, rbuff, 1024);
+        ret = recv(fd, rbuff, 1024, 0);
         if (ret <=0) break;
-        write(1, rbuff, ret);
+        send(1, rbuff, ret, 0);
     }
     close(fd);
     free(line);

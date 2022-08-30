@@ -45,12 +45,12 @@ int proc_echo(void *arg, conn_info_t *conn)
     int ret = 0;
     do
     {
-        ret = read(conn->fd,  buff, size);
+        ret = recv(conn->fd,  buff, size, 0);
         if (ret <=0) {
             break;
         }
 
-        ret = write(conn->fd, buff, ret);
+        ret = send(conn->fd, buff, ret, 0);
         if (ret <=0) break;
     } while(1);
     //free(buff);

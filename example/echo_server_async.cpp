@@ -66,7 +66,7 @@ int read_co(void *arg)
             buff = data.data;
         }
 
-        ret = read(ctx->rfd,  buff, size);
+        ret = recv(ctx->rfd,  buff, size,0);
         if (ret <=0) {
             break;
         }
@@ -104,7 +104,7 @@ int write_co(void *arg)
 
         ctx->write_queue.pop();
 
-        ret = write(ctx->wfd,  buff, size);
+        ret = send(ctx->wfd,  buff, size, 0);
         if (ret <=0) {
             break;
         }

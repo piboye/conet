@@ -165,8 +165,8 @@ int main(int argc, char * argv[])
     g_server_container = ServerBuilder::build(conf);
     if (NULL == g_server_container)
     {
-        conet::free_conet_env();
-        conet::free_conet_global_env();
+        //conet::free_conet_env();
+        //conet::free_conet_global_env();
         PLOG_ERROR("build server failed!");
         return 3;
     }
