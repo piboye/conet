@@ -12,7 +12,7 @@ then
     git clone --branch 1.1.3 https://github.com/chen3feng/typhoon-blade.git blade/
     (cd blade; ./install)
     . ~/bin/bladefunctions
-    pip install scons==3.1.1
+    pip2 install scons
 fi
 
 cp -r tools/* ~/bin/

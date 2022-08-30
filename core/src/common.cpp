@@ -32,18 +32,18 @@ namespace conet
     int init_conet_global_env()
     {
         int ret = 0;
-	if (g_cenv_inited) {
-	   return 0;
-	}
-	g_cenv_inited = 1;
+        if (g_cenv_inited) {
+        return 0;
+        }
+	    g_cenv_inited = 1;
         ret = time_mgr_t::instance().start();
         if (ret) {
             PLOG_FATAL("init time mgr failed! [ret=", ret, "]");
             return -1;
         }
-        g_coroutine_envs = new coroutine_env_t*[102400];
+        g_coroutine_envs = new coroutine_env_t*[1024000];
 
-	conet::init_fd_ctx_env();
+	    conet::init_fd_ctx_env();
         return 0;
     }
 

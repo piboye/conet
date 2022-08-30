@@ -82,7 +82,7 @@ int main(int argc, char * argv[])
     conet::IpListLB lb; 
     lb.init(FLAGS_server_addr);
 
-    conet::init_conet_global_env();
+    //conet::init_conet_global_env();
     CONET_DEFER({
         conet::free_conet_global_env();
     });

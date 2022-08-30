@@ -90,8 +90,8 @@ int proc_send(void *arg)
 
 int main(int argc, char * argv[])
 {
-    conet::init_conet_global_env();
-    conet::init_conet_env();
+    //conet::init_conet_global_env();
+    //conet::init_conet_env();
     
     InitAllModule(argc, argv);
 

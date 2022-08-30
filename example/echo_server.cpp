@@ -117,8 +117,8 @@ DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
 int main(int argc, char * argv[])
 {
-    conet::init_conet_global_env();
-    conet::init_conet_env();
+    //conet::init_conet_global_env();
+    //conet::init_conet_env();
 
     InitAllModule(argc, argv);
 

@@ -117,7 +117,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    conet::init_conet_global_env();
+    //conet::init_conet_global_env();
     conet::init_conet_env();
     CONET_DEFER({
         conet::free_conet_env();

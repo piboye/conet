@@ -47,6 +47,8 @@ int main(int argc, char * argv[])
 {
     InitAllModule(argc, argv);
 
+    g_server.enable_keepalive=1;
+
     tcp_server_t tcp_server;
     int ret = 0;
     std::vector<ip_port_t> ip_list;
@@ -65,8 +67,8 @@ int main(int argc, char * argv[])
 
     g_server.registry_cmd("/hello", proc_hello, NULL);
 
-    conet::init_conet_global_env();
-    conet::init_conet_env();
+    //conet::init_conet_global_env();
+    //conet::init_conet_env();
 
     g_server.start();
     while (conet::get_epoll_pend_task_num() >0) {

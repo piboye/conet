@@ -129,8 +129,8 @@ void fini_google_lib()
 int main(int argc, char * argv[])
 {
     int ret = 0;
-    conet::init_conet_global_env();
-    conet::init_conet_env();
+    //conet::init_conet_global_env();
+    //conet::init_conet_env();
 
     InitAllModule(argc, argv);
 
