@@ -25,7 +25,6 @@ cc_library(
     incs= [ 
         "./",
     ],
-    extra_cppflags=['-Wno-error=unused-const-variable'],
     deps = [
         ":http_parser_rl",
         ":query_string_rl",
