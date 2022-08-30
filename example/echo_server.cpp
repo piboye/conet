@@ -103,8 +103,7 @@ struct Task
             }
             self->server.set_conn_cb(proc_echo, NULL);
             self->server.start();
-            while (1) 
-            {
+            while (!self->exit_finsished) {
                 conet::dispatch();
             }
             return NULL;
@@ -180,8 +179,8 @@ int main(int argc, char * argv[])
         delete[] tasks;
     }
 
-    conet::free_conet_env();
-    conet::free_conet_global_env();
+    //conet::free_conet_env();
+    //conet::free_conet_global_env();
 
     return 0;
 }
