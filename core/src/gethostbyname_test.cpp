@@ -55,8 +55,8 @@ int t(void *arg)
 int main(int argc, char * argv[])
 {
   InitAllModule(argc, argv);
-  conet::init_conet_global_env();
-  conet::init_conet_env();
+  //conet::init_conet_global_env();
+  //conet::init_conet_env();
 
   for (int i= 0; i< (int) FLAGS_task_num; ++i)
   {
