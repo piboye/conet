@@ -1,5 +1,5 @@
 cc_config(
 	extra_incs=['thirdparty/protobuf/', 'thirdparty/'],
 	cxxflags=['-std=c++11', '-Dtypeof=__typeof__'],
-	optimize=['-Ofast', '-m64', '-march=native', '-pipe']
+	optimize=['-O3', '-m64', '-march=native', '-pipe']
 )

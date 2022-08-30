@@ -1,3 +1,6 @@
+import warnings
+
+
 gen_rule(
     name='http_parser_rl',
     srcs=['src/http_parser.rl'],
@@ -13,6 +16,23 @@ gen_rule(
 );
 
 cc_library(
+    name='http_tool',
+    srcs=[
+        'src/http_parser.cpp',
+        'src/query_string.cpp',
+        'src/url_encode.cpp',
+    ],
+    incs= [ 
+        "./",
+    ],
+    extra_cppflags=['-Wno-error=unused-const-variable'],
+    deps = [
+        ":http_parser_rl",
+        ":query_string_rl",
+    ]
+);
+
+cc_library(
     name="base",
     srcs = [
         'src/plog.cpp',
@@ -21,9 +41,6 @@ cc_library(
         'src/net_tool.cpp',
         'src/tls.cpp',
         'src/time_helper.cpp',
-        'src/query_string.cpp',
-        'src/http_parser.cpp',
-        'src/url_encode.cpp',
         'src/bobhash.cpp',
         'src/pb2json.cpp',
         'src/pbc.cpp',
@@ -46,8 +63,7 @@ cc_library(
     extra_cppflags=["-fPIC"],
 
     deps = [
-        ":http_parser_rl",
-        ":query_string_rl",
+        ":http_tool",
         "//thirdparty/jsoncpp:jsoncpp",
         "//thirdparty/protobuf:protobuf",
         "//thirdparty/sqlite:sqlite3",

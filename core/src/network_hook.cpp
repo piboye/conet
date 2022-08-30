@@ -48,6 +48,7 @@ namespace conet
 {
 void close_fd_notify_poll(int fd);
 }
+
 namespace conet 
 {
 __attribute__ ((weak))
@@ -59,9 +60,6 @@ ssize_t disk_write(int fd, const void *buf, size_t nbyte);
 int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags);
 
 }
-
-
-
 
 extern "C" 
 {
