@@ -82,7 +82,7 @@ std::string get_default_conf()
     if (ret) {
         PLOG_ERROR("load default conf failed, ", (ret, errmsg));
     } else {
-        PLOG_INFO("load default [conf=", data, "]");
+        PLOG_DEBUG("load default [conf=", data, "]");
     }
     return data;
 }

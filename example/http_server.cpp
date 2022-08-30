@@ -41,13 +41,16 @@ int proc_hello(void *arg, http_ctx_t *ctx,
    return 0;
 }
 
+DEFINE_MODULE(http) {
+    g_server.enable_keepalive=1;
+    g_server.registry_cmd("/hello", proc_hello, NULL);
+    return 0;
+}
 
 
 int main(int argc, char * argv[])
 {
     InitAllModule(argc, argv);
-
-    g_server.enable_keepalive=1;
 
     tcp_server_t tcp_server;
     int ret = 0;
@@ -65,7 +68,6 @@ int main(int argc, char * argv[])
 
     g_server.init(&tcp_server);
 
-    g_server.registry_cmd("/hello", proc_hello, NULL);
 
     //conet::init_conet_global_env();
     //conet::init_conet_env();
