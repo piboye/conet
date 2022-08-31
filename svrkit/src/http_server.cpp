@@ -205,7 +205,10 @@ int http_server_t::conn_proc(conn_info_t *conn)
                 break;
             }
             if (recved < 0) {
-                PLOG_INFO("recv failed [ret=",recved,"] [fd=",fd,"] [errno=",errno,"]");
+                if (errno == EAGAIN || errno == EINTR) {
+                    continue;
+                }
+                PLOG_INFO("recv failed [ret=",recved,"] [fd=",fd,"] [errno=",errno,"] [errmsg=", strerror(errno), "]");
                 ret = -2;
                 break;
             }

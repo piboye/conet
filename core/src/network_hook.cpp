@@ -316,7 +316,7 @@ HOOK_SYS_FUNC_DEF(
     if (ret >=0) {
         return ret;
     }
-    if (errno != EAGAIN)
+    if (errno != EAGAIN || errno != EINTR)
     {
         return ret;
     }
@@ -502,6 +502,7 @@ HOOK_SYS_FUNC_DEF(
 )
 {
     HOOK_SYS_FUNC(sendto);
+    flags |= MSG_NOSIGNAL;
     if( !conet::is_enable_sys_hook() )
     {
         return _(sendto)(fd, message, length, flags, dest_addr, dest_len);
@@ -586,7 +587,7 @@ HOOK_SYS_FUNC_DEF(
     ssize_t, send, (int fd, const void *buffer, size_t length, int flags)
 )
 {
-
+    flags |= MSG_NOSIGNAL;
     HOOK_SYS_FUNC(send);
     if( !conet::is_enable_sys_hook() )
     {
@@ -646,10 +647,19 @@ HOOK_SYS_FUNC_DEF(
     }
     int timeout = lp->rcv_timeout;
 
+    ssize_t ret  = 0;
+    ret = _(recv)(fd, buffer, length, flags);
+    if (ret >=0) {
+        return ret;
+    }
+    if (errno != EAGAIN) {
+        return ret;
+    }
+
     struct pollfd pf = { 0 };
     pf.fd = fd;
     pf.events = ( POLLIN | POLLERR | POLLHUP );
-    ssize_t ret = conet::co_poll( &pf,1, timeout );
+    ret = conet::co_poll( &pf,1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;

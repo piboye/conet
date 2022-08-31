@@ -482,6 +482,8 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
 int proc_netevent(int timeout)
 {
     epoll_ctx_t * epoll_ctx =  get_epoll_ctx();
+    int cnt = proc_netevent(epoll_ctx, 0);
+    if (cnt > 0) return cnt;
     return proc_netevent(epoll_ctx, timeout);
 }
 
