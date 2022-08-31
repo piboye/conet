@@ -1026,7 +1026,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     return conet::co_poll(NULL, 0, ms);
 }
 
-HOOK_CPP_FUNC_DEF_NOTHROW(int, dup, (int old))
+HOOK_SYS_FUNC_DEF(int, dup, (int old))
 {
 
     HOOK_SYS_FUNC( dup );
