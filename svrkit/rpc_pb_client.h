@@ -237,7 +237,7 @@ int rpc_pb_call(char const *ip, int port,
     if (fd <0) return -3;
     int ret = rpc_pb_call(fd, cmd_name, a_req, a_resp, retcode, errmsg, timeout);
     close(fd);
-    return fd;
+    return ret;
 }
 
 template <typename ReqT, typename RespT, typename CmdNameT>

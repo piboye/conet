@@ -26,6 +26,11 @@
 #include <malloc.h>
 #include <vector>
 
+ extern "C"
+{
+    int enable_reuseport_cbpf(int fd);
+}
+
 namespace conet
 {
 

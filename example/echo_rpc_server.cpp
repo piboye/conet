@@ -29,8 +29,6 @@
 
 using namespace conet;
 
-static
-volatile uint64_t cnt=0;
 class EchoServer
 {
     public:

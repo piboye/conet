@@ -29,15 +29,34 @@
 #include <sys/ioctl.h>
 #include <linux/netdevice.h>
 #include <netinet/tcp.h>
+#include <linux/if_ether.h>
+#include <linux/filter.h>
 
 #include <vector>
 #include <string>
 #include <algorithm>
 
+ #include <sys/socket.h>
+
+ extern "C"
+{
+
+/*
+int enable_reuseport_cbpf(int fd)
+{
+  struct sock_filter code[] = {{BPF_LD | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU}, {BPF_RET | BPF_A, 0, 0, 0}};
+  struct sock_fprog prog = { .len = sizeof(code)/sizeof(code[0]), .filter = code };
+  return setsockopt(fd, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog));
+}
+*/
+
+}
+
 #include <sys/uio.h>
 #include "../plog.h"
 #include "time_helper.h"
 #include "net_tool.h"
+
 
 namespace conet 
 {
@@ -265,6 +284,7 @@ int can_reuse_port()
    return g_can_reuse_port;
 }
 
+
 int create_tcp_socket(int port, const char *ip_txt, int reuse)
 {
     int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
@@ -274,6 +294,11 @@ int create_tcp_socket(int port, const char *ip_txt, int reuse)
                 int reuse_addr = 1;
                 if (g_can_reuse_port) {
                     setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+                    /*
+                    if (enable_reuseport_cbpf(fd)){
+                        PLOG_ERROR("ERROR setting SO_ATTACH_REUSEPORT_CBPF");
+                    }
+                    */
                 } else {
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
                 }

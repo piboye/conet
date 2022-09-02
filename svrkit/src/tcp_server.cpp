@@ -279,6 +279,8 @@ int tcp_server_t::main_proc()
             return -1;
         }
 
+//        enable_reuseport_cbpf(listen_fd);
+
         this->listen_fd = listen_fd;
     } 
 

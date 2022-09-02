@@ -75,6 +75,7 @@ cc_library(
         "../base/",
         "../core/",
     ],
+    extra_cppflags=['-Wno-error=format-nonliteral'],
     deps=[
         ':tcp_server',
         '#crypto',

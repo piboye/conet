@@ -25,6 +25,7 @@ cc_library(
     incs= [ 
         "./",
     ],
+    extra_cppflags=['-Wno-unused-variable'],
     deps = [
         ":http_parser_rl",
         ":query_string_rl",
