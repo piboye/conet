@@ -414,7 +414,7 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             } 
         } else {
             // 新句柄
-            wait_item->wait_events = ev.events;
+            wait_item->wait_events = ev.events | EPOLLEXCLUSIVE;
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             if (ret) {
                 PLOG_ERROR(" epoll_ctl_add failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
