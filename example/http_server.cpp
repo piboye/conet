@@ -57,12 +57,7 @@ static void sig_exit(int sig)
     set_server_stop();
 }
 
-int proc_hello(void *arg, http_ctx_t *ctx,
-        http_request_t *req, http_response_t *resp)
-{
-   resp->body = "hello\r\n";
-   return 0;
-}
+
 
 
     struct Task
@@ -79,6 +74,7 @@ int proc_hello(void *arg, http_ctx_t *ctx,
         int cpu_id;
         uint64_t cnt;
         http_server_t g_server;
+        std::string msg;
 
         Task()
         {
@@ -87,8 +83,9 @@ int proc_hello(void *arg, http_ctx_t *ctx,
             rpc_listen_fd = -1;
             cpu_id = -1;
             cnt = 0;
+            msg = "hello\r\n";
             g_server.enable_keepalive=1;
-            g_server.registry_cmd("/hello", proc_hello, NULL);
+            g_server.registry_cmd("/hello", &Task::proc_hello, this);
         }
 
         static int proc_server_exit(void *arg)
@@ -97,6 +94,14 @@ int proc_hello(void *arg, http_ctx_t *ctx,
             self->exit_finsished = 1;
             return 0;
         }
+
+        static int proc_hello(void *arg, http_ctx_t *ctx, http_request_t *req, http_response_t *resp) {
+            Task *task = ((Task*)(arg));
+            resp->body = task->msg;
+            task->cnt++;
+            return 0;
+        }
+
 
         static void *proc(void *arg)
         {
@@ -161,7 +166,6 @@ int main(int argc, char * argv[])
     }
 
     CO_RUN((tasks, num), {
-        conet::enable_sys_hook();
         uint64_t prev_cnt = 0;
         while (!get_server_stop_flag()) {
             uint64_t cur_cnt = 0;
