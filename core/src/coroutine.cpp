@@ -34,7 +34,7 @@ void co_return(coroutine_t *co)
 {
     coroutine_env_t *env = co->env;
     if (list_empty(&env->run_queue)) {
-        PLOG_FATAL("co thread env run queue empty");
+        PLOG_ERROR("co thread env run queue empty");
         return ;
     }
 

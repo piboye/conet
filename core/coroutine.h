@@ -104,6 +104,7 @@ public:
 
 #define NewCo(ref_vars, op) \
     ({ conet::closure_t<int> * cl = NewClosureWithRef(int, (), ref_vars, { \
+               conet::enable_sys_hook(); \
                op \
                return 0;\
             }); \

@@ -148,7 +148,6 @@ namespace
         } while (1);
         return 0;
     }
-
 }
 
 DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
