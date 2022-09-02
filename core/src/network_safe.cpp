@@ -276,7 +276,7 @@ void  init_poll_ctx(poll_ctx_t *self,
             {
                 init_poll_wait_item(wait_item,  self, i);
                 epoll_event ev;
-                ev.events = poll_event2epoll( fds[i].events);
+                ev.events = poll_event2epoll( fds[i].events)|EPOLLEXCLUSIVE;
                 ev.data.ptr = wait_item;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
                 if (ret) {

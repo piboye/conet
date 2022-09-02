@@ -125,12 +125,11 @@ cc_binary(
     srcs = ["http_server.cpp"],
     deps = [
             "//svrkit:http_server", 
-            #"//thirdparty/perftools:tcmalloc",
+            "//thirdparty/perftools:tcmalloc",
             #"//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 
-            #"#tcmalloc"
            ],
 )
 
