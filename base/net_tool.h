@@ -39,6 +39,8 @@ enum
     ERR_TIMEOUT_NET_HELPER = -2  // 超时错误码
 };
 
+int create_listen_fd();
+int bind_addr(int fd, int port, const char *ip_txt);
 
 int send_data(int fd, char const * buf, size_t len, int timeout=100);
 

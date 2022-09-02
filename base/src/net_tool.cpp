@@ -36,21 +36,7 @@
 #include <string>
 #include <algorithm>
 
- #include <sys/socket.h>
-
- extern "C"
-{
-
-/*
-int enable_reuseport_cbpf(int fd)
-{
-  struct sock_filter code[] = {{BPF_LD | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU}, {BPF_RET | BPF_A, 0, 0, 0}};
-  struct sock_fprog prog = { .len = sizeof(code)/sizeof(code[0]), .filter = code };
-  return setsockopt(fd, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog));
-}
-*/
-
-}
+#include <sys/socket.h>
 
 #include <sys/uio.h>
 #include "../plog.h"
@@ -284,6 +270,29 @@ int can_reuse_port()
    return g_can_reuse_port;
 }
 
+int create_listen_fd() {
+    int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
+    if( fd >= 0 ) {
+        int reuse_addr = 1;
+        if (g_can_reuse_port) {
+            setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
+        } else {
+            setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
+        }
+    }
+    return fd;
+}
+
+int bind_addr(int fd, int port, const char *ip_txt) {
+    struct sockaddr_in addr;
+    set_addr(&addr, ip_txt, port);
+    int ret = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
+    if (ret != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
 
 int create_tcp_socket(int port, const char *ip_txt, int reuse)
 {
@@ -294,11 +303,6 @@ int create_tcp_socket(int port, const char *ip_txt, int reuse)
                 int reuse_addr = 1;
                 if (g_can_reuse_port) {
                     setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &reuse_addr,sizeof(reuse_addr));
-                    /*
-                    if (enable_reuseport_cbpf(fd)){
-                        PLOG_ERROR("ERROR setting SO_ATTACH_REUSEPORT_CBPF");
-                    }
-                    */
                 } else {
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,sizeof(reuse_addr));
                 }

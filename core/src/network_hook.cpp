@@ -1289,7 +1289,7 @@ int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags)
     else 
     {
         //block call
-        struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP };
+        struct pollfd pf = { fd: fd, events: POLLIN|POLLHUP|POLLERR};
         int ret = conet::co_poll( &pf,1, -1);
         if (ret == 0) {
             errno = ETIMEDOUT;

@@ -54,6 +54,7 @@ cc_library(
         'src/bind_this_jump.s',
         'src/fd_queue.cpp',
         'src/base64.cpp',
+        'src/ebpf.c',
     ],
 
     incs= [ 

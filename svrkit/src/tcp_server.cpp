@@ -264,12 +264,11 @@ int tcp_server_t::main_proc()
 {
     
     // 不使用 fd pool 
-
     int listen_fd = this->listen_fd; 
     if (listen_fd <0) 
     {
         listen_fd = create_tcp_socket(this->port, this->ip.c_str(), true);
-        if (listen_fd <0) 
+        if (listen_fd<0) 
         {
             this->state = SERVER_STOPED;
             PLOG_ERROR("create listen socket failed, "
@@ -278,9 +277,6 @@ int tcp_server_t::main_proc()
                 "[errmsg:",strerror(errno),"]");
             return -1;
         }
-
-//        enable_reuseport_cbpf(listen_fd);
-
         this->listen_fd = listen_fd;
     } 
 
@@ -311,6 +307,7 @@ int tcp_server_t::main_proc()
 
     listen(listen_fd, this->conf.listen_backlog);
 
+
     if (FLAGS_enable_defer_accept) {
         int waits = 1; // 1 seconds;
         // 延迟 accept, 就是等客户端发了数据再accept 上套接字, 免去读等待
@@ -325,6 +322,19 @@ int tcp_server_t::main_proc()
         }
     }
 
+    // CBPF 负载均衡
+    if (enable_reuseport_cbpf(listen_fd))
+    {
+        close(listen_fd);
+        PLOG_ERROR("cbpf listen socket failed, "
+                   "[",
+                   this->ip, ":", this->port, "]"
+                                              "[errno:",
+                   errno, "]"
+                          "[errmsg:",
+                   strerror(errno), "]");
+        return -1;
+    }
 
     std::vector<int> new_fds;
     conn_info_t * conn_info = this->conn_info_pool.alloc();
@@ -342,8 +352,8 @@ int tcp_server_t::main_proc()
         }
         struct pollfd pf = { 0 };
         pf.fd = listen_fd;
-        pf.events = (POLLIN|POLLERR|POLLHUP);
-        ret = poll(&pf, 1, 1000);
+        pf.events = POLLIN|POLLERR|POLLHUP;
+        ret = co_poll(&pf, 1, 1000);
         if (ret == 0)
         {
             continue;
