@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include "svrkit/tcp_server.h"
 #include "thirdparty/gflags/gflags.h"
@@ -27,6 +28,7 @@
 #include "base/module.h"
 #include "base/ip_list.h"
 #include "base/net_tool.h"
+#include "core/coroutine.h"
 
 using namespace conet;
 DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
@@ -34,33 +36,34 @@ DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
 DEFINE_int32(thread_num, 1, "server thread num");
 DEFINE_string(cpu_set, "", "cpu affinity set");
 
+uint64_t g_cnt = 0;
 
-inline
-int proc_echo(void *arg, conn_info_t *conn)
+static int g_server_stop_flag = 0;
+
+int set_server_stop()
 {
-    conet::enable_sys_hook();
-    tcp_server_t * server= (tcp_server_t *)conn->server;
-    int size = server->conf.max_packet_size;
-    char * buff = GC_ALLOC_ARRAY(char, size);
-    int ret = 0;
-    do
-    {
-        ret = recv(conn->fd,  buff, size, 0);
-        if (ret <=0) {
-            break;
-        }
-
-        ret = send(conn->fd, buff, ret, 0);
-        if (ret <=0) break;
-    } while(1);
-    //free(buff);
+    g_server_stop_flag = 1;
     return 0;
 }
-namespace 
+
+int get_server_stop_flag()
 {
-struct Task
+    return g_server_stop_flag;
+}
+
+static void sig_exit(int sig)
 {
-    public:    
+    set_server_stop();
+}
+
+namespace
+{
+
+    int proc_echo(void *arg, conn_info_t *conn);
+
+    struct Task
+    {
+    public:
         pthread_t tid;
         int exit_finsished;
         std::vector<ip_port_t> ip_list, http_ip_list;
@@ -70,6 +73,7 @@ struct Task
         int http_listen_fd;
         int rpc_listen_fd;
         int cpu_id;
+        uint64_t cnt;
 
         Task()
         {
@@ -77,6 +81,7 @@ struct Task
             http_listen_fd = -1;
             rpc_listen_fd = -1;
             cpu_id = -1;
+            cnt = 0;
         }
 
         static int proc_server_exit(void *arg)
@@ -89,98 +94,138 @@ struct Task
 
         static void *proc(void *arg)
         {
+            conet::init_conet_env();
             int ret = 0;
-
             Task *self = (Task *)arg;
-            if (self->cpu_id >=0) {
+            if (self->cpu_id >= 0)
+            {
                 set_cur_thread_cpu_affinity(self->cpu_id);
             }
 
             ret = self->server.init(self->ip_list[0].ip.c_str(), self->ip_list[0].port);
-            if (ret) {
+            if (ret)
+            {
                 PLOG_ERROR("init server faile!", (ret));
                 return NULL;
             }
             self->server.set_conn_cb(proc_echo, NULL);
             self->server.start();
-            while (!self->exit_finsished) {
+            while (!self->exit_finsished)
+            {
                 conet::dispatch();
             }
             return NULL;
         }
+    };
 
-};
+    int proc_echo(void *arg, conn_info_t *conn)
+    {
+        conet::enable_sys_hook();
+        tcp_server_t *svr = (tcp_server_t *)conn->server;
+        Task *task = NULL;
+        task = container_of(svr, Task, server);
+        int size = svr->conf.max_packet_size;
+        char *buff = GC_ALLOC_ARRAY(char, size);
+        int ret = 0;
+        do
+        {
+            do
+            {
+                ret = recv(conn->fd, buff, size, 0);
+            } while (ret == -1 && errno == EINTR);
+            if (ret <= 0)
+                break;
+
+            do
+            {
+                ret = send(conn->fd, buff, ret, 0);
+            } while (ret == -1 && errno == EINTR);
+            if (ret <= 0)
+            {
+                break;
+            }
+            task->cnt++;
+        } while (1);
+        return 0;
+    }
+
 }
 
 DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
-    //conet::init_conet_global_env();
-    //conet::init_conet_env();
+    // conet::init_conet_global_env();
 
     InitAllModule(argc, argv);
 
     std::vector<ip_port_t> ip_list;
     parse_ip_list(FLAGS_server_addr, &ip_list);
-    if (ip_list.empty()) {
+    if (ip_list.empty())
+    {
         fprintf(stderr, "server_addr:%s, format error!", FLAGS_server_addr.c_str());
         return 1;
     }
 
+    signal(SIGINT, sig_exit);
+    signal(SIGPIPE, SIG_IGN);
+
     std::vector<int> cpu_set;
     parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
 
-
-    if (FLAGS_thread_num <= 1) {
-        Task task;
-        task.ip_list = ip_list;
-        if (!cpu_set.empty()) {
-            task.cpu_id = cpu_set[0];
-        }
-        task.proc(&task);
-    } else {
-
-#if HAVE_SO_REUSEPORT
-        int num = FLAGS_thread_num;
-        Task *tasks = new Task[num];
-        for (int i=0; i< num; ++i)
+    int num = FLAGS_thread_num;
+    Task *tasks = new Task[num];
+    for (int i = 0; i < num; ++i)
+    {
+        tasks[i].ip_list = ip_list;
+        if (!cpu_set.empty())
         {
-            tasks[i].ip_list = ip_list;
-            if (!cpu_set.empty()) {
-                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
-            }
-            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
+            tasks[i].cpu_id = cpu_set[i % cpu_set.size()];
         }
-#else
-
-        int rpc_listen_fd = conet::create_tcp_socket(ip_list[0].port, ip_list[0].ip.c_str(), true);
-
-        int num = FLAGS_thread_num;
-        Task *tasks = new Task[num];
-        for (int i=0; i< num; ++i)
-        {
-            if (!cpu_set.empty()) {
-                tasks[i].cpu_id = cpu_set[i%cpu_set.size()];
-            }
-            tasks[i].ip_list = ip_list;
-
-            tasks[i].rpc_listen_fd = dup(rpc_listen_fd);
-
-            pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks+i);
-        }
-#endif
-
-        for (int i=0; i< num; ++i)
-        {
-            pthread_join(tasks[i].tid, NULL);
-        }
-
-        delete[] tasks;
+        pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks + i);
     }
 
-    //conet::free_conet_env();
-    //conet::free_conet_global_env();
+    CO_RUN((tasks, num), {
+        uint64_t prev_cnt = 0;
+        while (!get_server_stop_flag())
+        {
+            uint64_t cur_cnt = 0;
+            for (int i = 0; i < num; ++i)
+            {
+                cur_cnt += tasks[i].cnt;
+            }
+            int cnt = cur_cnt - prev_cnt;
+            prev_cnt = cur_cnt;
+            if (cnt > 0)
+                PLOG_INFO("qps:", cnt);
+            sleep(1);
+        }
+    });
+
+    int exit_finished = 0;
+    while (likely((exit_finished < 2)))
+    {
+        if (unlikely(get_server_stop_flag() && exit_finished == 0))
+        {
+            exit_finished = 1;
+            CO_RUN((exit_finished, tasks, num), {
+                PLOG_INFO("server ready exit!");
+                for (int i = 0; i < num; ++i)
+                {
+                    Task::proc_server_exit(tasks + i);
+                }
+                exit_finished = 2;
+            });
+        }
+        conet::dispatch();
+    }
+
+    for (int i = 0; i < num; ++i)
+    {
+        pthread_join(tasks[i].tid, NULL);
+    }
+
+    delete[] tasks;
 
     return 0;
 }

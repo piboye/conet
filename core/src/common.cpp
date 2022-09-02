@@ -41,7 +41,7 @@ namespace conet
             PLOG_FATAL("init time mgr failed! [ret=", ret, "]");
             return -1;
         }
-        g_coroutine_envs = new coroutine_env_t*[1024000];
+        g_coroutine_envs = new coroutine_env_t*[10240000];
 
 	    conet::init_fd_ctx_env();
         return 0;
