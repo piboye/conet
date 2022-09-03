@@ -403,7 +403,7 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             uint32_t events = ev.events;
             events |= wait_events;
             if (events != wait_events) { // 有变化， 修改事件
-                ev.events = events;
+                ev.events = events | EPOLLET;
                 wait_item->wait_events = events;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
                 if (ret) {
@@ -412,7 +412,7 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             } 
         } else {
             // 新句柄
-            wait_item->wait_events = ev.events | EPOLLEXCLUSIVE;
+            wait_item->wait_events = ev.events | EPOLLEXCLUSIVE | EPOLLET;
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             if (ret) {
                 PLOG_ERROR(" epoll_ctl_add failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
