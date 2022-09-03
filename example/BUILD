@@ -129,7 +129,8 @@ cc_binary(
             #"//thirdparty/perftools:tcmalloc_debug",
             #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
-            "#dl", "#pthread", 
+            "#pthread", 
+            "#dl", 
            ],
 )
 
