@@ -205,6 +205,11 @@ int set_nodelay(int fd, bool enable)
    return setsockopt(fd , IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag));
 }
 
+int set_incoming_cpu(int fd, int cpu_id)
+{
+   return setsockopt(fd, SOL_SOCKET, SO_INCOMING_CPU, &cpu_id,sizeof(cpu_id));
+}
+
 int set_none_block(int fd, bool enable)
 {
     int ret =0;

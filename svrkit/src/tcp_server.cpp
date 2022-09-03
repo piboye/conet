@@ -48,6 +48,7 @@ tcp_server_t::tcp_server_t()
     this->cb_arg = NULL;
     this->exit_wait_ms = 10*1000;
     this->port = 0;
+    this->cpu_id = -1;
 }
 
 tcp_server_t::~tcp_server_t()
@@ -382,6 +383,13 @@ int tcp_server_t::main_proc()
         {
             int fd = new_fds[i];
             set_nodelay(fd);
+            if(this->cpu_id) {
+                int ret = set_incoming_cpu(fd, this->cpu_id);
+                if (ret != 0) {
+                    PLOG_ERROR("set incoming cpu failed, fd:", fd, " errno:", errno);
+                }
+                //PLOG_INFO("set incoming cpu in fd:", fd);
+            }
             ++this->data.cur_conn_num;
             //memset(conn_info, 0, sizeof(conn_info_t));
 

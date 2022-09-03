@@ -114,6 +114,7 @@ int can_reuse_port();
 
 int set_none_block(int fd, bool enable=true);
 int set_nodelay(int fd, bool enable=true);
+int set_incoming_cpu(int fd, int cpu_id);
 
 void set_addr(struct sockaddr_in *addr, const char *ip_txt,const unsigned short port);
 

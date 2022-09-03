@@ -38,6 +38,7 @@ struct tcp_server_t: public server_base_t
     std::string ip;
     int port;
     int listen_fd;
+    int cpu_id;
 
     int exit_wait_ms;
 

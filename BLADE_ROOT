@@ -3,5 +3,5 @@ cc_config(
 	cflags=['-O3','-m64', '-march=native'],
 	cxxflags=['-O3', '-std=c++11', '-m64', '-march=native', '-Dtypeof=__typeof__', '-fno-exceptions'],
 	optimize=['-O3'],
-	linkflags=['-flto'],
+	linkflags=['-O3','-flto'],
 )
