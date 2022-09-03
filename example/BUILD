@@ -123,7 +123,7 @@ cc_binary(
 cc_binary(
     name = "http_server",
     srcs = ["http_server.cpp"],
-    extra_cppflags=['-lfto', '-O3'],
+    #extra_cppflags=['-lfto', '-O3'],
     deps = [
             "//svrkit:http_server", 
             #"//thirdparty/perftools:tcmalloc",

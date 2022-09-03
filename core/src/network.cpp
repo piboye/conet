@@ -440,17 +440,26 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
     int ep_size = epoll_ctx->m_epoll_size;
     int ep_fd = epoll_ctx->m_epoll_fd;
 
-    ret = _(epoll_wait)(ep_fd, evs, ep_size, timeout);
-    if (ret <0 ) {
-        // epoll_wait failed;
-        if (errno != 4) {
-            LOG_SYS_CALL(epoll_wait, ret);
+    int to = 0;
+    while(1) {
+        ret = _(epoll_wait)(ep_fd, evs, ep_size, to);
+        if (ret == 0) {
+            if (to == 0 && timeout != 0) {
+                to = timeout;
+                sched_yield();
+                continue;
+            }
+            return 0;
+        } else if (ret < 0) {
+            // epoll_wait failed;
+            if (errno != 4) {
+                LOG_SYS_CALL(epoll_wait, ret);
+            }
+            return 0;
         }
-        return 0;
+        break;
     }
-    if (ret == 0) {
-        return ret;
-    }
+
     int ev_num = ret;
 
     if (ev_num > ep_size) ev_num = ep_size;
@@ -480,8 +489,6 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
 int proc_netevent(int timeout)
 {
     epoll_ctx_t * epoll_ctx =  get_epoll_ctx();
-    int cnt = proc_netevent(epoll_ctx, 0);
-    if (cnt > 0) return cnt;
     return proc_netevent(epoll_ctx, timeout);
 }
 
