@@ -1,6 +1,7 @@
 cc_config(
 	extra_incs=['thirdparty/protobuf/', 'thirdparty/'],
-	cflags=['-m64', '-march=native'],
-	cxxflags=['-std=c++11', '-m64', '-march=native', '-Dtypeof=__typeof__', '-fno-exceptions'],
-	optimize=['-O3','-pipe']
+	cflags=['-O3','-m64', '-march=native'],
+	cxxflags=['-O3', '-std=c++11', '-m64', '-march=native', '-Dtypeof=__typeof__', '-fno-exceptions'],
+	optimize=['-O3'],
+	linkflags=['-flto'],
 )

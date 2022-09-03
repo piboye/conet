@@ -135,7 +135,7 @@ CONET_DEF_TLS_VAR_HELP_DEF(g_wait_item_mgr);
 
 poll_wait_item_t * get_wait_item(int fd) 
 {
-    if (fd < 0) {
+    if (unlikely(fd < 0)) {
         PLOG_FATAL("error [fd=", fd, "]");
         abort();
         return NULL;
@@ -143,14 +143,12 @@ poll_wait_item_t * get_wait_item(int fd)
 
     poll_wait_item_mgr_t *mgr = TLS_GET(g_wait_item_mgr);
 
-    if ( fd >= mgr->size)
-    {
+    if (unlikely(fd >= mgr->size)) {
         mgr->expand(fd+1);
     }
 
     poll_wait_item_t *wait_item = mgr->wait_items[fd];
-    if (NULL == wait_item )
-    {
+    if (unlikely(NULL == wait_item )) {
         wait_item = new poll_wait_item_t(fd);
         mgr->wait_items[fd] = wait_item;
     }
