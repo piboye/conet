@@ -112,11 +112,13 @@ PLog::~PLog()
 
     {
         // 删除所有的 color
+        /*
         color_cb_t *it=NULL, *next=NULL;
         llist_for_each_entry_safe(it, next, m_color_all.first, link_to)
         {
             delete it;
         }
+        */
         m_color_all.first = NULL;
         if (m_color_key) pthread_key_delete(m_color_key);
     }
