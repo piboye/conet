@@ -237,9 +237,10 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
     ev.data.ptr = wait_item;
     if (ev.events) {
         wait_item->wait_events= ev.events;
+        ev.events = ev.events|EPOLLET; //| EPOLLEXCLUSIVE;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
         if (ret) {
-            PLOG_ERROR(" epoll_ctl mod failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
+            PLOG_ERROR(" epoll_ctl mod failed, ", (fd, ret, events, errno), ev.events, "[errmsg=", strerror(errno),"]");
         }
 
     } else {
@@ -247,7 +248,7 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
         ev.events = events;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd,  &ev);
         if (ret) {
-            PLOG_ERROR(" epoll_ctl del failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
+            PLOG_ERROR(" epoll_ctl del failed, ", (fd, ret,  events, errno), ev.events,  "[errmsg=", strerror(errno),"]");
         }
     }
     return;
@@ -403,8 +404,8 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             uint32_t events = ev.events;
             events |= wait_events;
             if (events != wait_events) { // 有变化， 修改事件
-                ev.events = events | EPOLLET;
                 wait_item->wait_events = events;
+                ev.events = events | EPOLLET;// EPOLLEXCLUSIVE;
                 ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
                 if (ret) {
                     PLOG_ERROR(" epoll_ctl_mod failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
@@ -412,7 +413,8 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             } 
         } else {
             // 新句柄
-            wait_item->wait_events = ev.events | EPOLLEXCLUSIVE | EPOLLET;
+            wait_item->wait_events = ev.events;
+            ev.events =  ev.events | EPOLLET;// | EPOLLEXCLUSIVE;
             ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd,  &ev);
             if (ret) {
                 PLOG_ERROR(" epoll_ctl_add failed, ", (fd, ret, errno), "[errmsg=", strerror(errno),"]");
@@ -519,6 +521,7 @@ int co_poll(struct pollfd fds[], nfds_t nfds, int timeout)
     ++ epoll_ctx->wait_num;
 
     yield();
+
     poll_ctx.coroutine = NULL;
 
     -- epoll_ctx->wait_num;

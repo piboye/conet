@@ -73,7 +73,7 @@ int proc_send(void *arg)
     int fd = 0;
     char rbuff[1024];
     fd = conet::connect_to(task->ip.c_str(), task->port);
-    conet::set_none_block(fd, false);
+    //conet::set_none_block(fd, false);
 
     for (int i=0, len = task->data->size(); i<len; ++i) {
         std::string * send_data = task->data->at(i); 
@@ -82,6 +82,7 @@ int proc_send(void *arg)
         ret = recv(fd, rbuff, 1024, 0);
         if (ret <=0) break;
     }
+    close(fd);
     ++g_finish_task_num;
     return 0;
 }

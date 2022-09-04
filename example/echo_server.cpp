@@ -100,6 +100,7 @@ namespace
             if (self->cpu_id >= 0)
             {
                 set_cur_thread_cpu_affinity(self->cpu_id);
+                self->server.cpu_id = self->cpu_id;
             }
 
             ret = self->server.init(self->ip_list[0].ip.c_str(), self->ip_list[0].port);
