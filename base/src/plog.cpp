@@ -112,18 +112,18 @@ PLog::~PLog()
 
     {
         // 删除所有的 color
-        /*
         std::vector<color_cb_t*> list;
         color_cb_t *it=NULL;
-        llist_for_each_entry(it, m_color_all.first, link_to)
-        {
-            list.push_back(it);
+        if (m_color_all.first != NULL) {
+            llist_for_each_entry(it, m_color_all.first, link_to)
+            {
+                list.push_back(it);
+            }
+            for(size_t i =0; i< list.size(); ++i) {
+                delete list[i];
+            }
+            m_color_all.first = NULL;
         }
-        for(size_t i =0; i< list.size(); ++i) {
-            delete list[i];
-        }
-        m_color_all.first = NULL;
-        */
         if (m_color_key) pthread_key_delete(m_color_key);
     }
 }
