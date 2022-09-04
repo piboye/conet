@@ -112,6 +112,7 @@ PLog::~PLog()
 
     {
         // 删除所有的 color
+        /*
         std::vector<color_cb_t*> list;
         color_cb_t *it=NULL;
         llist_for_each_entry(it, m_color_all.first, link_to)
@@ -122,6 +123,7 @@ PLog::~PLog()
             delete list[i];
         }
         m_color_all.first = NULL;
+        */
         if (m_color_key) pthread_key_delete(m_color_key);
     }
 }
