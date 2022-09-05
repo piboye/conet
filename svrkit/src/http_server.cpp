@@ -28,6 +28,7 @@
 #include "base/ptr_cast.h"
 #include <openssl/sha.h>
 #include "base/base64.h"
+#include "base/string_builder.h"
 #include <endian.h>
 
 namespace conet
@@ -79,8 +80,8 @@ static std::string s_crlf = "\r\n";
 
 int output_response(http_response_t *resp, int fd)
 {
-    std::string out;
-    out.reserve(1*1024);
+    conet::StringBuilder<4*1024> out;
+    
     char buf[100];
     int len = 0;
     if (resp->http_code == 200) {
@@ -91,12 +92,12 @@ int output_response(http_response_t *resp, int fd)
         }
     } else {
         len = snprintf(buf, sizeof(buf), "HTTP/1.1 %d\r\n", resp->http_code);
-        out.assign(buf, len);
+        out.append(buf, len);
     }
     for (int i=0, n = (int)resp->headers.size(); i<n; ++i)
     {
         out.append(resp->headers[i]);
-        out+="\r\n";
+        out.append(s_crlf);
     }
 
     size_t blen = resp->body.size();
@@ -109,7 +110,7 @@ int output_response(http_response_t *resp, int fd)
 
     out.append(s_crlf);
     out.append(resp->body);
-    return send_data(fd, out.c_str(), out.size(), 1000);
+    return send_data(fd, out.data(), out.size(), 1000);
 }
 
 
