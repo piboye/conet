@@ -107,10 +107,20 @@ int output_response(http_response_t *resp, int fd)
     len = snprintf(buf, sizeof(buf), "%ld", blen);
     out.append(buf, len);
     out.append(s_crlf);
-
     out.append(s_crlf);
-    out.append(resp->body);
-    return send_data(fd, out.data(), out.size(), 1000);
+    if (blen <= 4*1024) {
+        out.append(resp->body);
+        return send_data(fd, out.data(), out.size(), 1000);
+    } 
+
+    // send header
+    int ret = send_data(fd, out.data(), out.size(), 1000);
+    if (ret < 0) {
+        return ret;
+    }
+    
+    // send body
+    return send_data(fd, resp->body.data(), resp->body.size(), 1000);
 }
 
 
