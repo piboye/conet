@@ -226,6 +226,7 @@ int module_mgr_t::init_all_modules()
     }
     
     gflags::ParseCommandLineFlags(m_argc, m_argv, false);
+    conet::PLog::InitFromFlags();
     conet::PLog::Instance().Start();
 
     if (!m_calc_called)

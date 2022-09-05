@@ -97,6 +97,8 @@ public:
     int InitRotateLog(std::string const & file_name_prefix,
             int max_file_num, int max_file_size);
 
+    static int InitFromFlags();
+
     int Start();
     int Stop();
 

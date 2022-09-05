@@ -40,6 +40,7 @@ struct fd_ctx_t
     int type;
     int fd;
     int user_flag;
+    int closed;
 
     int rcv_timeout;
     int snd_timeout;

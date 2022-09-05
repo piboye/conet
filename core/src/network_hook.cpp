@@ -571,6 +571,14 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
 
+    if (pf.revents & POLLIN) {
+        if (pf.revents & POLLERR && pf.revents & POLLHUP) {
+            lp->closed = 1;
+        }
+        ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
+        return ret;
+    }
+
 
     if (pf.revents & POLLERR) {
         return -1;
@@ -579,8 +587,7 @@ HOOK_SYS_FUNC_DEF(
         return 0;
     }
 
-    ret = _(recvfrom)(fd, buffer, length, flags, address, address_len);
-    return ret;
+    return 0;
 }
 
 HOOK_SYS_FUNC_DEF(
@@ -659,7 +666,7 @@ HOOK_SYS_FUNC_DEF(
     struct pollfd pf = { 0 };
     pf.fd = fd;
     pf.events = ( POLLIN | POLLERR | POLLHUP );
-    ret = conet::co_poll( &pf,1, timeout );
+    ret = conet::co_poll( &pf, 1, timeout );
     if (ret == 0) {
         errno = ETIMEDOUT;
         return -1;
@@ -669,6 +676,14 @@ HOOK_SYS_FUNC_DEF(
         return -1;
     }
 
+    if (pf.revents & POLLIN) {
+        if (pf.revents & POLLERR && pf.revents & POLLHUP) {
+            lp->closed = 1;
+        }
+        ret = _(recv)(fd, buffer, length, flags);
+        return ret;
+    }
+
     if (pf.revents & POLLERR) {
         return -1;
     }
@@ -676,9 +691,7 @@ HOOK_SYS_FUNC_DEF(
     if (pf.revents & POLLHUP) {
         return 0;
     }
-
-    ret = _(recv)(fd, buffer, length, flags);
-    return ret;
+    return 0;
 }
 
 
@@ -1333,10 +1346,13 @@ namespace conet
 
     ssize_t poll_recv(int fd, void *buffer, size_t length, int timeout)
     {
-        //fd_ctx_t *lp = get_fd_ctx(fd);
+        fd_ctx_t *lp = get_fd_ctx(fd);
         struct pollfd pf = {0};
         pf.fd = fd;
         pf.events = (POLLIN | POLLERR | POLLHUP);
+        if (lp->closed) {
+            return 0;
+        }
         int ret = conet::co_poll(&pf, 1, timeout);
         if (ret == 0) {
             errno = ETIMEDOUT;
@@ -1348,6 +1364,14 @@ namespace conet
             return -1;
         }
 
+        if (pf.revents & POLLIN) {
+            if (pf.revents & POLLERR && pf.revents & POLLHUP) {
+                lp->closed = 1;
+            }
+            ret = _(recv)(fd, buffer, length, O_NONBLOCK);
+            return ret;
+        }
+
         if (pf.revents & POLLERR)
         {
             return -1;
@@ -1357,8 +1381,6 @@ namespace conet
         {
             return 0;
         }
-
-        ret = _(recv)(fd, buffer, length, 0);
-        return ret;
+        return 0;
     }
 }

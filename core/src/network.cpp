@@ -237,7 +237,7 @@ void clear_invalid_event(poll_wait_item_t *wait_item, uint32_t events, int epoll
     ev.data.ptr = wait_item;
     if (ev.events) {
         wait_item->wait_events= ev.events;
-        ev.events = ev.events|EPOLLET; //| EPOLLEXCLUSIVE;
+        ev.events = ev.events | EPOLLET; //| EPOLLEXCLUSIVE;
         ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd,  &ev);
         if (ret) {
             PLOG_ERROR(" epoll_ctl mod failed, ", (fd, ret, events, errno), ev.events, "[errmsg=", strerror(errno),"]");

@@ -11,11 +11,12 @@
 #include "../time_helper.h"
 #include "thirdparty/gflags/gflags.h"
 #include "time_helper.h"
+#include "module.h"
 #include <sys/syscall.h>
 
 #define OUT_OF_INDEXES          0xfffffff
 
-DEFINE_int32(log_type, 1, "0 stderr, 1 rotate log");
+DEFINE_int32(log_type, 0, "0 stderr, 1 rotate log");
 DEFINE_string(log_file, "my.log", "base log filename");
 DEFINE_int32(log_max_file_num, 10, "max file num");
 DEFINE_int32(log_max_file_size, 10, "max file size default 10 MB");
@@ -216,9 +217,20 @@ int PLog::ProcLog(llist_node *queue)
     return 0;
 }
 
+int PLog::InitFromFlags() {
+    PLog &log = g_plog;
+    log.m_log_type = FLAGS_log_type;
+    log.m_log_level = log_level_cast(FLAGS_log_level);
+    if (FLAGS_log_type == 1) {
+        log.InitRotateLog(FLAGS_log_file, FLAGS_log_max_file_num, FLAGS_log_max_file_size);
+    }
+    return 0;
+}
+
 int PLog::Start()
 {
     int ret = 0;
+
     ret = pthread_create(&m_main_thread, NULL, &MainProcHelp, this);
     return ret;
 }
@@ -493,5 +505,4 @@ void PLog::ClearColor()
         color->arg = NULL;
     }
 }
-
 }

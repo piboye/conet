@@ -182,6 +182,7 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     d->rcv_timeout = 1000;
     d->snd_timeout = 1000;
     d->domain = 0;
+    d->closed = 0;
     int flags = 0;
     d->user_flag = 0;
 

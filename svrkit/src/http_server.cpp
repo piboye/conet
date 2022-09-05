@@ -214,10 +214,11 @@ int http_server_t::conn_proc(conn_info_t *conn)
                 break;
             }
 
-            recved = conet::poll_recv(fd, buf+nparsed, len-nparsed, 1000);
+            recved = poll_recv(fd, buf+nparsed, len-nparsed, 10*1000);
             if (recved == 0) {
                 if (nparsed == 0) {
                     ret = 0;
+                    //PLOG_DEBUG("fd close by remote, ", fd);
                     break;
                 }
                 ret = -2;
@@ -226,7 +227,8 @@ int http_server_t::conn_proc(conn_info_t *conn)
             }
             if (recved < 0) {
                 if (errno == ETIMEDOUT) {
-                    continue;
+                    // 超时
+                    break;
                 }
                 if (errno == EAGAIN || errno == EINTR || errno == ECONNRESET) {
                     continue;
