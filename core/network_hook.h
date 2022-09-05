@@ -55,6 +55,7 @@ void disable_sys_hook()
 
 
 int  my_accept4( int fd, struct sockaddr *addr, socklen_t *len, int flags);
+ssize_t poll_recv( int fd, void *buffer, size_t length, int timeout);
 
 }
 
