@@ -203,10 +203,6 @@ int http_server_t::conn_proc(conn_info_t *conn)
     malloc_buff = 1;
     buf = (char *)malloc(len);
 
-    int recvbuflen = len;
-    ret = setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
-            (char *)&recvbuflen, sizeof(recvbuflen) );
-
     uint64_t cnt = 0;
     do
     {
