@@ -97,7 +97,9 @@ static void sig_exit(int sig)
 
         static int proc_hello(void *arg, http_ctx_t *ctx, http_request_t *req, http_response_t *resp) {
             Task *task = ((Task*)(arg));
-            resp->body = task->msg;
+            //resp->body = task->msg;
+            resp->data = task->msg.data();
+            resp->data_len = task->msg.size();
             task->cnt++;
             return 0;
         }

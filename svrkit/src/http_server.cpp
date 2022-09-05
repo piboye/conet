@@ -71,6 +71,8 @@ void init_http_response(http_response_t *self)
 {
         self->http_code = 200;
         self->keepalive = 0;
+        self->data =  NULL;
+        self->data_len = 0;
 }
 
 static std::string s_http_200_ok_keepalive = "HTTP/1.1 200\r\nConnection: keep-alive\r\n";
@@ -100,7 +102,12 @@ int output_response(http_response_t *resp, int fd)
         out.append(s_crlf);
     }
 
-    size_t blen = resp->body.size();
+    size_t blen =  resp->data_len;
+    char const *data = resp->data; 
+    if (data == NULL) {
+        data = resp->body.data();
+        blen = resp->body.size();
+    }
 
     // Content-Length: %d\r\n
     out.append(s_content_len_name);
@@ -109,7 +116,7 @@ int output_response(http_response_t *resp, int fd)
     out.append(s_crlf);
     out.append(s_crlf);
     if (blen <= 4*1024) {
-        out.append(resp->body);
+        out.append(data, blen);
         return send_data(fd, out.data(), out.size(), 1000);
     } 
 
@@ -120,7 +127,7 @@ int output_response(http_response_t *resp, int fd)
     }
     
     // send body
-    return send_data(fd, resp->body.data(), resp->body.size(), 1000);
+    return send_data(fd, data, blen, 1000);
 }
 
 
