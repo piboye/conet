@@ -20,6 +20,8 @@
 #define __CONET_SERVER_COMMON_H__
 
 #include "../base/ip_list.h"
+#include <thread>
+#include <functional>
 
 namespace conet
 {
@@ -38,6 +40,8 @@ namespace conet
     int call_server_fini_func();
 
     int get_listen_fd_from_pool(char const *ip, int port);
+
+    std::thread && co_thread_run(std::function<void(void)> op);
 
 #define REG_SERVER_FININSH(func) \
     static int CONET_MACRO_CONCAT(g_registry_fini_, __LINE__) = conet::registry_server_fini_func(func)

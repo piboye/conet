@@ -72,29 +72,42 @@ void init_http_response(http_response_t *self)
         self->keepalive = 0;
 }
 
+static std::string s_http_200_ok_keepalive = "HTTP/1.1 200\r\nConnection: keep-alive\r\n";
+static std::string s_http_200_ok_close = "HTTP/1.1 200\r\nConnection: close\r\n";
+static std::string s_content_len_name = "Content-Length: ";
+static std::string s_crlf = "\r\n";
+
 int output_response(http_response_t *resp, int fd)
 {
     std::string out;
+    out.reserve(1*1024);
     char buf[100];
-    int len = snprintf(buf, sizeof(buf), "HTTP/1.1 %d\r\n", resp->http_code);
-    out.assign(buf, len);
+    int len = 0;
+    if (resp->http_code == 200) {
+        if (resp->keepalive) {
+            out.append(s_http_200_ok_keepalive);
+        } else {
+            out.append(s_http_200_ok_close);
+        }
+    } else {
+        len = snprintf(buf, sizeof(buf), "HTTP/1.1 %d\r\n", resp->http_code);
+        out.assign(buf, len);
+    }
     for (int i=0, n = (int)resp->headers.size(); i<n; ++i)
     {
-        out+=resp->headers[i];
+        out.append(resp->headers[i]);
         out+="\r\n";
     }
 
-    if (resp->keepalive) {
-        out.append("Connection: keep-alive\r\n");
-    } else {
-        out.append("Connection: close\r\n");
-    }
+    size_t blen = resp->body.size();
 
-    len = resp->body.size();
-    len = snprintf(buf, sizeof(buf), "Content-Length: %d\r\n", len);
+    // Content-Length: %d\r\n
+    out.append(s_content_len_name);
+    len = snprintf(buf, sizeof(buf), "%ld", blen);
     out.append(buf, len);
+    out.append(s_crlf);
 
-    out.append("\r\n");
+    out.append(s_crlf);
     out.append(resp->body);
     return send_data(fd, out.c_str(), out.size(), 1000);
 }

@@ -21,11 +21,16 @@
 #include <map>
 #include "server_common.h"
 #include <pthread.h>
+#include <functional>
+#include <thread>
+#include <signal.h>
+#include "core/conet_all.h"
 
 #include "thirdparty/gflags/gflags.h"
 #include "base/ip_list.h"
 #include "base/net_tool.h"
 #include "base/plog.h"
+#include "base/module.h"
 
 namespace conet
 {
@@ -117,6 +122,32 @@ namespace conet
                 func();
             }
         }
+        return 0;
+    }
+
+
+    std::thread && co_thread_run(std::function<void(void)> op) {
+        auto fn = [](std::function<void(void)> f1) {
+            conet::init_conet_env();
+            conet::coroutine_t *co = NewCo((f1), {f1();}); \
+            conet::set_auto_delete(co); \
+            conet::resume(co); \
+            while(!get_server_stop_flag() && conet::get_epoll_pend_task_num()>0) {
+                conet::dispatch();
+            }
+        };
+        return std::move(std::thread(fn, op));
+    }
+
+    static void sig_exit(int sig)
+    {
+        set_server_stop();
+    }
+
+
+    DEFINE_MODULE(server_stop){
+        signal(SIGINT, sig_exit);
+        signal(SIGPIPE, SIG_IGN);
         return 0;
     }
 }

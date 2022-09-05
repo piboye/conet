@@ -38,6 +38,8 @@ struct http_response_t
     int keepalive;
     std::vector<std::string> headers;
     std::string body;
+    char *data;
+    size_t data_len;
 };
 
 
