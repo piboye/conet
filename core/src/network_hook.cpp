@@ -659,7 +659,8 @@ HOOK_SYS_FUNC_DEF(
     if (ret >=0) {
         return ret;
     }
-    if (errno != EAGAIN) {
+
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
         return ret;
     }
 
@@ -1037,7 +1038,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
 {
 
     HOOK_SYS_FUNC(usleep);
-    if( !conet::is_enable_sys_hook() )
+    if(!conet::is_enable_sys_hook() )
     {
         return _(usleep)(us);
     }

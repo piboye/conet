@@ -222,7 +222,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
                 break;
             }
 
-            recved = poll_recv(fd, buf+nparsed, len-nparsed, 10*1000);
+            recved = recv(fd, buf+nparsed, len-nparsed, 0);
             if (recved == 0) {
                 if (nparsed == 0) {
                     ret = 0;
@@ -236,7 +236,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
             if (recved < 0) {
                 if (errno == ETIMEDOUT) {
                     // 超时
-                    break;
+                    continue;
                 }
                 if (errno == EAGAIN || errno == EINTR || errno == ECONNRESET) {
                     continue;

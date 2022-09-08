@@ -86,7 +86,7 @@ coroutine_env_t::coroutine_env_t()
     init_task(&delay_del_task, do_delay_del_co_task, this);
 
     // 初始化 epoll 环境
-    self->epoll_ctx = create_epoll_ctx(this, 1000);
+    self->epoll_ctx = create_epoll_ctx(this, 100);
 
     // 添加到调度
     self->dispatch->registry(&this->epoll_ctx->task);
