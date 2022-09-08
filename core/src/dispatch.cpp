@@ -124,12 +124,14 @@ int proc_tasks(dispatch_mgr_t *mgr)
 
     LIST_HEAD(delay_list);
     list_swap(&delay_list, &mgr->delay_tasks);
+    mgr->delay_task_num = 0;
 
     list_for_each_entry_safe(t, n, &delay_list, link_to) {
         list_del_init(&t->link_to);
+        int auto_del = t->auto_del;
         int ret = t->proc(t->arg);
         if(ret >0) ++num;
-        if (t->auto_del) {
+        if (auto_del) {
             delete t;
         }
     }
@@ -196,7 +198,7 @@ int proc_delay_back(void *arg)
 {
     delay_back_t * self = (delay_back_t *)(arg);
     conet::resume(self->co);
-    return 0;
+    return 1;
 }
 
 void delay_back()

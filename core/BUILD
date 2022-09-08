@@ -41,7 +41,7 @@ cc_library(
         '#rt',
     ],
 
-    extra_cppflags=["-fPIC", "-Wno-error=empty-body"],
+    extra_cppflags=["-Wno-error=empty-body"],
     export_incs=["./"],
     link_all_symbols = True,
     #export_dynamic = True,
