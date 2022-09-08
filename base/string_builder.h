@@ -16,6 +16,19 @@ namespace conet
             m_len = 0;
         }
 
+        void append(unsigned int n) {
+            char s[20]={0};
+            char *p = s+sizeof(s)-1;
+            int i =0 ;
+            do {
+                *p-- = "0123456789"[n%10];
+                n = n/10;
+                i++;
+            } while(n>0);
+            ++p;
+            append(p, i);
+        }  
+
         void append(std::string const &str)
         {
             size_t len = str.size();

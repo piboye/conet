@@ -33,13 +33,11 @@ enum {
     HTTP_1_1 =0,
 };
 
-typedef
 struct http_request_t
 {
-
-  char *body;
-  char *mark;
-  char *query_start;
+  char * body;
+  char * mark;
+  char * query_start;
   char * header_start;
   char * header_val_start;
 
@@ -82,7 +80,7 @@ struct http_request_t
   char *rest_data;  // 没有解析的数据
   size_t rest_len;
 
-} http_request_t;
+} __attribute__((aligned(64)));
 
 void http_request_init(http_request_t *parser);
 

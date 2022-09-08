@@ -75,10 +75,11 @@ void init_http_response(http_response_t *self)
         self->data_len = 0;
 }
 
-static std::string s_http_200_ok_keepalive = "HTTP/1.1 200\r\nConnection: keep-alive\r\n";
-static std::string s_http_200_ok_close = "HTTP/1.1 200\r\nConnection: close\r\n";
-static std::string s_content_len_name = "Content-Length: ";
-static std::string s_crlf = "\r\n";
+static std::string const s_http_200_ok_keepalive = "HTTP/1.1 200\r\nConnection: keep-alive\r\n";
+static std::string const s_http_200_ok_close = "HTTP/1.1 200\r\nConnection: close\r\n";
+static std::string const s_content_len_name = "Content-Length: ";
+static std::string const s_crlf = "\r\n";
+static std::string const s_crlf2 = "\r\n\r\n";
 
 int output_response(http_response_t *resp, int fd)
 {
@@ -111,23 +112,23 @@ int output_response(http_response_t *resp, int fd)
 
     // Content-Length: %d\r\n
     out.append(s_content_len_name);
-    len = snprintf(buf, sizeof(buf), "%ld", blen);
-    out.append(buf, len);
-    out.append(s_crlf);
-    out.append(s_crlf);
+    out.append(blen);
+    //len = snprintf(buf, sizeof(buf), "%ld", blen);
+    //out.append(buf, len);
+    out.append(s_crlf2);
     if (blen <= 4*1024) {
         out.append(data, blen);
-        return send_data(fd, out.data(), out.size(), 1000);
+        return send_data(fd, out.data(), out.size());
     } 
 
     // send header
-    int ret = send_data(fd, out.data(), out.size(), 1000);
+    int ret = send_data(fd, out.data(), out.size());
     if (ret < 0) {
         return ret;
     }
     
     // send body
-    return send_data(fd, data, blen, 1000);
+    return send_data(fd, data, blen);
 }
 
 

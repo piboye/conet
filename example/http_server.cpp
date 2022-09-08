@@ -107,6 +107,7 @@ static void sig_exit(int sig)
 
         static void *proc(void *arg)
         {
+            //pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, NULL);
             conet::init_conet_env();
             int ret = 0;
             Task *self = (Task *)arg;

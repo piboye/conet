@@ -83,6 +83,27 @@ ssize_t write_timeout(int fd, const void *buf, size_t nbyte, int timeout)
     return ret;
 }
 
+int send_data(int fd, char const * buf, size_t len)
+{
+    int ret = 0;
+    size_t cur_len = 0;
+    while (cur_len < len)
+    {
+        ret = send(fd, &buf[cur_len], len-cur_len, 0);
+        if (ret <0) {
+            break;
+        }
+        else if (ret == 0) {
+            break;
+        }
+
+        cur_len += ret;
+    }
+
+    if (ret <0) return ret;
+    return len;
+}
+
 int send_data(int fd, char const * buf, size_t len, int timeout)
 {
     int ret = 0;
@@ -91,7 +112,6 @@ int send_data(int fd, char const * buf, size_t len, int timeout)
     uint64_t start_ms = conet::get_tick_ms();
     uint64_t cur = start_ms;
     int rest_ms = timeout;
-
     while (cur_len < len)
     {
         ret = conet::write_timeout(fd, &buf[cur_len], len-cur_len, rest_ms);

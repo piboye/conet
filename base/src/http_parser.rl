@@ -210,9 +210,10 @@ namespace conet
 void http_request_init(http_request_t *parser)  {
   int cs = 0;
   %% write init;
-
-  memset(parser, 0, sizeof(*parser));
+  //bzero(parser, sizeof(*parser));
+  parser->headers_num = 0;
   parser->status = cs;
+  parser->nread = 0;
 }
 
 

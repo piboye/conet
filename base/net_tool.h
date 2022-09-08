@@ -42,7 +42,9 @@ enum
 int create_listen_fd();
 int bind_addr(int fd, int port, const char *ip_txt);
 
-int send_data(int fd, char const * buf, size_t len, int timeout=100);
+int send_data(int fd, char const * buf, size_t len, int timeout);
+int send_data(int fd, char const * buf, size_t len);
+
 
 template <typename T>
 int send_pb_obj(int fd,  T const &data, char *buf, int max_size, int timeout=1000)

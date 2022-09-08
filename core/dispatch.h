@@ -36,7 +36,9 @@ struct task_t
 struct coroutine_env_t;
 struct dispatch_mgr_t
 {
+    //任务
     list_head tasks;
+    //延迟任务
     list_head delay_tasks;
 
     uint32_t task_num;
