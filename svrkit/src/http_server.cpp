@@ -236,6 +236,11 @@ int http_server_t::conn_proc(conn_info_t *conn)
             if (recved < 0) {
                 if (errno == ETIMEDOUT) {
                     // 超时
+                    struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP};
+                    int ret = conet::co_poll( &pf,1, 10*1000);
+                    if (ret == 0) {
+                        break;
+                    }
                     continue;
                 }
                 if (errno == EAGAIN || errno == EINTR || errno == ECONNRESET) {
