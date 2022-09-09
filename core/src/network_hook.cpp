@@ -660,7 +660,7 @@ HOOK_SYS_FUNC_DEF(
         return ret;
     }
 
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+    if (errno != EAGAIN ) {
         return ret;
     }
 
