@@ -128,23 +128,19 @@ namespace
         int size = svr->conf.max_packet_size;
         char *buff = GC_ALLOC_ARRAY(char, size);
         int ret = 0;
-        do
-        {
-            do
-            {
-                ret = recv(conn->fd, buff, size, 0);
+        int fd = conn->fd;
+        do {
+            do {
+                ret = conet::poll_recv(fd, buff, size, 1000);
             } while (ret == -1 && errno == EINTR);
             if (ret <= 0)
                 break;
 
-            do
-            {
-                ret = send(conn->fd, buff, ret, 0);
+            do {
+                ret = send(fd, buff, ret, 0);
             } while (ret == -1 && errno == EINTR);
             if (ret <= 0)
-            {
                 break;
-            }
             task->cnt++;
         } while (1);
         return 0;

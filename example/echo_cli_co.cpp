@@ -21,6 +21,7 @@
 #include "core/conet_all.h"
 #include "thirdparty/gflags/gflags.h"
 #include "base/plog.h"
+#include "core/network_hook.h"
 
 #include "base/ip_list.h"
 #include "base/net_tool.h"
@@ -28,8 +29,8 @@
 
 //using namespace conet;
 DEFINE_string(server_addr, "127.0.0.1:12314", "server address");
-DEFINE_int32(task_num, 10, "concurrent task num");
-DEFINE_string(data_file, "1.txt", "send data file");
+DEFINE_int32(task_num, 100, "concurrent task num");
+DEFINE_string(data_file, "d.txt", "send data file");
 
 struct task_t
 {
@@ -58,6 +59,7 @@ int prepare_data(char const *file)
         size_t size = 1000;
         ret = getline(&line, &size, fp);
         if (ret <= 0) break;
+        line[ret++] = '\n';
         g_data.push_back(new std::string(rbuff, ret));
     }
 
@@ -79,7 +81,7 @@ int proc_send(void *arg)
         std::string * send_data = task->data->at(i); 
         ret = send(fd, send_data->c_str(), send_data->size(), 0);
         if (ret <= 0) break;
-        ret = recv(fd, rbuff, 1024, 0);
+        ret = conet::poll_recv(fd, rbuff, 1024, 1000);
         if (ret <=0) break;
     }
     close(fd);
