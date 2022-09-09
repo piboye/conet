@@ -209,7 +209,7 @@ int http_server_t::conn_proc(conn_info_t *conn)
     int malloc_buff = 0;
 
     malloc_buff = 1;
-    buf = (char *)malloc(len);
+    buf = (char *)aligned_alloc(64, len);
 
     uint64_t cnt = 0;
     do
