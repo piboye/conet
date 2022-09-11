@@ -101,9 +101,20 @@ cc_binary(
     srcs = ["echo_server.cpp"],
     deps = [
         "//svrkit:tcp_server", 
+        "//thirdparty/perftools:tcmalloc",
+        "#pthread",
         "#dl", 
-        #"//thirdparty/perftools:tcmalloc",
-        "#pthread"
+    ],
+)
+
+cc_binary(
+    name = "pkv",
+    srcs = ["pkv.cpp"],
+    deps = [
+        "//svrkit:tcp_server", 
+        "//thirdparty/perftools:tcmalloc",
+        "#pthread",
+        "#dl", 
     ],
 )
 

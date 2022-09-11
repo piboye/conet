@@ -1,6 +1,7 @@
 #ifndef _STRING_BUIDER_H_
 #define _STRING_BUIDER_H_
 #include <string>
+#include <string_view>
 
 namespace conet
 {
@@ -10,7 +11,7 @@ namespace conet
         public:
         char m_buff[init_size];
         std::string m_str;
-        size_t m_len;
+        ssize_t m_len;
         StringBuilder()
         {
             m_len = 0;
@@ -34,6 +35,27 @@ namespace conet
             size_t len = str.size();
             char const *data = str.data();
             append(data, len);
+        }
+
+        void append(std::string_view const &str)
+        {
+            size_t len = str.size();
+            char const *data = str.data();
+            append(data, len);
+        }
+
+        void append_ch(char ch) {
+            if (m_len >=0) {
+                if ((unsigned int)m_len  < init_size) {
+                    m_buff[m_len++] = ch;
+                    return;
+                }
+                m_str.reserve(4 * init_size);
+                m_len = -1;
+                m_str.append(&m_buff[0], init_size);
+            }
+
+            m_str.push_back(ch);
         }
 
         void append(char const *data, size_t len)

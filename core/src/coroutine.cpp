@@ -30,7 +30,7 @@ bool is_stop(coroutine_t *co)
 }
 
 static
-void co_return(coroutine_t *co)
+void co_return_p(coroutine_t *co)
 {
     coroutine_env_t *env = co->env;
     if (list_empty(&env->run_queue)) {
@@ -109,11 +109,11 @@ void co_main_helper2(void *p)
         init_task(&task, delay_del_coroutine, co);
         list_add_tail(&task.link_to, &env->delay_del_list);
         env->dispatch->delay(&env->delay_del_task);
-        co_return(co);
+        co_return_p(co);
         return;
     }
 
-    co_return(co);
+    co_return_p(co);
     return ;
 }
 

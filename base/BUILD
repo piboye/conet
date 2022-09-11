@@ -15,12 +15,20 @@ gen_rule(
     outs=['src/query_string.cpp'],
 );
 
+gen_rule(
+    name='redis_parse_rl',
+    srcs=['src/redis_parse.rl'],
+    cmd='ragel $SRCS -o $OUTS',
+    outs=['src/redis_parse.cpp'],
+);
+
 cc_library(
     name='http_tool',
     srcs=[
         'src/http_parser.cpp',
         'src/query_string.cpp',
         'src/url_encode.cpp',
+        'src/redis_parse.cpp',
     ],
     incs= [ 
         "./",
@@ -29,6 +37,7 @@ cc_library(
     deps = [
         ":http_parser_rl",
         ":query_string_rl",
+        ":redis_parse_rl",
     ]
 );
 
