@@ -751,7 +751,7 @@ HOOK_SYS_FUNC_DEF(
         return _(epoll_wait)(epfd, events, maxevents, timeout);
     }
 
-    if(timeout ==0)
+    if(timeout == 0)
     {
         if (maxevents <=0) {
             usleep(0);

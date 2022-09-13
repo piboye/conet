@@ -55,25 +55,31 @@ static int cs;
 
 %% write data;
 
-void redis_parser_t::init() {
+void redis_parser_t::reinit() {
   redis_parser_t * sc = this;
   sc->argnum = 0;
   sc->cmd = 0;
   sc->cur_arg_pos = 0;
+  sc->status = 0;
+  sc->nread = 0;
   %% write init;
 }
 
-int redis_parser_exec(redis_parser_t *sc, const char *data, int len) {
-  const char *p = data;
+int redis_parser_exec(redis_parser_t *sc, const char *data, int len, int off) {
+  const char *p = data +off;
   const char *pe = data + len;
+  int cs = sc->status;
+  if (off > len) return -1;
+
   %% write exec;
-  if (cs == RedisParser_error) return -1;
-  else if (cs >= RedisParser_first_final) return 1;
-  else return 0;
+
+  sc->status = cs;
+  sc->nread += p - (data + off);
+  return (sc->nread);
 }
 
 int redis_parser_finish(redis_parser_t *sc) {
-  if (cs == RedisParser_error) return -1;
-  else if (cs >= RedisParser_first_final) return 1;
+  if (sc->status == RedisParser_error) return -1;
+  else if (sc->status >= RedisParser_first_final) return 1;
   else return 0;
 }

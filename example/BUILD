@@ -101,7 +101,7 @@ cc_binary(
     srcs = ["echo_server.cpp"],
     deps = [
         "//svrkit:tcp_server", 
-        "//thirdparty/perftools:tcmalloc",
+        '#tcmalloc_minimal.so',
         "#pthread",
         "#dl", 
     ],
@@ -112,7 +112,7 @@ cc_binary(
     srcs = ["pkv.cpp"],
     deps = [
         "//svrkit:tcp_server", 
-        "//thirdparty/perftools:tcmalloc",
+        '#tcmalloc_minimal.so',
         "#pthread",
         "#dl", 
     ],
@@ -123,8 +123,6 @@ cc_binary(
     srcs = ["echo_rpc_server.cpp"],
     deps = [":echo_rpc_proto",
             "//svrkit:rpc_pb_server_main", 
-            #"//thirdparty/perftools:tcmalloc",
-            #"//thirdparty/perftools:profiler",
             "//thirdparty/gflags:gflags",
             "#dl", "#pthread", 
            ],

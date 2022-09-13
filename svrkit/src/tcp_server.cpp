@@ -32,7 +32,7 @@
 
 DEFINE_int32(listen_backlog, 10000, "default listen backlog");
 DEFINE_int32(max_conn_num, 100000, "default max conn num");
-DEFINE_int32(max_packet_size, 100*1024, "default max packet size");
+DEFINE_int32(max_packet_size, 10*1024, "default max packet size");
 DEFINE_bool(enable_defer_accept, false, "enable TCP_DEFER_ACCEPT");
 DEFINE_int32(accept_num, 100, "call accept num in one loop");
 
@@ -383,7 +383,7 @@ int tcp_server_t::main_proc()
         {
             int fd = new_fds[i];
             set_nodelay(fd);
-            if(this->cpu_id) {
+            if(this->cpu_id>=0) {
                 int ret = set_incoming_cpu(fd, this->cpu_id);
                 if (ret != 0) {
                     PLOG_ERROR("set incoming cpu failed, fd:", fd, " errno:", errno);

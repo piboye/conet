@@ -34,30 +34,14 @@
 #include <base/string_builder.h>
 
 using namespace conet;
-DEFINE_string(server_address, "0.0.0.0:12314", "default server address");
+DEFINE_string(server_addr, "0.0.0.0:12314", "default server address");
 DEFINE_int32(server_stop_wait_seconds, 2, "server stop wait seconds");
-DEFINE_int32(thread_num, 1, "server thread num");
 DEFINE_string(cpu_set, "", "cpu affinity set");
 
 uint64_t g_cnt = 0;
 
 static int g_server_stop_flag = 0;
 
-int set_server_stop()
-{
-    g_server_stop_flag = 1;
-    return 0;
-}
-
-int get_server_stop_flag()
-{
-    return g_server_stop_flag;
-}
-
-static void sig_exit(int sig)
-{
-    set_server_stop();
-}
 
 using namespace conet;
 namespace conet {
@@ -79,7 +63,7 @@ namespace conet {
     int proc_kv(void *arg, conn_info_t *conn);
 
     static std::string_view s_redis_ok = "+OK\r\n";
-    static std::string_view s_reids_err = "-ERR unknown command 'helloworld'\r\n";
+    static std::string_view s_reids_err = "-ERR unknown command\r\n";
     static std::string_view s_get_result = "$";
     static std::string_view s_crln = "\r\n";
 
@@ -94,7 +78,7 @@ namespace conet {
         tcp_server_t server;
         int http_listen_fd;
         int rpc_listen_fd;
-        int cpu_id;
+        int cpu_id = -1;
         uint64_t cnt;
 
         std::unordered_map<std::string, std::string, conet::string_hash, conet::string_equal> m_kv;
@@ -118,6 +102,7 @@ namespace conet {
 
         static void *proc(void *arg)
         {
+            pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, NULL);
             conet::init_conet_env();
             int ret = 0;
             Task *self = (Task *)arg;
@@ -139,6 +124,13 @@ namespace conet {
             {
                 conet::dispatch();
             }
+
+            self->server.stop();
+            /*
+            while (!self->server.has_stoped()) {
+                conet::dispatch();
+            }
+            */
             return NULL;
         }
 
@@ -150,12 +142,11 @@ namespace conet {
                 return rsp("$0\r\n\r\n", fd);
             }
 
-
             auto const & value = it->second;
 
             //PLOG_INFO("get ", std::string(key), std::string(value));
 
-            StringBuilder<4*1024> out;
+            StringBuilder<1024> out;
             out.append_ch('$');
             out.append(value.size());
             out.append(s_crln);
@@ -171,6 +162,7 @@ namespace conet {
 
         static int rsp(std::string_view data, int fd) {
             return conet::send_data(fd, data.data(), data.size());
+            //return write(fd, data.data(), data.size());
         }
 
 
@@ -196,7 +188,7 @@ namespace conet {
                     return proc_get(req, fd);
                 break;
                 default:
-                    PLOG_ERROR("unsuppored,", req);
+                    //PLOG_ERROR("unsuppored,", req);
                     return rsp(s_reids_err, fd);
             }
             return 0;
@@ -211,47 +203,76 @@ namespace conet {
         Task *task = NULL;
         task = container_of(svr, Task, server);
         int size = svr->conf.max_packet_size;
-        char *buff = GC_ALLOC_ARRAY(char, size);
+        char *buff = (char*)aligned_alloc(64, size);
         int ret = 0;
         int fd = conn->fd;
 
         ssize_t nparsed = 0;
+        ssize_t end =  0;
+        ssize_t recved = 0;
         redis_parser_t req;
+
+        //req.reinit();
         do {
-            req.init();
             do {
-                ret = poll_recv(fd, buff, size-1, 10*1000);
+                ret = poll_recv(fd, buff+nparsed, size-nparsed, 10000);
             } while (ret == -1 && errno == EINTR);
-            if (ret <= 0)
-                break;
+            if (ret <= 0) break;
+            recved = ret;
 
-            //buff[ret] = '\0';
+            end=recved + nparsed;
+
             
-            nparsed += redis_parser_exec(&req, buff, ret);
-
-            //PLOG_INFO("recv", std::string(buff, ret));
+            nparsed += redis_parser_exec(&req, buff, end, nparsed);
 
             ret = redis_parser_finish(&req);
 
+            //PLOG_INFO("recv", std::string(buff, end), ret);
 
             switch (ret)
             {
             case 1: // finished;
                 {
                     task->proc_cmd(&req, fd);
+                    req.reinit();
+                    nparsed = 0;
+                    task->cnt++;
                 }
                 /* code */
                 break;
+            case 0: 
+                //PLOG_INFO("continue");
+                continue;
+                break;
             default:
+                goto p0;
                 break;
             }
-            task->cnt++;
         } while (1);
+p0:
+        close(fd);
+        free(buff);
         return 0;
     }
 }
 
-DEFINE_string(server_addr, "0.0.0.0:12314", "server address");
+Task *ptask = NULL;
+
+int set_server_stop()
+{
+    g_server_stop_flag = 1;
+    return 0;
+}
+
+int get_server_stop_flag()
+{
+    return g_server_stop_flag;
+}
+
+static void sig_exit(int sig)
+{
+    set_server_stop();
+}
 
 int main(int argc, char *argv[])
 {
@@ -270,30 +291,22 @@ int main(int argc, char *argv[])
     signal(SIGINT, sig_exit);
     signal(SIGPIPE, SIG_IGN);
 
+    Task task;
+    ptask = &task;
+    task.ip_list = ip_list;
+
     std::vector<int> cpu_set;
     parse_affinity(FLAGS_cpu_set.c_str(), &cpu_set);
-
-    int num = FLAGS_thread_num;
-    Task *tasks = new Task[num];
-    for (int i = 0; i < num; ++i)
-    {
-        tasks[i].ip_list = ip_list;
-        if (!cpu_set.empty())
-        {
-            tasks[i].cpu_id = cpu_set[i % cpu_set.size()];
-        }
-        pthread_create(&tasks[i].tid, NULL, &Task::proc, tasks + i);
+    if (cpu_set.size() >0) {
+        task.cpu_id = cpu_set[0];
     }
 
-    CO_RUN((tasks, num), {
+    CO_RUN((ptask), {
         uint64_t prev_cnt = 0;
         while (!get_server_stop_flag())
         {
             uint64_t cur_cnt = 0;
-            for (int i = 0; i < num; ++i)
-            {
-                cur_cnt += tasks[i].cnt;
-            }
+            cur_cnt = ptask->cnt;
             int cnt = cur_cnt - prev_cnt;
             prev_cnt = cur_cnt;
             if (cnt > 0)
@@ -301,6 +314,8 @@ int main(int argc, char *argv[])
             sleep(1);
         }
     });
+    
+    pthread_create(&task.tid, NULL, &Task::proc, &task);
 
     int exit_finished = 0;
     while (likely((exit_finished < 2)))
@@ -308,24 +323,17 @@ int main(int argc, char *argv[])
         if (unlikely(get_server_stop_flag() && exit_finished == 0))
         {
             exit_finished = 1;
-            CO_RUN((exit_finished, tasks, num), {
+            CO_RUN((exit_finished, ptask), {
                 PLOG_INFO("server ready exit!");
-                for (int i = 0; i < num; ++i)
-                {
-                    Task::proc_server_exit(tasks + i);
-                }
+                Task::proc_server_exit(ptask);
                 exit_finished = 2;
             });
         }
         conet::dispatch();
     }
 
-    for (int i = 0; i < num; ++i)
-    {
-        pthread_join(tasks[i].tid, NULL);
-    }
 
-    delete[] tasks;
+    pthread_join(task.tid, NULL);
 
     return 0;
 }

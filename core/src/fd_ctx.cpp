@@ -40,12 +40,8 @@ HOOK_DECLARE(int, fcntl, (int, int, ...));
 namespace conet
 {
 
-struct fd_ctx_mgr_t
-{
-    fd_ctx_t **fds;
-    int size;
-};
 
+inline
 fd_ctx_mgr_t *create_fd_ctx_mgr(int size)
 {
     fd_ctx_mgr_t *mgr = new fd_ctx_mgr_t();
@@ -65,10 +61,9 @@ void free_fd_ctx_mgr(fd_ctx_mgr_t *mgr)
     delete mgr;
 }
 
-static fd_ctx_mgr_t *g_fd_ctx_mgr = NULL;
+fd_ctx_mgr_t *g_fd_ctx_mgr = NULL;
 
-static inline
-void expand(fd_ctx_mgr_t *mgr, int need_size)
+void fd_ctx_expand(fd_ctx_mgr_t *mgr, int need_size)
 {
     int size = mgr->size;
     while (size <= need_size) {
@@ -84,7 +79,6 @@ void expand(fd_ctx_mgr_t *mgr, int need_size)
     mgr->size = size;
 }
 
-static 
 int get_default_fd_ctx_size()
 {
     if (FLAGS_fd_ctx_size > 0) {
@@ -101,59 +95,10 @@ int get_default_fd_ctx_size()
 }
 
 
-fd_ctx_mgr_t * get_fd_ctx_mgr()
-{
-	if (!g_fd_ctx_mgr) {
-		g_fd_ctx_mgr = create_fd_ctx_mgr(get_default_fd_ctx_size());
-	}
-
-	return g_fd_ctx_mgr;
-}
 
 int init_fd_ctx_env() {
    get_fd_ctx_mgr();
    return 0;
-}
-
-fd_ctx_t *get_fd_ctx(int fd, int type)
-{
-    if (fd <0) return NULL;
-
-    fd_ctx_mgr_t *mgr = get_fd_ctx_mgr();
-
-    if (fd >= mgr->size ) {
-        expand(mgr, fd+1);
-    }
-
-    fd_ctx_t *ctx =   mgr->fds[fd];
-    if (NULL == ctx) {
-        /*
-        struct stat sb;
-        int ret = fstat(fd, &sb);
-        if (ret) return NULL;
-        if (S_ISSOCK(sb.st_mode)) {
-            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
-        }
-        if (S_ISFIFO(sb.st_mode)) {
-            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
-        }
-        if (S_ISCHR(sb.st_mode)) {
-            return alloc_fd_ctx(fd, fd_ctx_t::SOCKET_FD_TYPE);
-        }
-        // because FILE read buffer, can't hook
-        if (S_ISREG(sb.st_mode)) {
-            return alloc_fd_ctx(fd, fd_ctx_t::DISK_FD_TYPE);
-        }
-        */
-        return NULL;
-    }
-
-    if (type == 0) return ctx;
-
-    if (ctx->type == type) {
-        return ctx;
-    }
-    return NULL;
 }
 
 fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
@@ -167,7 +112,7 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked)
     fd_ctx_mgr_t *mgr = get_fd_ctx_mgr();
 
     if (fd >= mgr->size ) {
-        expand(mgr, fd+1);
+        fd_ctx_expand(mgr, fd+1);
     }
 
     fd_ctx_t * d = mgr->fds[fd];

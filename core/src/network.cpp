@@ -187,6 +187,7 @@ struct poll_ctx_t
     coroutine_t * coroutine;
 
     timeout_handle_t timeout_ctl;
+    poll_wait_item_t * wait_item;
 
     list_head to_dispatch; // fd 有事件的时候， 把这个poll加入到 分发中
     int timeout;
@@ -393,6 +394,8 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
             abort();
         }
 
+        if (i==0) this->wait_item = wait_item;
+
         wait_item->poll_ctx = this;
         wait_item->pos = i;
 
@@ -425,6 +428,10 @@ void  poll_ctx_t::init(pollfd *fds, nfds_t nfds, int epoll_fd, int timeout)
 
 void destruct_poll_ctx(poll_ctx_t *self, epoll_ctx_t * epoll_ctx)
 {
+    if (self->nfds == 1) {
+        self->wait_item->poll_ctx = NULL;
+        return;
+    }
     for(int i=0; i< (int)self->nfds; ++i)
     {
         poll_wait_item_t *wait_item = get_wait_item(self->fds[i].fd);

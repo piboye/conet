@@ -6,7 +6,7 @@
 
 struct redis_parser_t
 {
-    void init();
+    void reinit();
 
     // 参数个数
     int argnum=0;
@@ -29,8 +29,11 @@ struct redis_parser_t
 
     int cmd = 0;
 
+    int status = 0;
+    int nread = 0;
+
     uint64_t _reserve[100];
 };
 
-int redis_parser_exec(redis_parser_t *sc, const char *data, int len);
+int redis_parser_exec(redis_parser_t *sc, const char *data, int len, int off);
 int redis_parser_finish(redis_parser_t *sc);

@@ -233,7 +233,7 @@ size_t http_request_parse(http_request_t *parser, char *buffer, size_t len, size
 
   parser->nread += p - (buffer + off);
   
-  return(parser->nread);
+  return (parser->nread);
 }
 
 int http_request_finish(http_request_t *parser)
