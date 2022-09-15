@@ -63,8 +63,8 @@ fd_ctx_t * alloc_fd_ctx2(int fd, int type, int has_nonblocked);
 
 extern fd_ctx_mgr_t *g_fd_ctx_mgr;
 
-inline int get_default_fd_ctx_size();
-inline fd_ctx_mgr_t *create_fd_ctx_mgr(int size);
+int get_default_fd_ctx_size();
+fd_ctx_mgr_t *create_fd_ctx_mgr(int size);
 inline fd_ctx_mgr_t * get_fd_ctx_mgr()
 {
 	if (!g_fd_ctx_mgr) {

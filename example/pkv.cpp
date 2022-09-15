@@ -64,7 +64,7 @@ namespace conet {
 
     static std::string_view s_redis_ok = "+OK\r\n";
     static std::string_view s_reids_err = "-ERR unknown command\r\n";
-    static std::string_view s_get_result = "$";
+    static std::string_view s_get_result = "$5\r\nhello\r\n";
     static std::string_view s_crln = "\r\n";
 
     struct Task

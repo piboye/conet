@@ -65,7 +65,7 @@ extern "C"
 {
 
 
-HOOK_SYS_FUNC_DEF(
+HOOK_FUNC_DEF_THROW(
     int, socket, (int domain, int type, int protocol)
 )
 {
@@ -825,7 +825,7 @@ HOOK_SYS_FUNC_DEF(
 
 
 
-HOOK_SYS_FUNC_DEF(
+HOOK_FUNC_DEF_THROW(
     int, setsockopt, (int fd, int level, int option_name,
                       const void *option_value, socklen_t option_len)
 )
@@ -1052,7 +1052,7 @@ HOOK_SYS_FUNC_DEF(int, usleep, (useconds_t us))
     return conet::co_poll(NULL, 0, ms);
 }
 
-HOOK_SYS_FUNC_DEF(int, dup, (int old))
+HOOK_FUNC_DEF_THROW(int, dup, (int old))
 {
 
     HOOK_SYS_FUNC( dup );
@@ -1078,7 +1078,7 @@ HOOK_SYS_FUNC_DEF(int, dup, (int old))
     return fd; 
 }
 
-HOOK_SYS_FUNC_DEF(int, dup2, (int old, int newfd))
+HOOK_FUNC_DEF_THROW(int, dup2, (int old, int newfd))
 {
 
     HOOK_SYS_FUNC( dup2 );
@@ -1110,7 +1110,7 @@ HOOK_SYS_FUNC_DEF(int, dup2, (int old, int newfd))
     return fd; 
 }
 
-HOOK_SYS_FUNC_DEF(int, dup3, (int old, int newfd, int flags))
+HOOK_FUNC_DEF_THROW(int, dup3, (int old, int newfd, int flags))
 {
 
     HOOK_SYS_FUNC( dup3 );
