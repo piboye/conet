@@ -195,6 +195,9 @@ namespace conet {
         int ret = 0;
         int fd = conn->fd;
 
+        int pmtu = IP_PMTUDISC_DO;
+        setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+
         ssize_t nparsed = 0;
         ssize_t end =  0;
         ssize_t recved = 0;
