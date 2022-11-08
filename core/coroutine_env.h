@@ -47,6 +47,7 @@ struct epoll_ctx_t
 
     epoll_event *m_epoll_events;
     int m_mem_size;
+    int last_event_cnt;
 
     int wait_num;
     task_t task;

@@ -45,20 +45,7 @@ static int g_server_stop_flag = 0;
 
 using namespace conet;
 namespace conet {
-    struct string_equal : public std::equal_to<>
-    {
-	using is_transparent = void;
-    };
-
-    struct string_hash
-    {
-        using is_transparent = void;
-        using key_equal = std::equal_to<>;             // Pred to use
-        using hash_type = std::hash<std::string_view>; // just a helper local type
-        size_t operator()(std::string_view txt) const { return hash_type{}(txt); }
-        size_t operator()(const std::string &txt) const { return hash_type{}(txt); }
-        size_t operator()(const char *txt) const { return hash_type{}(txt); }
-    };
+    std::string data = "hello";
 
     int proc_kv(void *arg, conn_info_t *conn);
 
@@ -81,7 +68,7 @@ namespace conet {
         int cpu_id = -1;
         uint64_t cnt;
 
-        std::unordered_map<std::string, std::string, conet::string_hash, conet::string_equal> m_kv;
+        std::unordered_map<std::string, std::string> m_kv;//, conet::string_hash, conet::string_equal> m_kv;
 
         Task()
         {
@@ -135,14 +122,15 @@ namespace conet {
         }
 
         int proc_get(redis_parser_t *req, int fd) const {
-            auto key = req->args[0];
-            auto it =  this->m_kv.find(key);
+            auto const & key = req->args[0];
+            auto it =  this->m_kv.find(std::string(key));
             //PLOG_INFO("get ", std::string(key));
             if (it == this->m_kv.end()) {
                 return rsp("$0\r\n\r\n", fd);
             }
 
             auto const & value = it->second;
+            //auto const & value = data;
 
             //PLOG_INFO("get ", std::string(key), std::string(value));
 

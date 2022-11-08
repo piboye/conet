@@ -350,6 +350,7 @@ void init_epoll_ctx(epoll_ctx_t *self, int size)
     self->m_epoll_fd = epoll_create1(EPOLL_CLOEXEC);
     self->wait_num = 0;
     self->m_mem_size = mem_size;
+    self->last_event_cnt = 0;
     return;
 }
 
@@ -449,24 +450,15 @@ int proc_netevent(epoll_ctx_t * epoll_ctx, int timeout)
     int ep_size = epoll_ctx->m_epoll_size;
     int ep_fd = epoll_ctx->m_epoll_fd;
 
-    int to = 0;
-    while(1) {
-        ret = _(epoll_wait)(ep_fd, evs, ep_size, to);
-        if (ret == 0) {
-            if (to == 0 && timeout != 0) {
-                to = timeout;
-                sched_yield();
-                continue;
-            }
-            return 0;
-        } else if (ret < 0) {
-            // epoll_wait failed;
-            if (errno != 4) {
-                LOG_SYS_CALL(epoll_wait, ret);
-            }
-            return 0;
+    ret = _(epoll_wait)(ep_fd, evs, ep_size, timeout);
+    if (ret == 0) {
+        return 0;
+    } else if (ret < 0) {
+        // epoll_wait failed;
+        if (errno != 4) {
+            LOG_SYS_CALL(epoll_wait, ret);
         }
-        break;
+        return ret;
     }
 
     int ev_num = ret;
@@ -503,7 +495,21 @@ int proc_netevent(int timeout)
 
 int proc_netevent(void *arg)
 {
-    return proc_netevent((epoll_ctx_t *) arg, -1);
+    epoll_ctx_t * ctx =  (epoll_ctx_t *)(arg);
+    int cnt = 0;
+
+    if (ctx->last_event_cnt > 0) {
+
+        cnt = proc_netevent(ctx, 0);
+    } else {
+        cnt = proc_netevent(ctx, -1);
+    }
+
+    ctx->last_event_cnt = cnt; 
+    if (cnt == 0) {
+        sched_yield();
+    }
+    return cnt;
 }
 
 epoll_ctx_t *create_epoll_ctx(coroutine_env_t * env, int event_size)
