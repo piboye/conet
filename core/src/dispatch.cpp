@@ -119,6 +119,9 @@ int proc_tasks(dispatch_mgr_t *mgr)
     }
 
     if (mgr->delay_task_num <=0) {
+        if (num == 0) {
+            sched_yield();
+        }
         return num;
     }
 

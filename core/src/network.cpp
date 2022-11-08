@@ -506,9 +506,6 @@ int proc_netevent(void *arg)
     }
 
     ctx->last_event_cnt = cnt; 
-    if (cnt == 0) {
-        sched_yield();
-    }
     return cnt;
 }
 
