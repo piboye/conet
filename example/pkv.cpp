@@ -130,6 +130,8 @@ namespace conet {
             }
 
             auto const & value = it->second;
+
+
             //auto const & value = data;
 
             //PLOG_INFO("get ", std::string(key), std::string(value));
@@ -300,8 +302,7 @@ int main(int argc, char *argv[])
             cur_cnt = ptask->cnt;
             int cnt = cur_cnt - prev_cnt;
             prev_cnt = cur_cnt;
-            if (cnt > 0)
-                PLOG_INFO("qps:", cnt);
+            if (cnt > 0) PLOG_INFO("qps:", cnt);
             sleep(1);
         }
     });

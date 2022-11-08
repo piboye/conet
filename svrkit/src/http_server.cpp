@@ -197,6 +197,9 @@ int http_server_t::conn_proc(conn_info_t *conn)
 
     int fd  = conn->fd;
 
+    int pmtu = IP_PMTUDISC_DO;
+    setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+
     http_request_t req;
 
     int len = base_server->conf.max_packet_size;
