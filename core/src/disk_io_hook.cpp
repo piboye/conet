@@ -29,7 +29,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <linux/stat.h>
+//#include <linux/stat.h>
 
 #include <dlfcn.h>
 #include <stdarg.h>
