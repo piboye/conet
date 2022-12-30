@@ -80,6 +80,7 @@ cc_library(
         ':tcp_server',
         '#crypto',
     ],
+    link_all_symbols = True,
 );
 
 

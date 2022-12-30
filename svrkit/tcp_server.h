@@ -65,7 +65,7 @@ struct tcp_server_t: public server_base_t
         conf_t()
         {
             listen_backlog = 1024;
-            max_packet_size = 4*1024;
+            max_packet_size = 100*1024;
             max_conn_num = 10000;
             duplex = 0;
         }

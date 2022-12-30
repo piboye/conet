@@ -255,6 +255,12 @@ struct http_server_t: public server_base_t
     bool has_stoped();
 
     int conn_proc(conn_info_t *conn);
+    int ws_main(conn_info_t *conn, http_request_t *req,
+        tcp_server_t *server_base,
+        http_server_t *http_server,
+        char *buf,
+        int len
+        );
 };
 
 }

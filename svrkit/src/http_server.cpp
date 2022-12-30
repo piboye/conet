@@ -30,6 +30,7 @@
 #include "base/base64.h"
 #include "base/string_builder.h"
 #include <endian.h>
+#include <sys/uio.h>
 
 namespace conet
 {
@@ -116,6 +117,7 @@ int output_response(http_response_t *resp, int fd)
     //len = snprintf(buf, sizeof(buf), "%ld", blen);
     //out.append(buf, len);
     out.append(s_crlf2);
+    /*
     if (blen <= 4*1024) {
         out.append(data, blen);
         return send_data(fd, out.data(), out.size());
@@ -126,9 +128,18 @@ int output_response(http_response_t *resp, int fd)
     if (ret < 0) {
         return ret;
     }
-    
+
     // send body
     return send_data(fd, data, blen);
+*/
+
+    struct iovec iov[2];
+    iov[0].iov_base = (void *) out.data();
+    iov[0].iov_len = out.size();
+    iov[1].iov_base = (void *)data;
+    iov[1].iov_len = blen;
+    return writev(fd, iov, 2);
+    
 }
 
 
@@ -191,6 +202,44 @@ int http_server_main(conn_info_t *conn, http_request_t *req,
     return 0;
 }
 
+int http_server_t::ws_main(conn_info_t *conn, http_request_t *req,
+        tcp_server_t *server_base,
+        http_server_t *http_server,
+        char *buf,
+        int len
+        )
+{
+
+    if (this->enable_websocket == 0)
+    {
+        // server 不支持
+        static char unsupport_txt[] =
+            "HTTP/1.1 404\r\n"
+            "Connection: close\r\n"
+            "Contente-Length: 0\r\n"
+            "\r\n";
+        send(conn->fd, unsupport_txt, sizeof(unsupport_txt) - 1, 0);
+        return 1;
+    }
+
+    websocket_conn_t *ws = new websocket_conn_t();
+    ws->first_len = len;
+    ws->first_buffer = buf;
+    ws->conn_info = conn;
+    ws->server = this;
+    ws->http_first_req = req;
+    ws->cb = this->ws_cb;
+    ws->max_idle_time = this->websocket_max_idle_time;
+    ws->server_masking_key = this->websocket_masking_key;
+    ws->max_buf_len = this->websocket_max_packet_size;
+    ws->buffer = new char[ws->max_buf_len];
+    list_add(&ws->link_to, &this->conn_list);
+    ws->do_handshake();
+    list_del(&ws->link_to);
+    delete ws;
+    return 1;
+}
+
 int http_server_t::conn_proc(conn_info_t *conn)
 {
     tcp_server_t *base_server = this->tcp_server;
@@ -202,7 +251,8 @@ int http_server_t::conn_proc(conn_info_t *conn)
 
     http_request_t req;
 
-    int len = base_server->conf.max_packet_size;
+    int max_packet_size = base_server->conf.max_packet_size;
+    int len = max_packet_size*2;
 
     char *buf = NULL;
     ssize_t nparsed = 0;
@@ -214,22 +264,23 @@ int http_server_t::conn_proc(conn_info_t *conn)
     malloc_buff = 1;
     buf = (char *)aligned_alloc(64, len);
 
-    uint64_t cnt = 0;
-    do
-    {
+    char *recv_p = buf;
+    int recv_len = 0;
+    char *parse_p = buf;
+    //int cnt = 0;
 
-        if (cnt > 0) {
-            if (len - nparsed <=0) {
+    while(ret == 0 && base_server->to_stop == 0) {
+        if (!(recv_len > 0 && nparsed == 0)) {
+            if (len-recv_len <=0) {
                 PLOG_INFO("packet too long, [fd=",fd,"] [len=",len,"] [nparsed=",nparsed,"]");
                 ret = -2;
                 break;
             }
 
-            recved = recv(fd, buf+nparsed, len-nparsed, 0);
+            recved = recv(fd, recv_p, len-recv_len, 0);
             if (recved == 0) {
                 if (nparsed == 0) {
                     ret = 0;
-                    //PLOG_DEBUG("fd close by remote, ", fd);
                     break;
                 }
                 ret = -2;
@@ -237,93 +288,69 @@ int http_server_t::conn_proc(conn_info_t *conn)
                 break;
             }
             if (recved < 0) {
-                if (errno == ETIMEDOUT) {
-                    // 超时
-                    break;
-                }
-                if (errno == EAGAIN || errno == EINTR || errno == ECONNRESET) {
+                if (errno == EAGAIN || errno == EINTR) {
                     continue;
+                }
+                if (errno == ETIMEDOUT || errno == ECONNRESET) {
+                    break;
                 }
                 PLOG_INFO("recv failed [ret=",recved,"] [fd=",fd,"] [errno=",errno,"] [errmsg=", strerror(errno), "]");
                 ret = -2;
                 break;
             }
+
+            recv_p += recved;
+            recv_len += recved; 
         }
-        ++cnt;
 
-        end = recved + nparsed;
+        end = recv_p - parse_p;
 
-        if (nparsed == 0)
-        {
+        if (nparsed == 0) {
             //初始化 http req
             http_request_init(&req);
         }
-        nparsed += http_request_parse(&req, buf, end, nparsed);
-        ret = http_request_finish(&req);
-        switch(ret)
-        {
-            case 1: // finished;
-                {
-                    req.rest_data = buf + nparsed;
-                    req.rest_len = end - nparsed;
-                    if (req.websocket == 1)
-                    {
-                        if (this->enable_websocket ==0)
-                        {
-                            // server 不支持
-                            static char unsupport_txt[] = \
-                                "HTTP/1.1 404\r\n"
-                                "Connection: close\r\n"
-                                "Contente-Length: 0\r\n"
-                                "\r\n";
-                            send(fd, unsupport_txt, sizeof(unsupport_txt)-1, 0);
-                            ret = 1;
-                            break;
-                        }
 
-                        websocket_conn_t * ws = new websocket_conn_t();
-                        ws->first_len  = len;
-                        ws->first_buffer = buf;
-                        ws->conn_info = conn;
-                        ws->server = this;
-                        ws->http_first_req = &req;
-                        ws->cb = this->ws_cb;
-                        ws->max_idle_time = this->websocket_max_idle_time;
-                        ws->server_masking_key = this->websocket_masking_key;
-                        ws->max_buf_len = this->websocket_max_packet_size;
-                        ws->buffer = new char[ws->max_buf_len];
-                        list_add(&ws->link_to, &this->conn_list);
-                        ret = ws->do_handshake();
-                        list_del(&ws->link_to);
-                        delete ws;
-                        ret = 1;
-                    }
-                    else
-                    {
-                        ret = http_server_main(conn, &req, base_server, this);
-                        nparsed = 0;
-                        /*
-                        if (ret == 0 && base_server->to_stop == 0) {
-                            struct pollfd pf = { fd: fd, events: POLLIN|POLLERR|POLLHUP};
-                            int ret = conet::co_poll( &pf,1, 30*1000);
-                            if (ret == 0) {
-                                break;
-                            }
-                        }
-                        */
-                    }
-                }
-                break;
-            case 0:
-                ret = 0;
-                break;
-            default:
-                ret = -1;
-                break;
+        nparsed += http_request_parse(&req, parse_p, end, nparsed);
+        ret = http_request_finish(&req);
+        if (ret == 0) {
+            continue;
+        } else if (ret != 1) {
+            ret = -1;
+            break;
         }
 
-    } while(ret == 0 && base_server->to_stop == 0);
+        req.rest_data = parse_p + nparsed;
+        req.rest_len = end - nparsed;
 
+        if (req.websocket == 1) {
+            ret = ws_main(conn, &req, base_server, this, buf, len);
+            continue;
+        }
+
+        ret = http_server_main(conn, &req, base_server, this);
+        if (ret != 0) {
+            break;
+        }
+
+        parse_p += nparsed + req.content_length;
+        if (recv_p - parse_p <= 0) {
+            //  没有数据了, 重置
+            parse_p = buf;
+            recv_p = buf;
+            recv_len = 0;
+            nparsed = 0;
+            continue;
+        }
+
+        if (parse_p - buf > max_packet_size) {
+            //剩余数据的位置太后了, 先移动剩余数据
+            recv_len = recv_p - parse_p;
+            memmove(buf, parse_p, recv_len);
+            parse_p = buf;
+            recv_p = buf + recv_len;
+        }
+        nparsed = 0;
+    } 
 
     if (malloc_buff == 1) free(buf);
 
